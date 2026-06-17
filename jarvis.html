@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#040a14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="J.A.R.V.I.S.">
+<link rel="manifest" href="manifest.json">
+<title>J.A.R.V.I.S.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#040a14;
+    --bg2:#071324;
+    --cyan:#22d3ee;
+    --cyan-dim:#0e7490;
+    --cyan-glow:rgba(34,211,238,.55);
+    --amber:#fbbf24;
+    --line:rgba(34,211,238,.18);
+    --panel:rgba(8,20,38,.72);
+    --txt:#cdeaf5;
+    --txt-dim:#5a7d92;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden}
+  body{
+    background:
+      radial-gradient(circle at 50% 40%, #0a1d33 0%, var(--bg) 60%),
+      var(--bg);
+    color:var(--txt);
+    font-family:'Share Tech Mono',monospace;
+    display:flex;flex-direction:column;
+    height:100vh;
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  /* ---- scanline ambience ---- */
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:50;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,0) 0px,rgba(0,0,0,0) 2px,rgba(0,0,0,.06) 3px,rgba(0,0,0,0) 4px);
+    mix-blend-mode:overlay;
+  }
+
+  /* ---- top bar ---- */
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 22px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(34,211,238,.05),transparent);
+  }
+  .brand{font-family:'Orbitron';font-weight:900;letter-spacing:.32em;font-size:20px;
+    color:var(--cyan);text-shadow:0 0 12px var(--cyan-glow)}
+  .brand small{font-size:9px;letter-spacing:.3em;color:var(--txt-dim);display:block;font-family:'Share Tech Mono'}
+  .clock{font-family:'Orbitron';font-size:24px;font-weight:700;letter-spacing:.1em;text-align:right}
+  .clock small{display:block;font-size:10px;color:var(--txt-dim);letter-spacing:.25em;font-family:'Share Tech Mono'}
+
+  /* ---- main grid ---- */
+  main{flex:1;display:grid;grid-template-columns:240px 1fr 240px;gap:16px;padding:16px;min-height:0}
+  @media (max-width:880px){
+    main{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
+    .side-left,.side-right{display:none}
+    main.show-stats .side-left{display:flex}
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    position:relative;
+    backdrop-filter:blur(2px);
+  }
+  .panel::before{content:"";position:absolute;top:0;left:0;width:14px;height:14px;
+    border-top:2px solid var(--cyan);border-left:2px solid var(--cyan);opacity:.7}
+  .panel::after{content:"";position:absolute;bottom:0;right:0;width:14px;height:14px;
+    border-bottom:2px solid var(--cyan);border-right:2px solid var(--cyan);opacity:.7}
+  .panel h2{font-family:'Orbitron';font-size:11px;font-weight:700;letter-spacing:.28em;
+    color:var(--cyan);padding:12px 14px 8px;text-transform:uppercase}
+
+  .side-left,.side-right{display:flex;flex-direction:column;gap:16px;min-height:0}
+
+  /* meters */
+  .meter{padding:6px 14px}
+  .meter .lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--txt-dim);letter-spacing:.15em;margin-bottom:4px}
+  .meter .track{height:6px;background:rgba(34,211,238,.1);border-radius:3px;overflow:hidden}
+  .meter .fill{height:100%;background:linear-gradient(90deg,var(--cyan-dim),var(--cyan));box-shadow:0 0 8px var(--cyan-glow);border-radius:3px;transition:width 1.2s ease}
+
+  .weather{padding:8px 14px 16px;text-align:center}
+  .weather .temp{font-family:'Orbitron';font-size:38px;font-weight:700;color:var(--cyan);text-shadow:0 0 14px var(--cyan-glow)}
+  .weather .loc{font-size:10px;letter-spacing:.2em;color:var(--txt-dim)}
+  .weather .desc{font-size:12px;margin-top:4px;color:var(--txt)}
+
+  /* center column */
+  .center{display:flex;flex-direction:column;gap:14px;min-height:0}
+
+  /* mode tabs */
+  .tabs{display:flex;gap:8px;justify-content:center}
+  .tab{font-family:'Orbitron';font-size:11px;letter-spacing:.2em;padding:9px 18px;
+    background:transparent;border:1px solid var(--line);color:var(--txt-dim);
+    border-radius:3px;cursor:pointer;transition:.2s;text-transform:uppercase}
+  .tab.active{color:var(--bg);background:var(--cyan);border-color:var(--cyan);
+    box-shadow:0 0 16px var(--cyan-glow);font-weight:700}
+
+  .view{flex:1;min-height:0;display:none;flex-direction:column}
+  .view.active{display:flex}
+
+  /* reactor (home) */
+  .reactor-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+  .reactor{width:200px;height:200px;position:relative}
+  .ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--cyan);opacity:.5}
+  .ring.r2{inset:18px;border-style:dashed;animation:spin 12s linear infinite}
+  .ring.r3{inset:36px;border-width:1px;opacity:.3;animation:spin 8s linear infinite reverse}
+  .core{position:absolute;inset:64px;border-radius:50%;
+    background:radial-gradient(circle,#bff5ff,var(--cyan) 45%,var(--cyan-dim));
+    box-shadow:0 0 40px var(--cyan-glow),0 0 80px var(--cyan-glow),inset 0 0 20px #fff;
+    animation:pulse 3s ease-in-out infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.06);opacity:1}}
+  .greeting{font-family:'Orbitron';font-size:15px;letter-spacing:.18em;color:var(--txt);text-align:center}
+  .greeting span{color:var(--cyan)}
+  .status-line{font-size:11px;color:var(--txt-dim);letter-spacing:.2em}
+
+  /* chat / knowledge shared log */
+  .log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--cyan-dim) transparent}
+  .log::-webkit-scrollbar{width:5px}
+  .log::-webkit-scrollbar-thumb{background:var(--cyan-dim);border-radius:3px}
+  .msg{max-width:88%;padding:10px 14px;border-radius:4px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
+  .msg.user{align-self:flex-end;background:rgba(34,211,238,.12);border:1px solid var(--line)}
+  .msg.jarvis{align-self:flex-start;background:rgba(8,20,38,.9);border:1px solid var(--line);border-left:2px solid var(--cyan)}
+  .msg .who{font-family:'Orbitron';font-size:9px;letter-spacing:.25em;color:var(--cyan);margin-bottom:5px;text-transform:uppercase}
+  .msg.system{align-self:center;font-size:11px;color:var(--amber);letter-spacing:.1em;border:1px dashed rgba(251,191,36,.4);background:rgba(251,191,36,.06)}
+
+  /* input bar */
+  .inputbar{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
+  .inputbar input{flex:1;background:rgba(4,10,20,.8);border:1px solid var(--line);color:var(--txt);
+    font-family:'Share Tech Mono';font-size:14px;padding:11px 14px;border-radius:3px;outline:none}
+  .inputbar input:focus{border-color:var(--cyan);box-shadow:0 0 10px var(--cyan-glow)}
+  .btn{font-family:'Orbitron';font-size:12px;letter-spacing:.1em;padding:0 16px;
+    background:var(--cyan);color:var(--bg);border:none;border-radius:3px;cursor:pointer;font-weight:700}
+  .btn:active{transform:scale(.96)}
+  .btn.ghost{background:transparent;border:1px solid var(--cyan);color:var(--cyan)}
+  .mic{width:46px;font-size:18px;display:flex;align-items:center;justify-content:center}
+  .mic.listening{background:var(--amber);animation:pulse 1s infinite}
+
+  /* knowledge wiki list */
+  .wiki-list{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+  .wiki-card{background:rgba(8,20,38,.9);border:1px solid var(--line);border-left:2px solid var(--cyan);
+    border-radius:4px;padding:12px 14px;cursor:pointer;transition:.15s}
+  .wiki-card:active{background:rgba(34,211,238,.1)}
+  .wiki-card .t{font-family:'Orbitron';font-size:13px;color:var(--cyan);letter-spacing:.08em;margin-bottom:4px}
+  .wiki-card .s{font-size:12px;color:var(--txt-dim);line-height:1.4;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .wiki-card .tags{margin-top:6px;display:flex;gap:5px;flex-wrap:wrap}
+  .tag{font-size:9px;letter-spacing:.1em;color:var(--cyan);border:1px solid var(--line);padding:2px 6px;border-radius:2px}
+  .empty{color:var(--txt-dim);text-align:center;padding:40px 20px;font-size:13px;line-height:1.7}
+
+  /* wiki detail overlay */
+  .overlay{position:fixed;inset:0;z-index:100;background:rgba(4,10,20,.92);display:none;flex-direction:column;padding:24px;backdrop-filter:blur(4px)}
+  .overlay.open{display:flex}
+  .overlay h1{font-family:'Orbitron';color:var(--cyan);font-size:20px;letter-spacing:.1em;margin-bottom:6px;text-shadow:0 0 12px var(--cyan-glow)}
+  .overlay .meta{font-size:11px;color:var(--txt-dim);letter-spacing:.15em;margin-bottom:16px}
+  .overlay .body{flex:1;overflow-y:auto;font-size:15px;line-height:1.7;white-space:pre-wrap;color:var(--txt);padding-right:8px}
+  .overlay .close{position:absolute;top:20px;right:24px;font-size:26px;color:var(--cyan);cursor:pointer;background:none;border:none}
+  .overlay .links{margin-top:18px;display:flex;gap:8px;flex-wrap:wrap}
+
+  .typing::after{content:"▋";animation:blink 1s steps(2) infinite;color:var(--cyan)}
+  @keyframes blink{50%{opacity:0}}
+
+  .flagbtn{display:block;margin-top:8px;background:transparent;border:1px solid var(--line);
+    color:var(--txt-dim);font-family:'Share Tech Mono';font-size:10px;letter-spacing:.1em;
+    padding:3px 8px;border-radius:2px;cursor:pointer;transition:.15s}
+  .flagbtn:active{transform:scale(.95)}
+  .flagbtn.on{color:var(--cyan);border-color:var(--cyan);cursor:default}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">J.A.R.V.I.S.<small>JUST A RATHER VERY INTELLIGENT SYSTEM</small></div>
+  <div class="clock"><span id="time">--:--:--</span><small id="date">— — —</small></div>
+</header>
+
+<main id="main">
+  <!-- LEFT: system meters -->
+  <aside class="side-left">
+    <div class="panel" style="flex:1">
+      <h2>System</h2>
+      <div class="meter"><div class="lbl"><span>POWER</span><span id="m1v">98%</span></div><div class="track"><div class="fill" id="m1" style="width:98%"></div></div></div>
+      <div class="meter"><div class="lbl"><span>CORE TEMP</span><span id="m2v">42%</span></div><div class="track"><div class="fill" id="m2" style="width:42%"></div></div></div>
+      <div class="meter"><div class="lbl"><span>MEMORY</span><span id="m3v">61%</span></div><div class="track"><div class="fill" id="m3" style="width:61%"></div></div></div>
+      <div class="meter"><div class="lbl"><span>NETWORK</span><span id="m4v">87%</span></div><div class="track"><div class="fill" id="m4" style="width:87%"></div></div></div>
+      <div class="meter" style="margin-top:10px"><div class="lbl"><span>KNOWLEDGE NODES</span><span id="nodecount">0</span></div></div>
+    </div>
+  </aside>
+
+  <!-- CENTER -->
+  <section class="center">
+    <div class="tabs">
+      <button class="tab active" data-view="home">HUD</button>
+      <button class="tab" data-view="chat">Chat</button>
+      <button class="tab" data-view="know">Knowledge</button>
+    </div>
+
+    <!-- HOME -->
+    <div class="view active panel" id="view-home">
+      <div class="reactor-wrap">
+        <div class="reactor">
+          <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
+          <div class="core"></div>
+        </div>
+        <div class="greeting" id="greet">Järjestelmä <span>verkossa</span></div>
+        <div class="status-line" id="homestatus">Kaikki järjestelmät toiminnassa.</div>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="view panel" id="view-chat">
+      <div class="log" id="chatlog"></div>
+      <div class="inputbar">
+        <button class="btn mic" id="micChat" title="Puhu">🎙</button>
+        <input id="chatInput" placeholder="Puhu J.A.R.V.I.S.ille…" autocomplete="off">
+        <button class="btn" id="sendChat">LÄHETÄ</button>
+      </div>
+    </div>
+
+    <!-- KNOWLEDGE -->
+    <div class="view panel" id="view-know">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 4px">
+        <h2 style="padding:0">Tietopankki</h2>
+        <button class="btn ghost" id="compileBtn" style="font-size:10px;padding:7px 12px">⟳ KOKOA PÄIVÄ</button>
+      </div>
+      <div class="log" id="knowlog" style="flex:0 0 auto;max-height:34%"></div>
+      <div class="wiki-list" id="wikiList"></div>
+      <div class="inputbar">
+        <button class="btn mic" id="micKnow" title="Puhu">🎙</button>
+        <input id="knowInput" placeholder="Syötä tietoa tai kysy: 'mitä tiedät…'" autocomplete="off">
+        <button class="btn" id="sendKnow">TALLENNA</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT: weather + quick -->
+  <aside class="side-right">
+    <div class="panel">
+      <h2>Sää · Nastola</h2>
+      <div class="weather">
+        <div class="temp" id="wTemp">--°</div>
+        <div class="desc" id="wDesc">Haetaan…</div>
+        <div class="loc">NASTOLA, FI</div>
+      </div>
+    </div>
+    <div class="panel" style="flex:1">
+      <h2>Pikakomennot</h2>
+      <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px">
+        <button class="btn ghost" data-q="Mikä on tilanneraportti?">Tilanneraportti</button>
+        <button class="btn ghost" data-q="Mitä tiedät J.A.R.V.I.S.-projektista?">Projektin tila</button>
+        <button class="btn ghost" data-q="Anna yhteenveto kaikesta tallennetusta tiedosta">Tiedon yhteenveto</button>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<!-- WIKI DETAIL -->
+<div class="overlay" id="overlay">
+  <button class="close" id="ovClose">✕</button>
+  <h1 id="ovTitle"></h1>
+  <div class="meta" id="ovMeta"></div>
+  <div class="body" id="ovBody"></div>
+</div>
+
+<script>
+const API_MODEL = "claude-sonnet-4-6";
+const $ = s => document.querySelector(s);
+
+/* ============ CONFIG — VAIHDA TÄMÄ ============ */
+// Liitä tähän oman Cloudflare Workerisi osoite (ohjeet annettu erikseen):
+const WORKER_URL = "https://jarvis.lassi-salminen3.workers.dev";
+// Jos asetit Workeriin PIN-koodin, laita sama tähän. Muuten jätä tyhjäksi.
+const JARVIS_PIN = "nastola1234";
+const pinHeader = JARVIS_PIN ? {"X-Jarvis-Pin": JARVIS_PIN} : {};
+
+/* ============ STATE ============ */
+let wiki = [];          // [{id,title,summary,body,tags,updated}]
+let chatHistory = [];   // for conversational context
+let rawLog = [];        // [{text,who,ts}] flagged chat snippets for daily compile
+let lastCompile = 0;    // timestamp of last day-compile
+
+/* ============ STORAGE ============ */
+async function loadWiki(){
+  try{
+    const r = await fetch(WORKER_URL+'/api/wiki',{headers:pinHeader});
+    wiki = await r.json();
+  }catch(e){ wiki = []; }
+  // raw log + lastcompile stay local to the device (lightweight, device-specific)
+  try{ const v=localStorage.getItem('jarvis:raw'); if(v) rawLog=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('jarvis:lastcompile'); if(v) lastCompile=JSON.parse(v); }catch(e){}
+  renderWiki();
+}
+async function saveWiki(){
+  try{
+    await fetch(WORKER_URL+'/api/wiki',{
+      method:'PUT',
+      headers:{'Content-Type':'application/json',...pinHeader},
+      body:JSON.stringify(wiki)
+    });
+  }catch(e){}
+  renderWiki();
+}
+async function saveRaw(){
+  try{ localStorage.setItem('jarvis:raw', JSON.stringify(rawLog)); }catch(e){}
+}
+
+/* ============ CLOCK ============ */
+function tick(){
+  const d=new Date();
+  $('#time').textContent=d.toLocaleTimeString('fi-FI');
+  $('#date').textContent=d.toLocaleDateString('fi-FI',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();
+}
+setInterval(tick,1000);tick();
+
+/* ============ METERS (ambient) ============ */
+function jitter(){
+  const set=(id,base,range)=>{
+    const v=Math.round(base+(Math.random()*range-range/2));
+    $('#'+id).style.width=v+'%';$('#'+id+'v').textContent=v+'%';
+  };
+  set('m1',96,6);set('m2',44,14);set('m3',60,18);set('m4',88,8);
+}
+setInterval(jitter,3000);
+
+/* ============ GREETING ============ */
+(function(){
+  const h=new Date().getHours();
+  let g = h<6?'Hyvää yötä':h<11?'Hyvää huomenta':h<17?'Hyvää päivää':'Hyvää iltaa';
+  $('#greet').innerHTML = g+', <span>Lassi</span>';
+})();
+
+/* ============ WEATHER ============ */
+async function weather(){
+  // Open-Meteo: no API key required
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=60.95&longitude=25.93&current=temperature_2m,weather_code');
+    const d=await r.json();
+    const t=Math.round(d.current.temperature_2m);
+    $('#wTemp').textContent=t+'°';
+    const codes={0:'Selkeää',1:'Enimmäkseen selkeää',2:'Puolipilvistä',3:'Pilvistä',45:'Sumua',48:'Sumua',51:'Tihkua',61:'Sadetta',63:'Sadetta',65:'Rankkasade',71:'Lumisadetta',73:'Lumisadetta',75:'Runsas lumisade',80:'Sadekuuroja',95:'Ukkosta'};
+    $('#wDesc').textContent=codes[d.current.weather_code]||'—';
+  }catch(e){ $('#wDesc').textContent='Ei yhteyttä'; }
+}
+weather(); setInterval(weather,600000);
+
+/* ============ TABS ============ */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    $('#view-'+t.dataset.view).classList.add('active');
+  };
+});
+
+/* ============ CLAUDE API ============ */
+async function askClaude(system, messages){
+  const res = await fetch(WORKER_URL+"/api/claude",{
+    method:"POST",headers:{"Content-Type":"application/json",...pinHeader},
+    body:JSON.stringify({model:API_MODEL,max_tokens:1000,system,messages})
+  });
+  const data = await res.json();
+  return data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+}
+
+const JARVIS_PERSONA = `Olet J.A.R.V.I.S., Lassin henkilökohtainen tekoälyassistentti Iron Man -hengessä.
+Puhut suomea, kohteliaasti ja hieman muodollisesti mutta lämpimästi, kuten J.A.R.V.I.S. elokuvissa.
+Puhuttele käyttäjää "Lassi" tai tarvittaessa "sir". Ole ytimekäs, älykäs ja avulias.
+Lassi rakentaa sinua: Telegram-botti + tämä tablet-käyttöliittymä, Iron Man -estetiikalla. Hän asuu Nastolassa.`;
+
+/* ============ CHAT ============ */
+function addMsg(logId, who, text, cls){
+  const log=$('#'+logId);
+  const m=document.createElement('div');
+  m.className='msg '+(cls||who);
+  if(who!=='system') m.innerHTML='<div class="who">'+(who==='user'?'LASSI':'J.A.R.V.I.S.')+'</div>';
+  const span=document.createElement('span'); span.textContent=text; m.appendChild(span);
+  log.appendChild(m); log.scrollTop=log.scrollHeight;
+  return span;
+}
+// flag a user+jarvis exchange into the raw log for daily compile
+function addFlag(msgEl, userText, jarvisText){
+  const f=document.createElement('button');
+  f.className='flagbtn'; f.title='Merkitse muistiinpanoksi'; f.textContent='👍';
+  f.onclick=()=>{
+    if(f.classList.contains('on'))return;
+    f.classList.add('on');
+    rawLog.push({ts:Date.now(), q:userText, a:jarvisText});
+    saveRaw();
+    f.textContent='✓ tallennettu';
+  };
+  msgEl.appendChild(f);
+}
+
+async function sendChat(text){
+  if(!text.trim())return;
+  addMsg('chatlog','user',text);
+  chatHistory.push({role:'user',content:text});
+  const span=addMsg('chatlog','jarvis',''); span.parentElement.classList.add('typing');
+  // give jarvis awareness of the wiki
+  const wikiCtx = wiki.length? `\n\nLassin tietopankissa on ${wiki.length} sivua: ${wiki.map(w=>w.title).join(', ')}.` : '';
+  try{
+    const reply=await askClaude(JARVIS_PERSONA+wikiCtx, chatHistory.slice(-10));
+    span.parentElement.classList.remove('typing');
+    typewrite(span,reply);
+    chatHistory.push({role:'assistant',content:reply});
+    addFlag(span.parentElement, text, reply);
+  }catch(e){
+    span.parentElement.classList.remove('typing');
+    span.textContent='Pahoittelut, yhteys keskusyksikköön epäonnistui.';
+  }
+}
+function typewrite(el,txt){
+  el.textContent='';let i=0;
+  const step=()=>{ if(i<txt.length){ el.textContent+=txt[i++]; el.parentElement.parentElement.scrollTop=9e9; setTimeout(step,8);} };
+  step();
+}
+
+$('#sendChat').onclick=()=>{const v=$('#chatInput').value;$('#chatInput').value='';sendChat(v);};
+$('#chatInput').onkeydown=e=>{if(e.key==='Enter'){$('#sendChat').click();}};
+document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{
+  document.querySelector('.tab[data-view="chat"]').click();
+  sendChat(b.dataset.q);
+});
+
+/* ============ KNOWLEDGE (the PKB librarian) ============ */
+async function processKnowledge(text){
+  if(!text.trim())return;
+  addMsg('knowlog','user',text);
+  const span=addMsg('knowlog','jarvis',''); span.parentElement.classList.add('typing');
+
+  // Decide: is this a QUERY or new KNOWLEDGE? Let Claude route + act, returning JSON.
+  const sys = `Olet J.A.R.V.I.S., joka hallinnoi Lassin henkilökohtaista tietopankkia (PKB).
+Toimit Karpathy-tyylisenä "kirjastonhoitajana": Lassi syöttää raakaa tietoa tai kysyy kysymyksiä,
+ja sinä organisoit kaiken automaattisesti wiki-sivuiksi.
+
+Nykyinen wiki (JSON, sivujen otsikot ja tiivistelmät):
+${JSON.stringify(wiki.map(w=>({id:w.id,title:w.title,summary:w.summary,tags:w.tags})))}
+
+Tehtäväsi: lue Lassin viesti ja päätä toiminto. Vastaa AINOASTAAN JSON-objektilla, ei mitään muuta, ei koodiblokkeja:
+
+Jos viesti on KYSYMYS olemassa olevasta tiedosta (esim. "mitä tiedät...", "kerro...", "yhteenveto..."):
+{"action":"query","reply":"<J.A.R.V.I.S.-tyylinen vastaus suomeksi wikin pohjalta>"}
+
+Jos viesti on UUTTA TIETOA tallennettavaksi:
+{"action":"save","reply":"<lyhyt J.A.R.V.I.S.-vahvistus>","page":{"id":"<olemassa oleva id jos päivität, muuten uusi lyhyt slug>","title":"<selkeä otsikko>","summary":"<1-2 lauseen tiivistelmä>","body":"<hyvin jäsennelty markdown-sisältö, laajenna ja organisoi Lassin antama tieto>","tags":["aihe1","aihe2"]}}
+
+Jos uusi tieto liittyy olemassa olevaan sivuun, käytä saman sivun id:tä ja yhdistä sisältö.`;
+
+  try{
+    let raw = await askClaude(sys,[{role:'user',content:text}]);
+    raw = raw.replace(/```json|```/g,'').trim();
+    const r = JSON.parse(raw);
+    span.parentElement.classList.remove('typing');
+    typewrite(span, r.reply||'Käsitelty.');
+
+    if(r.action==='save' && r.page){
+      const p=r.page; p.updated=Date.now();
+      const idx=wiki.findIndex(w=>w.id===p.id);
+      if(idx>=0) wiki[idx]={...wiki[idx],...p}; else wiki.unshift(p);
+      await saveWiki();
+    }
+  }catch(e){
+    span.parentElement.classList.remove('typing');
+    span.textContent='En kyennyt jäsentämään tietoa. Yritä muotoilla uudelleen.';
+  }
+}
+$('#sendKnow').onclick=()=>{const v=$('#knowInput').value;$('#knowInput').value='';processKnowledge(v);};
+$('#knowInput').onkeydown=e=>{if(e.key==='Enter'){$('#sendKnow').click();}};
+
+/* ============ DAILY COMPILE (Karpathy compile-step) ============ */
+async function compileDay(auto){
+  document.querySelector('.tab[data-view="know"]').click();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todaysRaw = rawLog.filter(r=>r.ts>=today.getTime());
+
+  if(!todaysRaw.length){
+    addMsg('knowlog','jarvis', auto? '' : 'Tältä päivältä ei ole merkittyjä keskusteluja koottavaksi, Lassi. Nosta chatissa 👍 viesteistä jotka haluat muistiin.');
+    return;
+  }
+  const span=addMsg('knowlog','jarvis',''); span.parentElement.classList.add('typing');
+
+  const sys = `Olet J.A.R.V.I.S. ja kokoat Lassin päivän. Sait listan tämän päivän merkityistä keskusteluista.
+Tee KAKSI asiaa ja vastaa AINOASTAAN JSON-objektilla (ei koodiblokkeja):
+
+1. Päiväyhteenveto: lyhyt J.A.R.V.I.S.-tyylinen katsaus suomeksi siitä mitä Lassi teki/käsitteli tänään.
+2. Poimi opit ja faktat pysyviksi wiki-sivuiksi.
+
+Nykyiset wiki-sivut (id + otsikko): ${JSON.stringify(wiki.map(w=>({id:w.id,title:w.title})))}
+
+Vastaa muodossa:
+{"reply":"<päiväyhteenveto suomeksi, J.A.R.V.I.S.-tyyli>",
+ "pages":[{"id":"<olemassa oleva id jos päivität sivua, muuten uusi slug>","title":"...","summary":"...","body":"<jäsennelty markdown>","tags":["..."]}]}
+
+Jos opit liittyvät olemassa olevaan sivuun, käytä sen id:tä ja täydennä. Voit palauttaa tyhjän pages-listan jos mitään pysyvää ei syntynyt.`;
+
+  const payload = todaysRaw.map(r=>`Lassi: ${r.q}\nJ.A.R.V.I.S.: ${r.a}`).join('\n---\n');
+
+  try{
+    let out = await askClaude(sys,[{role:'user',content:'Tämän päivän keskustelut:\n\n'+payload}]);
+    out = out.replace(/```json|```/g,'').trim();
+    const r = JSON.parse(out);
+    span.parentElement.classList.remove('typing');
+    typewrite(span, r.reply||'Päivä koottu.');
+
+    // save the day summary itself as a dated page
+    const dstr = today.toLocaleDateString('fi-FI');
+    const dayId = 'paiva-'+today.toISOString().slice(0,10);
+    const dayIdx = wiki.findIndex(w=>w.id===dayId);
+    const dayPage={id:dayId,title:'Päiväkirja '+dstr,summary:r.reply.slice(0,120),body:r.reply,tags:['päiväkirja'],updated:Date.now()};
+    if(dayIdx>=0) wiki[dayIdx]=dayPage; else wiki.unshift(dayPage);
+
+    // merge extracted knowledge pages
+    (r.pages||[]).forEach(p=>{
+      p.updated=Date.now();
+      const i=wiki.findIndex(w=>w.id===p.id);
+      if(i>=0) wiki[i]={...wiki[i],...p}; else wiki.unshift(p);
+    });
+    await saveWiki();
+    lastCompile=Date.now();
+    try{ localStorage.setItem('jarvis:lastcompile', JSON.stringify(lastCompile)); }catch(e){}
+  }catch(e){
+    span.parentElement.classList.remove('typing');
+    span.textContent='Päivän koonti epäonnistui. Yritä uudelleen hetken kuluttua.';
+  }
+}
+$('#compileBtn').onclick=()=>compileDay(false);
+
+// auto-compile in the evening (after 21:00) once per day
+setInterval(()=>{
+  const now=new Date();
+  const lc=new Date(lastCompile);
+  const compiledToday = lastCompile && lc.toDateString()===now.toDateString();
+  if(now.getHours()>=21 && !compiledToday && rawLog.length){
+    compileDay(true);
+  }
+},60000);
+
+
+function renderWiki(){
+  $('#nodecount').textContent=wiki.length;
+  const list=$('#wikiList');list.innerHTML='';
+  if(!wiki.length){
+    list.innerHTML='<div class="empty">Tietopankki on tyhjä.\n\nSyötä tietoa alle — esim.\n"Tänään opin että transformerit käyttävät self-attention-mekanismia"\n\nJ.A.R.V.I.S. organisoi sen wikiksi automaattisesti.</div>';
+    return;
+  }
+  wiki.forEach(w=>{
+    const c=document.createElement('div');c.className='wiki-card';
+    c.innerHTML='<div class="t">'+esc(w.title)+'</div><div class="s">'+esc(w.summary||'')+'</div>'+
+      '<div class="tags">'+(w.tags||[]).map(t=>'<span class="tag">'+esc(t)+'</span>').join('')+'</div>';
+    c.onclick=()=>openWiki(w);
+    list.appendChild(c);
+  });
+}
+function esc(s){return (s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+function openWiki(w){
+  $('#ovTitle').textContent=w.title;
+  $('#ovMeta').textContent='Päivitetty '+new Date(w.updated).toLocaleString('fi-FI')+' · '+(w.tags||[]).join(' / ');
+  $('#ovBody').textContent=w.body||w.summary;
+  $('#overlay').classList.add('open');
+}
+$('#ovClose').onclick=()=>$('#overlay').classList.remove('open');
+
+/* ============ VOICE (Finnish) ============ */
+function setupMic(btnId, inputId, autosend){
+  const btn=$('#'+btnId);
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){btn.style.display='none';return;}
+  const rec=new SR();rec.lang='fi-FI';rec.interimResults=false;
+  btn.onclick=()=>{btn.classList.add('listening');rec.start();};
+  rec.onresult=e=>{
+    const t=e.results[0][0].transcript;
+    $('#'+inputId).value=t;
+    btn.classList.remove('listening');
+    autosend();
+  };
+  rec.onerror=()=>btn.classList.remove('listening');
+  rec.onend=()=>btn.classList.remove('listening');
+}
+setupMic('micChat','chatInput',()=>$('#sendChat').click());
+setupMic('micKnow','knowInput',()=>$('#sendKnow').click());
+
+/* ============ BOOT ============ */
+loadWiki();
+</script>
+</body>
+</html>
