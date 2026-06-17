@@ -384,6 +384,16 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <canvas id="bgCanvas"></canvas>
 
+<!-- PIN LOGIN -->
+<div id="pinscreen" style="display:none;position:fixed;inset:0;z-index:600;background:#000;flex-direction:column;align-items:center;justify-content:center;gap:20px;font-family:'Share Tech Mono'">
+  <div style="font-family:'Orbitron';font-size:26px;font-weight:900;letter-spacing:.35em;color:var(--cyan);text-shadow:0 0 30px var(--cyan-glow)">J.A.R.V.I.S.</div>
+  <div style="font-size:10px;letter-spacing:.3em;color:var(--txt-dim)">TUNNISTAUTUMINEN VAADITAAN</div>
+  <input id="pinInput" type="password" placeholder="Syötä PIN-koodi"
+    style="background:rgba(0,229,255,.05);border:1px solid var(--line);color:var(--cyan);font-family:'Share Tech Mono';font-size:16px;padding:12px 20px;border-radius:2px;outline:none;text-align:center;letter-spacing:.3em;width:260px">
+  <button onclick="submitPin()" style="font-family:'Orbitron';font-size:11px;letter-spacing:.2em;padding:11px 32px;background:var(--cyan);color:#000;border:none;border-radius:2px;cursor:pointer;font-weight:700">KIRJAUDU</button>
+  <div id="pinErr" style="font-size:10px;color:var(--red);letter-spacing:.15em;opacity:0">VÄÄRÄ PIN-KOODI</div>
+</div>
+
 <!-- BOOT -->
 <div id="boot">
   <div style="font-family:'Orbitron';font-size:26px;font-weight:900;letter-spacing:.35em;color:var(--cyan);text-shadow:0 0 30px var(--cyan-glow),0 0 60px rgba(0,229,255,.2);margin-bottom:24px">J.A.R.V.I.S.</div>
@@ -557,11 +567,53 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 const API_MODEL="claude-sonnet-4-6";
 const $=s=>document.querySelector(s);
 const WORKER_URL="https://jarvis.lassi-salminen3.workers.dev";
-const JARVIS_PIN="nastola1234";
-const pinHeader=JARVIS_PIN?{"X-Jarvis-Pin":JARVIS_PIN}:{};
+let JARVIS_PIN=localStorage.getItem('jarvis:pin')||'';
+let pinHeader=JARVIS_PIN?{"X-Jarvis-Pin":JARVIS_PIN}:{};
 
 let wiki=[],chatHistory=[],rawLog=[],lastCompile=0,chatCount=0;
 const T0=Date.now();
+
+/* ===== PIN LOGIN ===== */
+async function submitPin(){
+  const pin=$('#pinInput').value.trim();
+  if(!pin) return;
+  // Testataan PIN tekemällä oikea pyyntö Workerille
+  try{
+    const r=await fetch(WORKER_URL+'/api/wiki',{headers:{"X-Jarvis-Pin":pin}});
+    if(r.status===401){
+      $('#pinErr').style.opacity='1';
+      setTimeout(()=>$('#pinErr').style.opacity='0',2000);
+      return;
+    }
+    // PIN oikein — tallennetaan ja käynnistetään
+    JARVIS_PIN=pin;
+    pinHeader={"X-Jarvis-Pin":pin};
+    localStorage.setItem('jarvis:pin',pin);
+    $('#pinscreen').style.display='none';
+    startApp();
+  }catch(e){
+    $('#pinErr').textContent='YHTEYSVIRHE';
+    $('#pinErr').style.opacity='1';
+    setTimeout(()=>$('#pinErr').style.opacity='0',2000);
+  }
+}
+
+function startApp(){
+  // Käynnistä boot-sekvenssi ja sovellus
+  $('#boot').style.display='flex';
+  loadWiki();
+}
+
+// Enter-näppäin PIN-kentässä
+document.addEventListener('DOMContentLoaded',()=>{
+  const pi=$('#pinInput');
+  if(pi) pi.addEventListener('keydown',e=>{ if(e.key==='Enter') submitPin(); });
+  if(!JARVIS_PIN){
+    // Ei tallennettua PINiä — näytä kirjautumisruutu
+    $('#boot').style.display='none';
+    $('#pinscreen').style.display='flex';
+  }
+});
 
 /* ===== AUDIO ===== */
 let AC=null;
@@ -819,11 +871,12 @@ function openWiki(w){
 $('#ovClose').onclick=()=>{sClick();$('#overlay').classList.remove('open')};
 
 /* ===== VOICE ===== */
+const SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition;
 function setupMic(btnId,inputId,autosend){
-  const btn=$('#'+btnId),SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){btn.style.display='none';return}
-  const rec=new SR();rec.lang='fi-FI';rec.interimResults=false;
-  btn.onclick=()=>{btn.classList.add('listening');tone(440,.1,.05);rec.start()};
+  const btn=$('#'+btnId);
+  if(!SpeechRec){btn.style.display='none';return}
+  const rec=new SpeechRec();rec.lang='fi-FI';rec.interimResults=false;
+  btn.onclick=()=>{btn.classList.add('listening');tone(440,.1,.05);try{rec.start()}catch(e){}};
   rec.onresult=e=>{$('#'+inputId).value=e.results[0][0].transcript;btn.classList.remove('listening');autosend()};
   rec.onerror=()=>btn.classList.remove('listening');rec.onend=()=>btn.classList.remove('listening');
 }
@@ -833,68 +886,60 @@ setupMic('micKnow','knowInput',()=>$('#sendKnow').click());
 /* ===== WAKE WORD & VOICE CONVERSATION ===== */
 let wakeMode=false, convActive=false, jarvisSpeaking=false;
 let wakeRec=null, convTimer=null, voiceConvHistory=[];
-let processingVoice=false; // estää tuplavastaukset
-
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let processingVoice=false;
+let wakeWatchdog=null; // watchdog joka käynnistää tunnistuksen uudelleen jos se sammuu
 
 function toggleWake(){
-  if(!SR){alert('Selaimesi ei tue puheentunnistusta. Kokeile Chromea.');return}
+  if(!SpeechRec){alert('Selaimesi ei tue puheentunnistusta. Kokeile Chromea.');return}
   wakeMode=!wakeMode;
   if(wakeMode) startWake();
   else stopWake();
   updateWakeUI();
 }
 
+function armWatchdog(){
+  clearTimeout(wakeWatchdog);
+  if(wakeMode && !jarvisSpeaking)
+    wakeWatchdog=setTimeout(()=>{ if(wakeMode) startWake(); }, 8000);
+}
+
 function startWake(){
   if(!wakeMode) return;
+  clearTimeout(wakeWatchdog);
   if(wakeRec){try{wakeRec.abort()}catch(e){}}
-  wakeRec=new SR();
+  wakeRec=new SpeechRec();
   wakeRec.lang='fi-FI';
   wakeRec.continuous=true;
-  wakeRec.interimResults=true; // tarvitaan barge-in -keskeytystä varten
+  wakeRec.interimResults=true;
 
   wakeRec.onresult=e=>{
+    armWatchdog(); // nollaa watchdog joka tuloksella
     const last=e.results[e.results.length-1];
     const txt=last[0].transcript.toLowerCase().trim();
 
-    // Näytä mitä kuullaan (auttaa debuggauksessa)
+    // Näytä mitä kuullaan
     const wbtxt=$('#wbtext');
     if(wbtxt && !convActive) wbtxt.textContent='"'+txt+'"';
 
-    // BARGE-IN: käyttäjä alkaa puhua TTS:n päälle → keskeytä heti
+    // BARGE-IN: puhu päälle → hiljennä TTS heti
     if(jarvisSpeaking && !last.isFinal){
-      window.speechSynthesis.cancel();
-      jarvisSpeaking=false;
-      updateWakeUI();
+      stopTTS();
       return;
     }
-
     if(!last.isFinal) return;
 
-    // Laaja herätyssanatunnistus — STT voi tulkita "jarvis" monella tavalla
-    const isWake = /jarv|järv|jarvis|järvis|harvis|jarwis|javis|jarbi/i.test(txt);
-
-    if(!convActive && isWake){
-      activateConv();
-      return;
-    }
-    if(convActive && !processingVoice && txt.length>1){
-      handleVoiceInput(txt);
-    }
+    const isWake=/jarv|järv|harvis|jarwis|javis|jarbi/i.test(txt);
+    if(!convActive && isWake){ activateConv(); return; }
+    if(convActive && !processingVoice && txt.length>1) handleVoiceInput(txt);
   };
 
-  wakeRec.onend=()=>{
-    // Käynnistetään aina uudelleen — continuous-moodissa tämä tapahtuu vain virheessä tai abort:ssa
-    if(wakeMode) setTimeout(startWake, 300);
-  };
+  wakeRec.onend=()=>{ if(wakeMode && !jarvisSpeaking) setTimeout(startWake, 400); };
   wakeRec.onerror=e=>{
-    if(e.error==='not-allowed'){
-      stopWake();
-      alert('Mikrofonilupa puuttuu. Salli mikrofoni osoitepalkista.');
-      return;
-    }
-    if(wakeMode) setTimeout(startWake, 600);
+    if(e.error==='not-allowed'){stopWake();alert('Mikrofonilupa puuttuu. Salli mikrofoni osoitepalkista.');return}
+    if(wakeMode) setTimeout(startWake, 800);
   };
+
+  armWatchdog();
   try{wakeRec.start()}catch(e){setTimeout(startWake,500)}
 }
 
@@ -952,26 +997,52 @@ function handleVoiceInput(txt){
   });
 }
 
+/* ===== TTS: ElevenLabs (fallback: selaimen TTS) ===== */
 let ttsVoices=[];
-function loadVoices(){
-  ttsVoices=window.speechSynthesis.getVoices();
-}
+function loadVoices(){ ttsVoices=window.speechSynthesis.getVoices(); }
 loadVoices();
 window.speechSynthesis.onvoiceschanged=loadVoices;
+
+let currentAudio=null;
 
 function speakTTS(text){
   if(!text||!text.trim()) return;
   jarvisSpeaking=true;
   updateWakeUI();
+  // Pysäytä edellinen ääni
+  if(currentAudio){ currentAudio.pause(); currentAudio=null; }
   window.speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang='fi-FI'; u.rate=1.05; u.pitch=0.88;
-  // kokeile ensin suomalainen ääni, sitten mikä tahansa
-  const fi=ttsVoices.find(v=>v.lang==='fi-FI')||ttsVoices.find(v=>v.lang.startsWith('fi'));
-  if(fi) u.voice=fi;
-  u.onend=()=>{jarvisSpeaking=false;updateWakeUI()};
-  u.onerror=()=>{jarvisSpeaking=false;updateWakeUI()};
-  window.speechSynthesis.speak(u);
+
+  fetch(WORKER_URL+'/api/tts',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',...pinHeader},
+    body:JSON.stringify({text})
+  }).then(r=>{
+    if(!r.ok) throw new Error('tts_fail');
+    return r.blob();
+  }).then(blob=>{
+    const url=URL.createObjectURL(blob);
+    currentAudio=new Audio(url);
+    currentAudio.onended=()=>{ jarvisSpeaking=false; updateWakeUI(); URL.revokeObjectURL(url); currentAudio=null; };
+    currentAudio.onerror=()=>{ jarvisSpeaking=false; updateWakeUI(); URL.revokeObjectURL(url); currentAudio=null; };
+    currentAudio.play();
+  }).catch(()=>{
+    // ElevenLabs ei toimi → käytetään selaimen TTS:ää varavarana
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='fi-FI'; u.rate=1.05; u.pitch=0.88;
+    const fi=ttsVoices.find(v=>v.lang==='fi-FI')||ttsVoices.find(v=>v.lang.startsWith('fi'));
+    if(fi) u.voice=fi;
+    u.onend=u.onerror=()=>{ jarvisSpeaking=false; updateWakeUI(); };
+    window.speechSynthesis.speak(u);
+  });
+}
+
+// Keskeytä TTS (barge-in käyttää tätä)
+function stopTTS(){
+  if(currentAudio){ currentAudio.pause(); currentAudio=null; }
+  window.speechSynthesis.cancel();
+  jarvisSpeaking=false;
+  updateWakeUI();
 }
 
 function resetConvTimer(){
@@ -998,14 +1069,18 @@ async function endConversation(auto){
 }
 
 async function summarizeConv(hist){
-  const sys=`Olet J.A.R.V.I.S. Luo yhteenveto äänessä käydystä keskustelusta.
-Vastaa AINOASTAAN JSON-objektilla (ei koodiblokkeja):
-{"summary":"<lyhyt suomenkielinen yhteenveto mitä keskusteltiin>","save":true/false,"page":{"id":"<slug>","title":"<otsikko>","summary":"<1-2 lausetta>","body":"<jäsennelty markdown>","tags":["..."]}}
-save=true VAIN jos tuli esille konkreettista tietoa joka kannattaa tallentaa pysyvästi.`;
+  const sys=`Olet J.A.R.V.I.S. Luo lyhyt yhteenveto tästä keskustelusta.
+Vastaa VAIN JSON-objektilla, ei mitään muuta tekstiä, ei koodiblokkeja, ei selityksiä.
+Formaatti tarkalleen:
+{"summary":"yhteenveto suomeksi","save":false}
+TAI jos keskustelussa tuli esille tallentamisen arvoista tietoa:
+{"summary":"yhteenveto suomeksi","save":true,"page":{"id":"lyhyt-slug","title":"Otsikko","summary":"1-2 lausetta","body":"markdown-sisältö","tags":["tagi"]}}`;
   try{
     let raw=await askClaude(sys,hist);
-    raw=raw.replace(/```json|```/g,'').trim();
-    const r=JSON.parse(raw);
+    // Etsi JSON mikä tahansa muoto — Claude saattaa silti lisätä tekstiä
+    const match=raw.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error('no json');
+    const r=JSON.parse(match[0]);
     addMsg('chatlog','jarvis','📋 '+r.summary);
     if(r.save&&r.page){
       r.page.updated=Date.now();
@@ -1013,7 +1088,14 @@ save=true VAIN jos tuli esille konkreettista tietoa joka kannattaa tallentaa pys
       if(i>=0)wiki[i]={...wiki[i],...r.page};else wiki.unshift(r.page);
       await saveWiki(); sSave();
     }
-  }catch(e){addMsg('chatlog','system','[ Yhteenvedon luonti epäonnistui ]')}
+  }catch(e){
+    // Viimeinen keino: tallenna raakana
+    addMsg('chatlog','system','[ Yhteenveto epäonnistui — tallennetaan raakaversio ]');
+    const raw=hist.map(m=>(m.role==='user'?'Lassi: ':'J.A.R.V.I.S.: ')+m.content).join('\n\n');
+    const slug='keskustelu-'+Date.now();
+    wiki.unshift({id:slug,title:'Keskustelu '+new Date().toLocaleString('fi-FI'),summary:'Äänessä käyty keskustelu',body:raw,tags:['keskustelu'],updated:Date.now()});
+    await saveWiki(); sSave();
+  }
 }
 
 // Manuaalinen "lopeta"-nappi chatissa (tekstikeskustelu)
@@ -1060,9 +1142,12 @@ $('#sendChat').onclick=()=>{
 };
 
 // Käynnistä TTS-äänet heti kun selain lataa ne
-window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices();
+window.speechSynthesis.onvoiceschanged=loadVoices;
 
-loadWiki();
+// Käynnistys: jos PIN on jo tallennettu, suoraan sovellukseen
+if(JARVIS_PIN){
+  loadWiki();
+}
 </script>
 </body>
 </html>
