@@ -728,6 +728,7 @@ async function sendChat(text){
     typewrite(span,reply);chatHistory.push({role:'assistant',content:reply});
     addFlag(span.parentElement,text,reply);
     const e=$('#hd-chat');if(e)e.textContent=chatHistory.filter(m=>m.role==='user').length;
+    if(wakeMode||convActive) speakTTS(reply);
   }catch(e){span.parentElement.classList.remove('typing');span.textContent='Pahoittelut, yhteys epäonnistui.'}
 }
 function typewrite(el,txt){el.textContent='';let i=0;const s=()=>{if(i<txt.length){el.textContent+=txt[i++];el.parentElement.parentElement.scrollTop=9e9;setTimeout(s,7)}};s()}
@@ -832,49 +833,67 @@ setupMic('micKnow','knowInput',()=>$('#sendKnow').click());
 /* ===== WAKE WORD & VOICE CONVERSATION ===== */
 let wakeMode=false, convActive=false, jarvisSpeaking=false;
 let wakeRec=null, convTimer=null, voiceConvHistory=[];
+let processingVoice=false; // estää tuplavastaukset
 
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 
 function toggleWake(){
   if(!SR){alert('Selaimesi ei tue puheentunnistusta. Kokeile Chromea.');return}
   wakeMode=!wakeMode;
-  if(wakeMode) startWakeLoop();
+  if(wakeMode) startWake();
   else stopWake();
   updateWakeUI();
 }
 
-function startWakeLoop(){
+function startWake(){
   if(!wakeMode) return;
   if(wakeRec){try{wakeRec.abort()}catch(e){}}
   wakeRec=new SR();
   wakeRec.lang='fi-FI';
-  wakeRec.continuous=true;      // ei uudelleenkäynnistyksiä → ei toistuvia lupapyyntöjä
-  wakeRec.interimResults=false;
+  wakeRec.continuous=true;
+  wakeRec.interimResults=true; // tarvitaan barge-in -keskeytystä varten
+
   wakeRec.onresult=e=>{
-    // ota vain viimeisin uusi tulos
-    const res=e.results[e.results.length-1];
-    if(!res.isFinal) return;
-    const txt=res[0].transcript.toLowerCase().trim();
+    const last=e.results[e.results.length-1];
+    const txt=last[0].transcript.toLowerCase().trim();
+
+    // BARGE-IN: käyttäjä alkaa puhua TTS:n päälle → keskeytä heti
+    if(jarvisSpeaking && !last.isFinal){
+      window.speechSynthesis.cancel();
+      jarvisSpeaking=false;
+      updateWakeUI();
+      return; // odotetaan final-tulos
+    }
+
+    if(!last.isFinal) return; // ei interim-tuloksia muulloin
+
     if(!convActive && /jarvis/.test(txt)){
       activateConv();
-    } else if(convActive && !jarvisSpeaking && txt.length>1){
+      return;
+    }
+    if(convActive && !processingVoice && txt.length>1){
       handleVoiceInput(txt);
     }
   };
+
   wakeRec.onend=()=>{
-    // käynnisty uudelleen vain jos TTS ei puhu (muuten lupapyyntö)
-    if(wakeMode && !jarvisSpeaking) setTimeout(startWakeLoop,400);
+    // Käynnistetään aina uudelleen — continuous-moodissa tämä tapahtuu vain virheessä tai abort:ssa
+    if(wakeMode) setTimeout(startWake, 300);
   };
   wakeRec.onerror=e=>{
-    if(e.error==='not-allowed'){stopWake();alert('Mikrofonilupa puuttuu. Salli se selaimen asetuksista.');return}
-    if(wakeMode && !jarvisSpeaking) setTimeout(startWakeLoop,800);
+    if(e.error==='not-allowed'){
+      stopWake();
+      alert('Mikrofonilupa puuttuu. Salli mikrofoni osoitepalkista.');
+      return;
+    }
+    if(wakeMode) setTimeout(startWake, 600);
   };
-  try{wakeRec.start()}catch(e){}
+  try{wakeRec.start()}catch(e){setTimeout(startWake,500)}
 }
 
 function stopWake(){
-  wakeMode=false; convActive=false;
-  if(wakeRec){try{wakeRec.stop()}catch(e){}}
+  wakeMode=false; convActive=false; processingVoice=false;
+  if(wakeRec){try{wakeRec.abort()}catch(e){}}
   window.speechSynthesis.cancel();
   clearTimeout(convTimer);
   $('#wakebar').classList.remove('show');
@@ -882,22 +901,23 @@ function stopWake(){
 }
 
 function activateConv(){
+  if(convActive) return;
   convActive=true; voiceConvHistory=[];
-  sMsg(); tone(1100,.08,.05); setTimeout(()=>tone(1400,.06,.04),90);
+  tone(880,.08,.05); setTimeout(()=>tone(1200,.06,.04),90);
   document.querySelector('.tab[data-view="chat"]').click();
   addMsg('chatlog','system','[ JARVIS aktivoitu — kuunnellaan ]');
   $('#endConvBar').classList.add('show');
   updateWakeUI();
-  convTimer=setTimeout(()=>endConversation(true),60000);
-  speakTTS('Kuinka voin auttaa, Lassi?',()=>{ if(wakeMode) setTimeout(startWakeLoop,200) });
+  resetConvTimer();
+  // Tervehdys — tunnistus pysyy käynnissä TTS:n aikana (barge-in mahdollinen)
+  speakTTS('Kuinka voin auttaa, Lassi?');
 }
 
 function handleVoiceInput(txt){
-  if(!convActive) return;
+  if(!convActive || processingVoice) return;
   clearTimeout(convTimer);
-  // lopeta-sanat
-  if(/\b(lopeta|kiitos jarvis|seis|sammu)\b/.test(txt)){endConversation(false);return}
-  convTimer=setTimeout(()=>endConversation(true),45000);
+  if(/\b(lopeta|kiitos jarvis|seis|sammutu)\b/.test(txt)){endConversation(false);return}
+  processingVoice=true;
   chatCount++;
   addMsg('chatlog','user',txt);
   chatHistory.push({role:'user',content:txt});
@@ -905,7 +925,7 @@ function handleVoiceInput(txt){
   const span=addMsg('chatlog','jarvis','');
   span.parentElement.classList.add('typing');
   const wctx=wiki.length?`\n\nLassin tietopankissa on ${wiki.length} sivua: ${wiki.map(w=>w.title).join(', ')}.`:'';
-  askClaude(PERSONA+wctx,chatHistory.slice(-10)).then(reply=>{
+  askClaude(PERSONA+wctx,chatHistory.slice(-12)).then(reply=>{
     span.parentElement.classList.remove('typing');
     typewrite(span,reply);
     chatHistory.push({role:'assistant',content:reply});
@@ -913,36 +933,53 @@ function handleVoiceInput(txt){
     addFlag(span.parentElement,txt,reply);
     const e=$('#hd-chat');if(e)e.textContent=chatHistory.filter(m=>m.role==='user').length;
     sMsg();
-    speakTTS(reply,()=>{ if(wakeMode&&convActive) setTimeout(startWakeLoop,300) });
+    speakTTS(reply);
+    processingVoice=false;
+    resetConvTimer();
+    updateWakeUI();
   }).catch(()=>{
     span.parentElement.classList.remove('typing');
     span.textContent='Pahoittelut, yhteysvirhe.';
-    if(wakeMode&&convActive) setTimeout(startWakeLoop,500);
+    processingVoice=false;
+    updateWakeUI();
   });
 }
 
-function speakTTS(text,cb){
+let ttsVoices=[];
+function loadVoices(){
+  ttsVoices=window.speechSynthesis.getVoices();
+}
+loadVoices();
+window.speechSynthesis.onvoiceschanged=loadVoices;
+
+function speakTTS(text){
+  if(!text||!text.trim()) return;
   jarvisSpeaking=true;
-  if(wakeRec){try{wakeRec.stop()}catch(e){}}
-  window.speechSynthesis.cancel();
   updateWakeUI();
+  window.speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(text);
   u.lang='fi-FI'; u.rate=1.05; u.pitch=0.88;
-  const voices=window.speechSynthesis.getVoices();
-  const fi=voices.find(v=>v.lang.startsWith('fi'));
+  // kokeile ensin suomalainen ääni, sitten mikä tahansa
+  const fi=ttsVoices.find(v=>v.lang==='fi-FI')||ttsVoices.find(v=>v.lang.startsWith('fi'));
   if(fi) u.voice=fi;
-  u.onend=()=>{jarvisSpeaking=false;updateWakeUI();if(cb)cb()};
-  u.onerror=()=>{jarvisSpeaking=false;updateWakeUI();if(cb)cb()};
+  u.onend=()=>{jarvisSpeaking=false;updateWakeUI()};
+  u.onerror=()=>{jarvisSpeaking=false;updateWakeUI()};
   window.speechSynthesis.speak(u);
 }
 
-async function endConversation(auto){
-  if(!convActive&&voiceConvHistory.length===0) return;
-  convActive=false;
+function resetConvTimer(){
   clearTimeout(convTimer);
-  $('#endConvBar').classList.remove('show');
+  // 2 min hiljaisuuden jälkeen päättää automaattisesti
+  convTimer=setTimeout(()=>endConversation(true), 120000);
+}
+
+async function endConversation(auto){
+  if(!convActive && voiceConvHistory.length===0) return;
+  convActive=false; processingVoice=false;
+  clearTimeout(convTimer);
   window.speechSynthesis.cancel();
   jarvisSpeaking=false;
+  $('#endConvBar').classList.remove('show');
   updateWakeUI();
   const hist=[...voiceConvHistory];
   voiceConvHistory=[];
@@ -950,9 +987,7 @@ async function endConversation(auto){
     addMsg('chatlog','system','[ Luodaan yhteenveto… ]');
     await summarizeConv(hist);
   }
-  if(wakeMode){
-    speakTTS('Yhteenveto tallennettu. Kuuntelen sanaa Jarvis.',()=>setTimeout(startWakeLoop,300));
-  }
+  if(wakeMode) speakTTS('Yhteenveto tallennettu. Kuuntelen sanaa Jarvis.');
 }
 
 async function summarizeConv(hist){
