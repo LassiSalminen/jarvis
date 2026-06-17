@@ -857,17 +857,24 @@ function startWake(){
     const last=e.results[e.results.length-1];
     const txt=last[0].transcript.toLowerCase().trim();
 
+    // Näytä mitä kuullaan (auttaa debuggauksessa)
+    const wbtxt=$('#wbtext');
+    if(wbtxt && !convActive) wbtxt.textContent='"'+txt+'"';
+
     // BARGE-IN: käyttäjä alkaa puhua TTS:n päälle → keskeytä heti
     if(jarvisSpeaking && !last.isFinal){
       window.speechSynthesis.cancel();
       jarvisSpeaking=false;
       updateWakeUI();
-      return; // odotetaan final-tulos
+      return;
     }
 
-    if(!last.isFinal) return; // ei interim-tuloksia muulloin
+    if(!last.isFinal) return;
 
-    if(!convActive && /jarvis/.test(txt)){
+    // Laaja herätyssanatunnistus — STT voi tulkita "jarvis" monella tavalla
+    const isWake = /jarv|järv|jarvis|järvis|harvis|jarwis|javis|jarbi/i.test(txt);
+
+    if(!convActive && isWake){
       activateConv();
       return;
     }
