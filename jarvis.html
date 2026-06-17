@@ -845,13 +845,16 @@ function toggleWake(){
 
 function startWakeLoop(){
   if(!wakeMode) return;
-  if(wakeRec){try{wakeRec.stop()}catch(e){}}
+  if(wakeRec){try{wakeRec.abort()}catch(e){}}
   wakeRec=new SR();
   wakeRec.lang='fi-FI';
-  wakeRec.continuous=false;
+  wakeRec.continuous=true;      // ei uudelleenkäynnistyksiä → ei toistuvia lupapyyntöjä
   wakeRec.interimResults=false;
   wakeRec.onresult=e=>{
-    const txt=e.results[0][0].transcript.toLowerCase().trim();
+    // ota vain viimeisin uusi tulos
+    const res=e.results[e.results.length-1];
+    if(!res.isFinal) return;
+    const txt=res[0].transcript.toLowerCase().trim();
     if(!convActive && /jarvis/.test(txt)){
       activateConv();
     } else if(convActive && !jarvisSpeaking && txt.length>1){
@@ -859,10 +862,12 @@ function startWakeLoop(){
     }
   };
   wakeRec.onend=()=>{
-    if(wakeMode && !jarvisSpeaking) setTimeout(startWakeLoop,300);
+    // käynnisty uudelleen vain jos TTS ei puhu (muuten lupapyyntö)
+    if(wakeMode && !jarvisSpeaking) setTimeout(startWakeLoop,400);
   };
   wakeRec.onerror=e=>{
-    if(e.error!=='no-speech' && wakeMode) setTimeout(startWakeLoop,800);
+    if(e.error==='not-allowed'){stopWake();alert('Mikrofonilupa puuttuu. Salli se selaimen asetuksista.');return}
+    if(wakeMode && !jarvisSpeaking) setTimeout(startWakeLoop,800);
   };
   try{wakeRec.start()}catch(e){}
 }
