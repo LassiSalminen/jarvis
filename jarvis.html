@@ -12,185 +12,369 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#040a14;
-    --bg2:#071324;
-    --cyan:#22d3ee;
-    --cyan-dim:#0e7490;
-    --cyan-glow:rgba(34,211,238,.55);
-    --amber:#fbbf24;
-    --line:rgba(34,211,238,.18);
-    --panel:rgba(8,20,38,.72);
-    --txt:#cdeaf5;
-    --txt-dim:#5a7d92;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%;overflow:hidden}
-  body{
-    background:
-      radial-gradient(circle at 50% 40%, #0a1d33 0%, var(--bg) 60%),
-      var(--bg);
-    color:var(--txt);
-    font-family:'Share Tech Mono',monospace;
-    display:flex;flex-direction:column;
-    height:100vh;
-  }
-  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+:root{
+  --bg:#020810;
+  --bg2:#040d1a;
+  --cyan:#22d3ee;
+  --cyan2:#06b6d4;
+  --cyan-dim:#0e7490;
+  --cyan-glow:rgba(34,211,238,.6);
+  --cyan-glow2:rgba(34,211,238,.15);
+  --amber:#fbbf24;
+  --red:#ef4444;
+  --line:rgba(34,211,238,.15);
+  --line2:rgba(34,211,238,.06);
+  --panel:rgba(4,13,26,.85);
+  --txt:#cdeaf5;
+  --txt-dim:#4a7a92;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);
+  color:var(--txt);
+  font-family:'Share Tech Mono',monospace;
+  display:flex;flex-direction:column;
+  height:100vh;
+  position:relative;
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
-  /* ---- scanline ambience ---- */
-  body::after{
-    content:"";position:fixed;inset:0;pointer-events:none;z-index:50;
-    background:repeating-linear-gradient(0deg,rgba(0,0,0,0) 0px,rgba(0,0,0,0) 2px,rgba(0,0,0,.06) 3px,rgba(0,0,0,0) 4px);
-    mix-blend-mode:overlay;
-  }
+/* ---- canvas bg ---- */
+#bgCanvas{position:fixed;inset:0;z-index:0;pointer-events:none}
 
-  /* ---- top bar ---- */
-  header{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:14px 22px;border-bottom:1px solid var(--line);
-    background:linear-gradient(180deg,rgba(34,211,238,.05),transparent);
-  }
-  .brand{font-family:'Orbitron';font-weight:900;letter-spacing:.32em;font-size:20px;
-    color:var(--cyan);text-shadow:0 0 12px var(--cyan-glow)}
-  .brand small{font-size:9px;letter-spacing:.3em;color:var(--txt-dim);display:block;font-family:'Share Tech Mono'}
-  .clock{font-family:'Orbitron';font-size:24px;font-weight:700;letter-spacing:.1em;text-align:right}
-  .clock small{display:block;font-size:10px;color:var(--txt-dim);letter-spacing:.25em;font-family:'Share Tech Mono'}
+/* ---- scanlines ---- */
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:repeating-linear-gradient(0deg,transparent 0px,transparent 2px,rgba(0,0,0,.08) 3px,transparent 4px);
+  mix-blend-mode:overlay;animation:scanroll 8s linear infinite;
+}
+@keyframes scanroll{0%{background-position:0 0}100%{background-position:0 100px}}
 
-  /* ---- main grid ---- */
-  main{flex:1;display:grid;grid-template-columns:240px 1fr 240px;gap:16px;padding:16px;min-height:0}
-  @media (max-width:880px){
-    main{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
-    .side-left,.side-right{display:none}
-    main.show-stats .side-left{display:flex}
-  }
+/* ---- boot overlay ---- */
+#boot{
+  position:fixed;inset:0;z-index:200;background:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  font-family:'Share Tech Mono';font-size:13px;color:var(--cyan);letter-spacing:.1em;
+  padding:40px;
+}
+#boot.done{animation:bootfade .6s forwards}
+@keyframes bootfade{to{opacity:0;pointer-events:none}}
+.boot-line{opacity:0;animation:bootline .15s forwards}
+@keyframes bootline{to{opacity:1}}
+#boot-bar-wrap{width:320px;height:3px;background:rgba(34,211,238,.15);border-radius:2px;margin-top:18px}
+#boot-bar{width:0;height:100%;background:var(--cyan);box-shadow:0 0 10px var(--cyan-glow);border-radius:2px;transition:width .3s ease}
 
-  .panel{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:4px;
-    position:relative;
-    backdrop-filter:blur(2px);
-  }
-  .panel::before{content:"";position:absolute;top:0;left:0;width:14px;height:14px;
-    border-top:2px solid var(--cyan);border-left:2px solid var(--cyan);opacity:.7}
-  .panel::after{content:"";position:absolute;bottom:0;right:0;width:14px;height:14px;
-    border-bottom:2px solid var(--cyan);border-right:2px solid var(--cyan);opacity:.7}
-  .panel h2{font-family:'Orbitron';font-size:11px;font-weight:700;letter-spacing:.28em;
-    color:var(--cyan);padding:12px 14px 8px;text-transform:uppercase}
+/* ---- header ---- */
+header{
+  position:relative;z-index:10;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 22px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(34,211,238,.04),transparent);
+  flex-shrink:0;
+}
+.brand{font-family:'Orbitron';font-weight:900;letter-spacing:.32em;font-size:19px;
+  color:var(--cyan);text-shadow:0 0 18px var(--cyan-glow),0 0 40px rgba(34,211,238,.2)}
+.brand small{font-size:9px;letter-spacing:.28em;color:var(--txt-dim);display:block;font-family:'Share Tech Mono';margin-top:2px}
+.header-center{display:flex;flex-direction:column;align-items:center;gap:2px}
+.sys-status{font-size:9px;letter-spacing:.25em;color:var(--cyan-dim);display:flex;gap:14px}
+.sys-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--cyan);
+  box-shadow:0 0 6px var(--cyan);animation:syspulse 2s ease-in-out infinite}
+.sys-dot:nth-child(2){animation-delay:.4s}.sys-dot:nth-child(3){animation-delay:.8s}
+@keyframes syspulse{0%,100%{opacity:.4}50%{opacity:1}}
+.clock{font-family:'Orbitron';font-size:22px;font-weight:700;letter-spacing:.1em;text-align:right;
+  text-shadow:0 0 12px var(--cyan-glow)}
+.clock small{display:block;font-size:9px;color:var(--txt-dim);letter-spacing:.22em;font-family:'Share Tech Mono';margin-top:2px}
 
-  .side-left,.side-right{display:flex;flex-direction:column;gap:16px;min-height:0}
+/* ---- main grid ---- */
+main{flex:1;display:grid;grid-template-columns:230px 1fr 230px;gap:14px;padding:14px;min-height:0;position:relative;z-index:10}
+@media(max-width:880px){
+  main{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
+  .side-left,.side-right{display:none}
+}
 
-  /* meters */
-  .meter{padding:6px 14px}
-  .meter .lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--txt-dim);letter-spacing:.15em;margin-bottom:4px}
-  .meter .track{height:6px;background:rgba(34,211,238,.1);border-radius:3px;overflow:hidden}
-  .meter .fill{height:100%;background:linear-gradient(90deg,var(--cyan-dim),var(--cyan));box-shadow:0 0 8px var(--cyan-glow);border-radius:3px;transition:width 1.2s ease}
+/* ---- panel ---- */
+.panel{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:3px;
+  position:relative;
+  backdrop-filter:blur(6px);
+  overflow:hidden;
+}
+/* corner brackets */
+.panel::before,.panel::after{content:"";position:absolute;width:16px;height:16px;z-index:2}
+.panel::before{top:0;left:0;border-top:2px solid var(--cyan);border-left:2px solid var(--cyan);opacity:.8}
+.panel::after{bottom:0;right:0;border-bottom:2px solid var(--cyan);border-right:2px solid var(--cyan);opacity:.8}
+/* scan sweep */
+.panel .scan{
+  position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:linear-gradient(180deg,transparent 0%,rgba(34,211,238,.04) 50%,transparent 100%);
+  height:200%;animation:sweep 4s ease-in-out infinite;
+}
+@keyframes sweep{0%{transform:translateY(-50%)}100%{transform:translateY(0%)}}
+.panel h2{font-family:'Orbitron';font-size:10px;font-weight:700;letter-spacing:.3em;
+  color:var(--cyan);padding:11px 14px 7px;text-transform:uppercase;position:relative;z-index:3}
 
-  .weather{padding:8px 14px 16px;text-align:center}
-  .weather .temp{font-family:'Orbitron';font-size:38px;font-weight:700;color:var(--cyan);text-shadow:0 0 14px var(--cyan-glow)}
-  .weather .loc{font-size:10px;letter-spacing:.2em;color:var(--txt-dim)}
-  .weather .desc{font-size:12px;margin-top:4px;color:var(--txt)}
+.side-left,.side-right{display:flex;flex-direction:column;gap:14px;min-height:0}
 
-  /* center column */
-  .center{display:flex;flex-direction:column;gap:14px;min-height:0}
+/* ---- meters ---- */
+.meter{padding:5px 14px;position:relative;z-index:3}
+.meter .lbl{display:flex;justify-content:space-between;font-size:9px;color:var(--txt-dim);letter-spacing:.15em;margin-bottom:3px}
+.meter .track{height:4px;background:rgba(34,211,238,.08);border-radius:2px;overflow:hidden}
+.meter .fill{height:100%;background:linear-gradient(90deg,var(--cyan-dim),var(--cyan));
+  box-shadow:0 0 8px var(--cyan-glow);border-radius:2px;transition:width 1.4s cubic-bezier(.4,0,.2,1)}
+.meter .fill.warn{background:linear-gradient(90deg,#b45309,var(--amber))}
+.meter .fill.crit{background:linear-gradient(90deg,#991b1b,var(--red))}
 
-  /* mode tabs */
-  .tabs{display:flex;gap:8px;justify-content:center}
-  .tab{font-family:'Orbitron';font-size:11px;letter-spacing:.2em;padding:9px 18px;
-    background:transparent;border:1px solid var(--line);color:var(--txt-dim);
-    border-radius:3px;cursor:pointer;transition:.2s;text-transform:uppercase}
-  .tab.active{color:var(--bg);background:var(--cyan);border-color:var(--cyan);
-    box-shadow:0 0 16px var(--cyan-glow);font-weight:700}
+.weather{padding:6px 14px 14px;text-align:center;position:relative;z-index:3}
+.weather .temp{font-family:'Orbitron';font-size:36px;font-weight:700;color:var(--cyan);
+  text-shadow:0 0 20px var(--cyan-glow)}
+.weather .loc{font-size:9px;letter-spacing:.22em;color:var(--txt-dim)}
+.weather .desc{font-size:12px;margin-top:3px;color:var(--txt)}
+.weather .coords{font-size:8px;color:var(--txt-dim);letter-spacing:.1em;margin-top:6px;opacity:.6}
 
-  .view{flex:1;min-height:0;display:none;flex-direction:column}
-  .view.active{display:flex}
+/* ---- coords display ---- */
+.coord-box{padding:6px 14px 10px;position:relative;z-index:3}
+.coord-row{font-size:9px;color:var(--txt-dim);letter-spacing:.1em;line-height:1.8}
+.coord-row span{color:var(--cyan);font-size:10px}
 
-  /* reactor (home) */
-  .reactor-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
-  .reactor{width:200px;height:200px;position:relative}
-  .ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--cyan);opacity:.5}
-  .ring.r2{inset:18px;border-style:dashed;animation:spin 12s linear infinite}
-  .ring.r3{inset:36px;border-width:1px;opacity:.3;animation:spin 8s linear infinite reverse}
-  .core{position:absolute;inset:64px;border-radius:50%;
-    background:radial-gradient(circle,#bff5ff,var(--cyan) 45%,var(--cyan-dim));
-    box-shadow:0 0 40px var(--cyan-glow),0 0 80px var(--cyan-glow),inset 0 0 20px #fff;
-    animation:pulse 3s ease-in-out infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  @keyframes pulse{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.06);opacity:1}}
-  .greeting{font-family:'Orbitron';font-size:15px;letter-spacing:.18em;color:var(--txt);text-align:center}
-  .greeting span{color:var(--cyan)}
-  .status-line{font-size:11px;color:var(--txt-dim);letter-spacing:.2em}
+/* ---- center ---- */
+.center{display:flex;flex-direction:column;gap:12px;min-height:0}
 
-  /* chat / knowledge shared log */
-  .log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--cyan-dim) transparent}
-  .log::-webkit-scrollbar{width:5px}
-  .log::-webkit-scrollbar-thumb{background:var(--cyan-dim);border-radius:3px}
-  .msg{max-width:88%;padding:10px 14px;border-radius:4px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
-  .msg.user{align-self:flex-end;background:rgba(34,211,238,.12);border:1px solid var(--line)}
-  .msg.jarvis{align-self:flex-start;background:rgba(8,20,38,.9);border:1px solid var(--line);border-left:2px solid var(--cyan)}
-  .msg .who{font-family:'Orbitron';font-size:9px;letter-spacing:.25em;color:var(--cyan);margin-bottom:5px;text-transform:uppercase}
-  .msg.system{align-self:center;font-size:11px;color:var(--amber);letter-spacing:.1em;border:1px dashed rgba(251,191,36,.4);background:rgba(251,191,36,.06)}
+/* ---- tabs ---- */
+.tabs{display:flex;gap:6px;justify-content:center;position:relative;z-index:10}
+.tab{
+  font-family:'Orbitron';font-size:10px;letter-spacing:.25em;padding:9px 20px;
+  background:transparent;border:1px solid var(--line);color:var(--txt-dim);
+  border-radius:2px;cursor:pointer;transition:.2s;text-transform:uppercase;
+  position:relative;overflow:hidden;
+}
+.tab::before{content:"";position:absolute;inset:0;background:var(--cyan);opacity:0;transition:.2s}
+.tab:hover::before{opacity:.05}
+.tab.active{
+  color:var(--bg);background:var(--cyan);border-color:var(--cyan);
+  box-shadow:0 0 20px var(--cyan-glow),0 0 40px rgba(34,211,238,.15);font-weight:700;
+}
+.tab.active::before{opacity:0}
 
-  /* input bar */
-  .inputbar{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
-  .inputbar input{flex:1;background:rgba(4,10,20,.8);border:1px solid var(--line);color:var(--txt);
-    font-family:'Share Tech Mono';font-size:14px;padding:11px 14px;border-radius:3px;outline:none}
-  .inputbar input:focus{border-color:var(--cyan);box-shadow:0 0 10px var(--cyan-glow)}
-  .btn{font-family:'Orbitron';font-size:12px;letter-spacing:.1em;padding:0 16px;
-    background:var(--cyan);color:var(--bg);border:none;border-radius:3px;cursor:pointer;font-weight:700}
-  .btn:active{transform:scale(.96)}
-  .btn.ghost{background:transparent;border:1px solid var(--cyan);color:var(--cyan)}
-  .mic{width:46px;font-size:18px;display:flex;align-items:center;justify-content:center}
-  .mic.listening{background:var(--amber);animation:pulse 1s infinite}
+/* ---- views ---- */
+.view{flex:1;min-height:0;display:none;flex-direction:column}
+.view.active{display:flex}
 
-  /* knowledge wiki list */
-  .wiki-list{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
-  .wiki-card{background:rgba(8,20,38,.9);border:1px solid var(--line);border-left:2px solid var(--cyan);
-    border-radius:4px;padding:12px 14px;cursor:pointer;transition:.15s}
-  .wiki-card:active{background:rgba(34,211,238,.1)}
-  .wiki-card .t{font-family:'Orbitron';font-size:13px;color:var(--cyan);letter-spacing:.08em;margin-bottom:4px}
-  .wiki-card .s{font-size:12px;color:var(--txt-dim);line-height:1.4;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .wiki-card .tags{margin-top:6px;display:flex;gap:5px;flex-wrap:wrap}
-  .tag{font-size:9px;letter-spacing:.1em;color:var(--cyan);border:1px solid var(--line);padding:2px 6px;border-radius:2px}
-  .empty{color:var(--txt-dim);text-align:center;padding:40px 20px;font-size:13px;line-height:1.7}
+/* ---- HOME / reactor ---- */
+.reactor-wrap{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  position:relative;
+}
+/* hex grid overlay on home panel */
+#view-home::before{
+  content:"";position:absolute;inset:0;opacity:.03;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 0 L56 16 L56 50 L28 66 L0 50 L0 16Z' fill='none' stroke='%2322d3ee' stroke-width='1'/%3E%3C/svg%3E");
+  background-size:56px 100px;
+}
+.reactor{width:220px;height:220px;position:relative;cursor:crosshair}
+.ring{position:absolute;inset:0;border-radius:50%;border:1px solid var(--cyan);opacity:.3}
+.ring.r2{inset:20px;border-style:dashed;border-width:2px;opacity:.5;animation:spin 14s linear infinite}
+.ring.r3{inset:40px;border-width:1px;opacity:.25;animation:spin 9s linear infinite reverse}
+.ring.r4{inset:10px;border-width:1px;opacity:.12;animation:spin 20s linear infinite}
+/* tick marks on outer ring */
+.ring.r1::before{
+  content:"";position:absolute;inset:-1px;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg,var(--cyan) 2deg,transparent 4deg,transparent 30deg,var(--cyan) 32deg,transparent 34deg,transparent 60deg,var(--cyan) 62deg,transparent 64deg,transparent 90deg,var(--cyan) 92deg,transparent 94deg,transparent 120deg,var(--cyan) 122deg,transparent 124deg,transparent 150deg,var(--cyan) 152deg,transparent 154deg,transparent 180deg,var(--cyan) 182deg,transparent 184deg,transparent 210deg,var(--cyan) 212deg,transparent 214deg,transparent 240deg,var(--cyan) 242deg,transparent 244deg,transparent 270deg,var(--cyan) 272deg,transparent 274deg,transparent 300deg,var(--cyan) 302deg,transparent 304deg,transparent 330deg,var(--cyan) 332deg,transparent 334deg);
+  opacity:.25;
+}
+.core{
+  position:absolute;inset:72px;border-radius:50%;
+  background:radial-gradient(circle,#e0f9ff 0%,#bff5ff 20%,var(--cyan) 50%,var(--cyan-dim) 75%,rgba(14,116,144,.3) 100%);
+  box-shadow:0 0 30px var(--cyan-glow),0 0 60px var(--cyan-glow),0 0 100px rgba(34,211,238,.2),inset 0 0 20px rgba(255,255,255,.3);
+  animation:corepulse 3s ease-in-out infinite;
+}
+.core-ring{position:absolute;inset:60px;border-radius:50%;border:2px solid var(--cyan);opacity:.6;animation:corepulse 3s ease-in-out infinite .5s}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes corepulse{0%,100%{transform:scale(1);box-shadow:0 0 30px var(--cyan-glow),0 0 60px var(--cyan-glow),0 0 100px rgba(34,211,238,.2),inset 0 0 20px rgba(255,255,255,.3)}50%{transform:scale(1.08);box-shadow:0 0 40px var(--cyan-glow),0 0 90px var(--cyan-glow),0 0 140px rgba(34,211,238,.3),inset 0 0 30px rgba(255,255,255,.4)}}
 
-  /* wiki detail overlay */
-  .overlay{position:fixed;inset:0;z-index:100;background:rgba(4,10,20,.92);display:none;flex-direction:column;padding:24px;backdrop-filter:blur(4px)}
-  .overlay.open{display:flex}
-  .overlay h1{font-family:'Orbitron';color:var(--cyan);font-size:20px;letter-spacing:.1em;margin-bottom:6px;text-shadow:0 0 12px var(--cyan-glow)}
-  .overlay .meta{font-size:11px;color:var(--txt-dim);letter-spacing:.15em;margin-bottom:16px}
-  .overlay .body{flex:1;overflow-y:auto;font-size:15px;line-height:1.7;white-space:pre-wrap;color:var(--txt);padding-right:8px}
-  .overlay .close{position:absolute;top:20px;right:24px;font-size:26px;color:var(--cyan);cursor:pointer;background:none;border:none}
-  .overlay .links{margin-top:18px;display:flex;gap:8px;flex-wrap:wrap}
+/* energy pulse rings */
+.pulse-ring{
+  position:absolute;border-radius:50%;border:1px solid var(--cyan);
+  opacity:0;animation:pulseout 3s ease-out infinite;
+}
+.pulse-ring:nth-child(1){inset:90px;animation-delay:0s}
+.pulse-ring:nth-child(2){inset:90px;animation-delay:1s}
+.pulse-ring:nth-child(3){inset:90px;animation-delay:2s}
+@keyframes pulseout{0%{inset:90px;opacity:.5}100%{inset:-20px;opacity:0}}
 
-  .typing::after{content:"▋";animation:blink 1s steps(2) infinite;color:var(--cyan)}
-  @keyframes blink{50%{opacity:0}}
+.greeting{font-family:'Orbitron';font-size:14px;letter-spacing:.18em;color:var(--txt);text-align:center}
+.greeting span{color:var(--cyan);text-shadow:0 0 10px var(--cyan-glow)}
+.status-line{font-size:10px;color:var(--txt-dim);letter-spacing:.2em;text-align:center}
+.home-data{display:flex;gap:24px;font-size:9px;color:var(--txt-dim);letter-spacing:.15em}
+.home-data .val{color:var(--cyan);font-size:11px;display:block;text-align:center;font-family:'Orbitron'}
 
-  .flagbtn{display:block;margin-top:8px;background:transparent;border:1px solid var(--line);
-    color:var(--txt-dim);font-family:'Share Tech Mono';font-size:10px;letter-spacing:.1em;
-    padding:3px 8px;border-radius:2px;cursor:pointer;transition:.15s}
-  .flagbtn:active{transform:scale(.95)}
-  .flagbtn.on{color:var(--cyan);border-color:var(--cyan);cursor:default}
+/* ---- chat log ---- */
+.log{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;
+  scrollbar-width:thin;scrollbar-color:var(--cyan-dim) transparent}
+.log::-webkit-scrollbar{width:4px}
+.log::-webkit-scrollbar-thumb{background:var(--cyan-dim);border-radius:2px}
+
+.msg{max-width:88%;padding:10px 14px;border-radius:3px;font-size:13px;line-height:1.55;
+  white-space:pre-wrap;word-wrap:break-word;position:relative;
+  animation:msgin .25s cubic-bezier(.4,0,.2,1) forwards}
+@keyframes msgin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.msg.user{align-self:flex-end;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-right:2px solid var(--cyan)}
+.msg.jarvis{align-self:flex-start;background:rgba(4,13,26,.95);border:1px solid var(--line);border-left:2px solid var(--cyan)}
+.msg .who{font-family:'Orbitron';font-size:8px;letter-spacing:.28em;color:var(--cyan);margin-bottom:5px;text-transform:uppercase;opacity:.8}
+.msg.system{align-self:center;font-size:10px;color:var(--amber);letter-spacing:.1em;
+  border:1px dashed rgba(251,191,36,.35);background:rgba(251,191,36,.05)}
+
+/* ---- input bar ---- */
+.inputbar{display:flex;gap:7px;padding:9px;border-top:1px solid var(--line);flex-shrink:0}
+.inputbar input{
+  flex:1;background:rgba(2,8,16,.9);border:1px solid var(--line);color:var(--txt);
+  font-family:'Share Tech Mono';font-size:13px;padding:10px 14px;border-radius:2px;outline:none;
+  transition:.2s;
+}
+.inputbar input:focus{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(34,211,238,.2),0 0 15px rgba(34,211,238,.1)}
+.btn{
+  font-family:'Orbitron';font-size:11px;letter-spacing:.12em;padding:0 15px;
+  background:var(--cyan);color:var(--bg);border:none;border-radius:2px;cursor:pointer;font-weight:700;
+  transition:.15s;position:relative;overflow:hidden;flex-shrink:0;
+}
+.btn::after{content:"";position:absolute;inset:0;background:#fff;opacity:0;transition:.15s}
+.btn:active::after{opacity:.15}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:transparent;border:1px solid var(--cyan);color:var(--cyan)}
+.btn.ghost:hover{background:rgba(34,211,238,.08)}
+.mic{width:44px;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mic.listening{background:var(--amber)!important;box-shadow:0 0 16px rgba(251,191,36,.6);animation:none}
+
+/* ---- wiki ---- */
+.wiki-list{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:7px;
+  scrollbar-width:thin;scrollbar-color:var(--cyan-dim) transparent}
+.wiki-card{
+  background:rgba(4,13,26,.95);border:1px solid var(--line);border-left:2px solid var(--cyan);
+  border-radius:3px;padding:11px 13px;cursor:pointer;transition:.15s;position:relative;overflow:hidden;
+  animation:msgin .3s ease forwards;
+}
+.wiki-card::before{content:"";position:absolute;top:0;left:0;width:100%;height:1px;
+  background:linear-gradient(90deg,var(--cyan),transparent);opacity:.4}
+.wiki-card:active{background:rgba(34,211,238,.06)}
+.wiki-card .t{font-family:'Orbitron';font-size:12px;color:var(--cyan);letter-spacing:.08em;margin-bottom:3px}
+.wiki-card .s{font-size:11px;color:var(--txt-dim);line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wiki-card .tags{margin-top:5px;display:flex;gap:4px;flex-wrap:wrap}
+.tag{font-size:8px;letter-spacing:.1em;color:var(--cyan);border:1px solid rgba(34,211,238,.25);
+  padding:2px 6px;border-radius:2px;background:rgba(34,211,238,.04)}
+.empty{color:var(--txt-dim);text-align:center;padding:36px 18px;font-size:12px;line-height:1.7;letter-spacing:.05em}
+
+/* ---- overlay ---- */
+.overlay{
+  position:fixed;inset:0;z-index:100;background:rgba(2,8,16,.94);
+  display:none;flex-direction:column;padding:22px;backdrop-filter:blur(8px);
+}
+.overlay.open{display:flex;animation:msgin .2s ease forwards}
+.overlay h1{font-family:'Orbitron';color:var(--cyan);font-size:18px;letter-spacing:.1em;
+  margin-bottom:5px;text-shadow:0 0 16px var(--cyan-glow)}
+.overlay .meta{font-size:10px;color:var(--txt-dim);letter-spacing:.15em;margin-bottom:14px}
+.overlay .body{flex:1;overflow-y:auto;font-size:14px;line-height:1.7;white-space:pre-wrap;
+  color:var(--txt);padding-right:8px;scrollbar-width:thin;scrollbar-color:var(--cyan-dim) transparent}
+.overlay .close{position:absolute;top:18px;right:22px;font-size:24px;color:var(--cyan);
+  cursor:pointer;background:none;border:none;opacity:.7;transition:.2s}
+.overlay .close:hover{opacity:1}
+
+/* ---- typing cursor ---- */
+.typing::after{content:"▋";animation:blink .8s steps(2) infinite;color:var(--cyan)}
+@keyframes blink{50%{opacity:0}}
+
+/* ---- flag btn ---- */
+.flagbtn{
+  display:inline-block;margin-top:7px;background:transparent;
+  border:1px solid rgba(34,211,238,.2);color:var(--txt-dim);font-family:'Share Tech Mono';
+  font-size:10px;letter-spacing:.1em;padding:3px 8px;border-radius:2px;cursor:pointer;transition:.15s;
+}
+.flagbtn:hover{border-color:var(--cyan);color:var(--cyan)}
+.flagbtn.on{color:var(--cyan);border-color:var(--cyan);cursor:default}
+
+/* ---- glitch ---- */
+.glitch{position:relative}
+.glitch::before,.glitch::after{
+  content:attr(data-text);position:absolute;top:0;left:0;
+  font-family:'Orbitron';font-weight:900;font-size:19px;letter-spacing:.32em;
+  width:100%;overflow:hidden;
+}
+.glitch::before{color:rgba(255,0,128,.7);clip-path:inset(0 0 70% 0);animation:glitch1 4s infinite}
+.glitch::after{color:rgba(0,255,255,.5);clip-path:inset(60% 0 0 0);animation:glitch2 4s infinite}
+@keyframes glitch1{
+  0%,94%,100%{transform:none;opacity:0}
+  95%{transform:translateX(-2px);opacity:1}
+  96%{transform:translateX(2px);opacity:1}
+  97%{transform:none;opacity:0}
+}
+@keyframes glitch2{
+  0%,94%,100%{transform:none;opacity:0}
+  95%{transform:translateX(3px);opacity:1}
+  96%{transform:translateX(-1px);opacity:1}
+  97%{transform:none;opacity:0}
+}
+
+/* ---- pikakomennot ---- */
+.quick-btns{padding:10px 12px;display:flex;flex-direction:column;gap:7px;position:relative;z-index:3}
+
+/* ---- alert line ---- */
+.alert-bar{
+  font-size:8px;letter-spacing:.2em;color:var(--txt-dim);text-align:center;
+  padding:3px;border-top:1px solid var(--line2);position:relative;z-index:3;
+  overflow:hidden;white-space:nowrap;
+}
+.alert-scroll{display:inline-block;animation:scroll-left 20s linear infinite}
+@keyframes scroll-left{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
 </style>
 </head>
 <body>
 
+<!-- CANVAS BACKGROUND -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- BOOT SCREEN -->
+<div id="boot">
+  <div style="font-family:'Orbitron';font-size:22px;font-weight:900;letter-spacing:.3em;color:var(--cyan);text-shadow:0 0 20px var(--cyan-glow);margin-bottom:20px">J.A.R.V.I.S.</div>
+  <div id="bootLines"></div>
+  <div id="boot-bar-wrap"><div id="boot-bar"></div></div>
+  <div id="boot-final" style="margin-top:16px;font-size:11px;letter-spacing:.2em;color:var(--cyan);opacity:0">KAIKKI JÄRJESTELMÄT TOIMINNASSA</div>
+</div>
+
 <header>
-  <div class="brand">J.A.R.V.I.S.<small>JUST A RATHER VERY INTELLIGENT SYSTEM</small></div>
+  <div class="brand glitch" data-text="J.A.R.V.I.S.">J.A.R.V.I.S.<small>JUST A RATHER VERY INTELLIGENT SYSTEM</small></div>
+  <div class="header-center">
+    <div class="sys-status">
+      <span><span class="sys-dot"></span> YDIN</span>
+      <span><span class="sys-dot"></span> VERKKO</span>
+      <span><span class="sys-dot"></span> MUISTI</span>
+    </div>
+  </div>
   <div class="clock"><span id="time">--:--:--</span><small id="date">— — —</small></div>
 </header>
 
 <main id="main">
-  <!-- LEFT: system meters -->
+  <!-- LEFT -->
   <aside class="side-left">
     <div class="panel" style="flex:1">
-      <h2>System</h2>
-      <div class="meter"><div class="lbl"><span>POWER</span><span id="m1v">98%</span></div><div class="track"><div class="fill" id="m1" style="width:98%"></div></div></div>
-      <div class="meter"><div class="lbl"><span>CORE TEMP</span><span id="m2v">42%</span></div><div class="track"><div class="fill" id="m2" style="width:42%"></div></div></div>
-      <div class="meter"><div class="lbl"><span>MEMORY</span><span id="m3v">61%</span></div><div class="track"><div class="fill" id="m3" style="width:61%"></div></div></div>
-      <div class="meter"><div class="lbl"><span>NETWORK</span><span id="m4v">87%</span></div><div class="track"><div class="fill" id="m4" style="width:87%"></div></div></div>
-      <div class="meter" style="margin-top:10px"><div class="lbl"><span>KNOWLEDGE NODES</span><span id="nodecount">0</span></div></div>
+      <div class="scan"></div>
+      <h2>Järjestelmä</h2>
+      <div class="meter"><div class="lbl"><span>YDINTEHO</span><span id="m1v">98%</span></div><div class="track"><div class="fill" id="m1" style="width:98%"></div></div></div>
+      <div class="meter"><div class="lbl"><span>CORE TEMP</span><span id="m2v">42%</span></div><div class="track"><div class="fill warn" id="m2" style="width:42%"></div></div></div>
+      <div class="meter"><div class="lbl"><span>MUISTI</span><span id="m3v">61%</span></div><div class="track"><div class="fill" id="m3" style="width:61%"></div></div></div>
+      <div class="meter"><div class="lbl"><span>VERKKO</span><span id="m4v">87%</span></div><div class="track"><div class="fill" id="m4" style="width:87%"></div></div></div>
+      <div class="meter" style="margin-top:8px"><div class="lbl"><span>TIETOSIVUT</span><span id="nodecount" style="color:var(--cyan)">0</span></div></div>
+      <div class="coord-box">
+        <div class="coord-row">LAT <span id="lat">60.9500° N</span></div>
+        <div class="coord-row">LON <span id="lon">25.9300° E</span></div>
+        <div class="coord-row">ALT <span>86 m</span></div>
+      </div>
+    </div>
+    <div class="panel" style="flex:0 0 auto">
+      <div class="scan"></div>
+      <h2>Aktiivisuus</h2>
+      <canvas id="actChart" width="200" height="60" style="display:block;padding:0 14px 12px;width:100%;opacity:.7"></canvas>
     </div>
   </aside>
 
@@ -204,21 +388,36 @@
 
     <!-- HOME -->
     <div class="view active panel" id="view-home">
+      <div class="scan"></div>
       <div class="reactor-wrap">
-        <div class="reactor">
-          <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
+        <div class="reactor" id="reactor">
+          <div class="pulse-ring"></div>
+          <div class="pulse-ring"></div>
+          <div class="pulse-ring"></div>
+          <div class="ring r1"></div>
+          <div class="ring r2"></div>
+          <div class="ring r3"></div>
+          <div class="ring r4"></div>
+          <div class="core-ring"></div>
           <div class="core"></div>
         </div>
         <div class="greeting" id="greet">Järjestelmä <span>verkossa</span></div>
         <div class="status-line" id="homestatus">Kaikki järjestelmät toiminnassa.</div>
+        <div class="home-data">
+          <div><span class="val" id="hd-chat">0</span>viestit</div>
+          <div><span class="val" id="hd-wiki">0</span>tietosivut</div>
+          <div><span class="val" id="hd-uptime">0:00</span>uptime</div>
+        </div>
       </div>
+      <div class="alert-bar"><span class="alert-scroll">JARVIS v2.0 · NASTOLA COMMAND CENTER · KAIKKI JÄRJESTELMÄT NORMAALITILASSA · TIETOPANKKI SYNKRONOITU · &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; JARVIS v2.0 · NASTOLA COMMAND CENTER · KAIKKI JÄRJESTELMÄT NORMAALITILASSA · TIETOPANKKI SYNKRONOITU · </span></div>
     </div>
 
     <!-- CHAT -->
     <div class="view panel" id="view-chat">
+      <div class="scan"></div>
       <div class="log" id="chatlog"></div>
       <div class="inputbar">
-        <button class="btn mic" id="micChat" title="Puhu">🎙</button>
+        <button class="btn mic ghost" id="micChat" title="Puhu">🎙</button>
         <input id="chatInput" placeholder="Puhu J.A.R.V.I.S.ille…" autocomplete="off">
         <button class="btn" id="sendChat">LÄHETÄ</button>
       </div>
@@ -226,36 +425,41 @@
 
     <!-- KNOWLEDGE -->
     <div class="view panel" id="view-know">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 4px">
+      <div class="scan"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 13px 3px;position:relative;z-index:3">
         <h2 style="padding:0">Tietopankki</h2>
-        <button class="btn ghost" id="compileBtn" style="font-size:10px;padding:7px 12px">⟳ KOKOA PÄIVÄ</button>
+        <button class="btn ghost" id="compileBtn" style="font-size:9px;padding:6px 11px">⟳ KOKOA PÄIVÄ</button>
       </div>
-      <div class="log" id="knowlog" style="flex:0 0 auto;max-height:34%"></div>
+      <div class="log" id="knowlog" style="flex:0 0 auto;max-height:32%"></div>
       <div class="wiki-list" id="wikiList"></div>
       <div class="inputbar">
-        <button class="btn mic" id="micKnow" title="Puhu">🎙</button>
+        <button class="btn mic ghost" id="micKnow" title="Puhu">🎙</button>
         <input id="knowInput" placeholder="Syötä tietoa tai kysy: 'mitä tiedät…'" autocomplete="off">
         <button class="btn" id="sendKnow">TALLENNA</button>
       </div>
     </div>
   </section>
 
-  <!-- RIGHT: weather + quick -->
+  <!-- RIGHT -->
   <aside class="side-right">
     <div class="panel">
+      <div class="scan"></div>
       <h2>Sää · Nastola</h2>
       <div class="weather">
         <div class="temp" id="wTemp">--°</div>
         <div class="desc" id="wDesc">Haetaan…</div>
         <div class="loc">NASTOLA, FI</div>
+        <div class="coords">60.9500°N 25.9300°E</div>
       </div>
     </div>
     <div class="panel" style="flex:1">
+      <div class="scan"></div>
       <h2>Pikakomennot</h2>
-      <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px">
+      <div class="quick-btns">
         <button class="btn ghost" data-q="Mikä on tilanneraportti?">Tilanneraportti</button>
         <button class="btn ghost" data-q="Mitä tiedät J.A.R.V.I.S.-projektista?">Projektin tila</button>
         <button class="btn ghost" data-q="Anna yhteenveto kaikesta tallennetusta tiedosta">Tiedon yhteenveto</button>
+        <button class="btn ghost" data-q="Mitä minun tulisi tehdä seuraavaksi?">Seuraava askel</button>
       </div>
     </div>
   </aside>
@@ -273,26 +477,190 @@
 const API_MODEL = "claude-sonnet-4-6";
 const $ = s => document.querySelector(s);
 
-/* ============ CONFIG — VAIHDA TÄMÄ ============ */
-// Liitä tähän oman Cloudflare Workerisi osoite (ohjeet annettu erikseen):
 const WORKER_URL = "https://jarvis.lassi-salminen3.workers.dev";
-// Jos asetit Workeriin PIN-koodin, laita sama tähän. Muuten jätä tyhjäksi.
 const JARVIS_PIN = "nastola1234";
 const pinHeader = JARVIS_PIN ? {"X-Jarvis-Pin": JARVIS_PIN} : {};
 
 /* ============ STATE ============ */
-let wiki = [];          // [{id,title,summary,body,tags,updated}]
-let chatHistory = [];   // for conversational context
-let rawLog = [];        // [{text,who,ts}] flagged chat snippets for daily compile
-let lastCompile = 0;    // timestamp of last day-compile
+let wiki = [];
+let chatHistory = [];
+let rawLog = [];
+let lastCompile = 0;
+let chatCount = 0;
+const startTime = Date.now();
+
+/* ============ AUDIO (Web Audio API) ============ */
+let audioCtx = null;
+function ensureAudio(){
+  if(!audioCtx) try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+}
+function beep(freq=880, dur=0.06, vol=0.04, type='sine'){
+  ensureAudio(); if(!audioCtx) return;
+  try{
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+dur);
+    o.start(); o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+function clickSound(){ beep(1200,.04,.03,'square') }
+function msgSound(){ beep(660,.08,.04,'sine'); setTimeout(()=>beep(880,.06,.03,'sine'),80) }
+function saveSound(){ beep(440,.06,.04,'sine'); setTimeout(()=>beep(660,.08,.04,'sine'),80); setTimeout(()=>beep(880,.1,.03,'sine'),180) }
+
+/* ============ CANVAS BACKGROUND ============ */
+(function(){
+  const canvas = $('#bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles=[], nodes=[];
+
+  function resize(){
+    W=canvas.width=window.innerWidth;
+    H=canvas.height=window.innerHeight;
+  }
+  resize(); window.addEventListener('resize', resize);
+
+  // Create particles
+  for(let i=0;i<60;i++){
+    particles.push({
+      x:Math.random()*1920, y:Math.random()*1080,
+      vx:(Math.random()-.5)*.3, vy:(Math.random()-.5)*.3,
+      r:Math.random()*1.5+.5, opacity:Math.random()*.6+.1
+    });
+  }
+  // Create nodes
+  for(let i=0;i<20;i++){
+    nodes.push({
+      x:Math.random()*1920, y:Math.random()*1080,
+      vx:(Math.random()-.5)*.2, vy:(Math.random()-.5)*.2,
+      r:Math.random()*2+1
+    });
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    // update & draw nodes
+    nodes.forEach(n=>{
+      n.x+=n.vx; n.y+=n.vy;
+      if(n.x<0||n.x>W) n.vx*=-1;
+      if(n.y<0||n.y>H) n.vy*=-1;
+    });
+    // draw connections
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        const dx=nodes[i].x-nodes[j].x, dy=nodes[i].y-nodes[j].y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<200){
+          ctx.beginPath();
+          ctx.strokeStyle=`rgba(34,211,238,${.08*(1-dist/200)})`;
+          ctx.lineWidth=.5;
+          ctx.moveTo(nodes[i].x,nodes[i].y);
+          ctx.lineTo(nodes[j].x,nodes[j].y);
+          ctx.stroke();
+        }
+      }
+      ctx.beginPath();
+      ctx.arc(nodes[i].x,nodes[i].y,nodes[i].r,0,Math.PI*2);
+      ctx.fillStyle='rgba(34,211,238,.25)';
+      ctx.fill();
+    }
+    // draw particles
+    particles.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0) p.x=W; if(p.x>W) p.x=0;
+      if(p.y<0) p.y=H; if(p.y>H) p.y=0;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(34,211,238,${p.opacity*.4})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ============ BOOT SEQUENCE ============ */
+(function(){
+  const lines=[
+    'INITIALISOIDAAN J.A.R.V.I.S. v2.0...',
+    'LADATAAN YDINPARAMETRIT...',
+    'TARKISTETAAN VERKKO... OK',
+    'YHDISTETÄÄN TIETOKANTAAN... OK',
+    'LADATAAN TEKOÄLYMODUULI... OK',
+    'AKTIVOIDAAN HOLOGRAFINEN KÄYTTÖLIITTYMÄ...',
+    'TARKISTETAAN SIJAINTI: NASTOLA, FI',
+    'KAIKKI JÄRJESTELMÄT TOIMINNASSA.',
+  ];
+  const container=$('#bootLines');
+  const bar=$('#boot-bar');
+  let i=0;
+  function next(){
+    if(i>=lines.length){
+      $('#boot-final').style.opacity='1';
+      setTimeout(()=>{
+        $('#boot').classList.add('done');
+        setTimeout(()=>{ $('#boot').style.display='none'; },700);
+      },800);
+      return;
+    }
+    const div=document.createElement('div');
+    div.className='boot-line';
+    div.textContent='> '+lines[i];
+    div.style.animationDelay='0s';
+    container.appendChild(div);
+    bar.style.width=((i+1)/lines.length*100)+'%';
+    i++;
+    setTimeout(next, 180+Math.random()*120);
+  }
+  setTimeout(next, 300);
+})();
+
+/* ============ ACTIVITY CHART ============ */
+const actData=Array(20).fill(0);
+function updateActChart(){
+  const canvas=$('#actChart');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  const max=Math.max(...actData,1);
+  const bw=W/actData.length;
+  actData.forEach((v,i)=>{
+    const h=(v/max)*(H-4);
+    const alpha=.3+.5*(v/max);
+    ctx.fillStyle=`rgba(34,211,238,${alpha})`;
+    ctx.fillRect(i*bw+1, H-h, bw-2, h);
+  });
+}
+setInterval(()=>{
+  actData.shift(); actData.push(chatCount);
+  chatCount=0; updateActChart();
+},3000);
+updateActChart();
+
+/* ============ PARALLAX REACTOR ============ */
+document.addEventListener('mousemove',e=>{
+  const r=$('#reactor');
+  if(!r) return;
+  const cx=window.innerWidth/2, cy=window.innerHeight/2;
+  const dx=(e.clientX-cx)/cx, dy=(e.clientY-cy)/cy;
+  r.style.transform=`translate(${dx*6}px,${dy*4}px)`;
+});
+
+/* ============ UPTIME ============ */
+setInterval(()=>{
+  const s=Math.floor((Date.now()-startTime)/1000);
+  const m=Math.floor(s/60), ss=s%60;
+  const el=$('#hd-uptime'); if(el) el.textContent=m+':'+(ss<10?'0':'')+ss;
+},1000);
 
 /* ============ STORAGE ============ */
 async function loadWiki(){
   try{
-    const r = await fetch(WORKER_URL+'/api/wiki',{headers:pinHeader});
-    wiki = await r.json();
-  }catch(e){ wiki = []; }
-  // raw log + lastcompile stay local to the device (lightweight, device-specific)
+    const r=await fetch(WORKER_URL+'/api/wiki',{headers:pinHeader});
+    wiki=await r.json();
+  }catch(e){ wiki=[]; }
   try{ const v=localStorage.getItem('jarvis:raw'); if(v) rawLog=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('jarvis:lastcompile'); if(v) lastCompile=JSON.parse(v); }catch(e){}
   renderWiki();
@@ -300,15 +668,14 @@ async function loadWiki(){
 async function saveWiki(){
   try{
     await fetch(WORKER_URL+'/api/wiki',{
-      method:'PUT',
-      headers:{'Content-Type':'application/json',...pinHeader},
+      method:'PUT', headers:{'Content-Type':'application/json',...pinHeader},
       body:JSON.stringify(wiki)
     });
   }catch(e){}
   renderWiki();
 }
 async function saveRaw(){
-  try{ localStorage.setItem('jarvis:raw', JSON.stringify(rawLog)); }catch(e){}
+  try{ localStorage.setItem('jarvis:raw',JSON.stringify(rawLog)); }catch(e){}
 }
 
 /* ============ CLOCK ============ */
@@ -317,28 +684,28 @@ function tick(){
   $('#time').textContent=d.toLocaleTimeString('fi-FI');
   $('#date').textContent=d.toLocaleDateString('fi-FI',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();
 }
-setInterval(tick,1000);tick();
+setInterval(tick,1000); tick();
 
-/* ============ METERS (ambient) ============ */
+/* ============ METERS ============ */
 function jitter(){
   const set=(id,base,range)=>{
     const v=Math.round(base+(Math.random()*range-range/2));
-    $('#'+id).style.width=v+'%';$('#'+id+'v').textContent=v+'%';
+    const el=$('#'+id); el.style.width=v+'%'; $('#'+id+'v').textContent=v+'%';
+    el.className='fill'+(v>85?' crit':v>70?' warn':'');
   };
-  set('m1',96,6);set('m2',44,14);set('m3',60,18);set('m4',88,8);
+  set('m1',96,5); set('m2',44,16); set('m3',60,18); set('m4',88,8);
 }
 setInterval(jitter,3000);
 
 /* ============ GREETING ============ */
 (function(){
   const h=new Date().getHours();
-  let g = h<6?'Hyvää yötä':h<11?'Hyvää huomenta':h<17?'Hyvää päivää':'Hyvää iltaa';
-  $('#greet').innerHTML = g+', <span>Lassi</span>';
+  const g=h<6?'Hyvää yötä':h<11?'Hyvää huomenta':h<17?'Hyvää päivää':'Hyvää iltaa';
+  $('#greet').innerHTML=g+', <span>Lassi</span>';
 })();
 
 /* ============ WEATHER ============ */
 async function weather(){
-  // Open-Meteo: no API key required
   try{
     const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=60.95&longitude=25.93&current=temperature_2m,weather_code');
     const d=await r.json();
@@ -353,6 +720,7 @@ weather(); setInterval(weather,600000);
 /* ============ TABS ============ */
 document.querySelectorAll('.tab').forEach(t=>{
   t.onclick=()=>{
+    clickSound();
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
@@ -361,22 +729,22 @@ document.querySelectorAll('.tab').forEach(t=>{
 });
 
 /* ============ CLAUDE API ============ */
-async function askClaude(system, messages){
-  const res = await fetch(WORKER_URL+"/api/claude",{
-    method:"POST",headers:{"Content-Type":"application/json",...pinHeader},
+async function askClaude(system,messages){
+  const res=await fetch(WORKER_URL+"/api/claude",{
+    method:"POST", headers:{"Content-Type":"application/json",...pinHeader},
     body:JSON.stringify({model:API_MODEL,max_tokens:1000,system,messages})
   });
-  const data = await res.json();
+  const data=await res.json();
   return data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
 }
 
-const JARVIS_PERSONA = `Olet J.A.R.V.I.S., Lassin henkilökohtainen tekoälyassistentti Iron Man -hengessä.
+const JARVIS_PERSONA=`Olet J.A.R.V.I.S., Lassin henkilökohtainen tekoälyassistentti Iron Man -hengessä.
 Puhut suomea, kohteliaasti ja hieman muodollisesti mutta lämpimästi, kuten J.A.R.V.I.S. elokuvissa.
 Puhuttele käyttäjää "Lassi" tai tarvittaessa "sir". Ole ytimekäs, älykäs ja avulias.
-Lassi rakentaa sinua: Telegram-botti + tämä tablet-käyttöliittymä, Iron Man -estetiikalla. Hän asuu Nastolassa.`;
+Lassi rakentaa sinua: tämä tablet-käyttöliittymä, Iron Man -estetiikalla. Hän asuu Nastolassa.`;
 
 /* ============ CHAT ============ */
-function addMsg(logId, who, text, cls){
+function addMsg(logId,who,text,cls){
   const log=$('#'+logId);
   const m=document.createElement('div');
   m.className='msg '+(cls||who);
@@ -385,59 +753,62 @@ function addMsg(logId, who, text, cls){
   log.appendChild(m); log.scrollTop=log.scrollHeight;
   return span;
 }
-// flag a user+jarvis exchange into the raw log for daily compile
-function addFlag(msgEl, userText, jarvisText){
+function addFlag(msgEl,userText,jarvisText){
   const f=document.createElement('button');
-  f.className='flagbtn'; f.title='Merkitse muistiinpanoksi'; f.textContent='👍';
+  f.className='flagbtn'; f.title='Merkitse muistiinpanoksi'; f.textContent='👍 tallenna';
   f.onclick=()=>{
-    if(f.classList.contains('on'))return;
+    if(f.classList.contains('on')) return;
     f.classList.add('on');
-    rawLog.push({ts:Date.now(), q:userText, a:jarvisText});
-    saveRaw();
+    rawLog.push({ts:Date.now(),q:userText,a:jarvisText});
+    saveRaw(); saveSound();
     f.textContent='✓ tallennettu';
   };
   msgEl.appendChild(f);
 }
 
 async function sendChat(text){
-  if(!text.trim())return;
+  if(!text.trim()) return;
+  clickSound();
+  chatCount++;
   addMsg('chatlog','user',text);
   chatHistory.push({role:'user',content:text});
   const span=addMsg('chatlog','jarvis',''); span.parentElement.classList.add('typing');
-  // give jarvis awareness of the wiki
-  const wikiCtx = wiki.length? `\n\nLassin tietopankissa on ${wiki.length} sivua: ${wiki.map(w=>w.title).join(', ')}.` : '';
+  const wikiCtx=wiki.length?`\n\nLassin tietopankissa on ${wiki.length} sivua: ${wiki.map(w=>w.title).join(', ')}.`:'';
   try{
-    const reply=await askClaude(JARVIS_PERSONA+wikiCtx, chatHistory.slice(-10));
+    const reply=await askClaude(JARVIS_PERSONA+wikiCtx,chatHistory.slice(-10));
     span.parentElement.classList.remove('typing');
+    msgSound();
     typewrite(span,reply);
     chatHistory.push({role:'assistant',content:reply});
-    addFlag(span.parentElement, text, reply);
+    addFlag(span.parentElement,text,reply);
+    const el=$('#hd-chat'); if(el) el.textContent=chatHistory.filter(m=>m.role==='user').length;
   }catch(e){
     span.parentElement.classList.remove('typing');
     span.textContent='Pahoittelut, yhteys keskusyksikköön epäonnistui.';
   }
 }
 function typewrite(el,txt){
-  el.textContent='';let i=0;
-  const step=()=>{ if(i<txt.length){ el.textContent+=txt[i++]; el.parentElement.parentElement.scrollTop=9e9; setTimeout(step,8);} };
+  el.textContent=''; let i=0;
+  const step=()=>{ if(i<txt.length){ el.textContent+=txt[i++]; el.parentElement.parentElement.scrollTop=9e9; setTimeout(step,7); }};
   step();
 }
 
-$('#sendChat').onclick=()=>{const v=$('#chatInput').value;$('#chatInput').value='';sendChat(v);};
-$('#chatInput').onkeydown=e=>{if(e.key==='Enter'){$('#sendChat').click();}};
+$('#sendChat').onclick=()=>{ const v=$('#chatInput').value; $('#chatInput').value=''; sendChat(v); };
+$('#chatInput').onkeydown=e=>{ if(e.key==='Enter') $('#sendChat').click(); };
 document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{
+  clickSound();
   document.querySelector('.tab[data-view="chat"]').click();
   sendChat(b.dataset.q);
 });
 
-/* ============ KNOWLEDGE (the PKB librarian) ============ */
+/* ============ KNOWLEDGE ============ */
 async function processKnowledge(text){
-  if(!text.trim())return;
+  if(!text.trim()) return;
+  clickSound();
   addMsg('knowlog','user',text);
   const span=addMsg('knowlog','jarvis',''); span.parentElement.classList.add('typing');
 
-  // Decide: is this a QUERY or new KNOWLEDGE? Let Claude route + act, returning JSON.
-  const sys = `Olet J.A.R.V.I.S., joka hallinnoi Lassin henkilökohtaista tietopankkia (PKB).
+  const sys=`Olet J.A.R.V.I.S., joka hallinnoi Lassin henkilökohtaista tietopankkia (PKB).
 Toimit Karpathy-tyylisenä "kirjastonhoitajana": Lassi syöttää raakaa tietoa tai kysyy kysymyksiä,
 ja sinä organisoit kaiken automaattisesti wiki-sivuiksi.
 
@@ -446,141 +817,116 @@ ${JSON.stringify(wiki.map(w=>({id:w.id,title:w.title,summary:w.summary,tags:w.ta
 
 Tehtäväsi: lue Lassin viesti ja päätä toiminto. Vastaa AINOASTAAN JSON-objektilla, ei mitään muuta, ei koodiblokkeja:
 
-Jos viesti on KYSYMYS olemassa olevasta tiedosta (esim. "mitä tiedät...", "kerro...", "yhteenveto..."):
+Jos viesti on KYSYMYS olemassa olevasta tiedosta:
 {"action":"query","reply":"<J.A.R.V.I.S.-tyylinen vastaus suomeksi wikin pohjalta>"}
 
 Jos viesti on UUTTA TIETOA tallennettavaksi:
-{"action":"save","reply":"<lyhyt J.A.R.V.I.S.-vahvistus>","page":{"id":"<olemassa oleva id jos päivität, muuten uusi lyhyt slug>","title":"<selkeä otsikko>","summary":"<1-2 lauseen tiivistelmä>","body":"<hyvin jäsennelty markdown-sisältö, laajenna ja organisoi Lassin antama tieto>","tags":["aihe1","aihe2"]}}
+{"action":"save","reply":"<lyhyt J.A.R.V.I.S.-vahvistus>","page":{"id":"<olemassa oleva id jos päivität, muuten uusi lyhyt slug>","title":"<selkeä otsikko>","summary":"<1-2 lauseen tiivistelmä>","body":"<hyvin jäsennelty markdown-sisältö>","tags":["aihe1","aihe2"]}}
 
 Jos uusi tieto liittyy olemassa olevaan sivuun, käytä saman sivun id:tä ja yhdistä sisältö.`;
 
   try{
-    let raw = await askClaude(sys,[{role:'user',content:text}]);
-    raw = raw.replace(/```json|```/g,'').trim();
-    const r = JSON.parse(raw);
+    let raw=await askClaude(sys,[{role:'user',content:text}]);
+    raw=raw.replace(/```json|```/g,'').trim();
+    const r=JSON.parse(raw);
     span.parentElement.classList.remove('typing');
-    typewrite(span, r.reply||'Käsitelty.');
-
-    if(r.action==='save' && r.page){
+    msgSound();
+    typewrite(span,r.reply||'Käsitelty.');
+    if(r.action==='save'&&r.page){
       const p=r.page; p.updated=Date.now();
       const idx=wiki.findIndex(w=>w.id===p.id);
       if(idx>=0) wiki[idx]={...wiki[idx],...p}; else wiki.unshift(p);
-      await saveWiki();
+      await saveWiki(); saveSound();
     }
   }catch(e){
     span.parentElement.classList.remove('typing');
     span.textContent='En kyennyt jäsentämään tietoa. Yritä muotoilla uudelleen.';
   }
 }
-$('#sendKnow').onclick=()=>{const v=$('#knowInput').value;$('#knowInput').value='';processKnowledge(v);};
-$('#knowInput').onkeydown=e=>{if(e.key==='Enter'){$('#sendKnow').click();}};
+$('#sendKnow').onclick=()=>{ const v=$('#knowInput').value; $('#knowInput').value=''; processKnowledge(v); };
+$('#knowInput').onkeydown=e=>{ if(e.key==='Enter') $('#sendKnow').click(); };
 
-/* ============ DAILY COMPILE (Karpathy compile-step) ============ */
+/* ============ DAILY COMPILE ============ */
 async function compileDay(auto){
   document.querySelector('.tab[data-view="know"]').click();
-  const today = new Date(); today.setHours(0,0,0,0);
-  const todaysRaw = rawLog.filter(r=>r.ts>=today.getTime());
-
+  const today=new Date(); today.setHours(0,0,0,0);
+  const todaysRaw=rawLog.filter(r=>r.ts>=today.getTime());
   if(!todaysRaw.length){
-    addMsg('knowlog','jarvis', auto? '' : 'Tältä päivältä ei ole merkittyjä keskusteluja koottavaksi, Lassi. Nosta chatissa 👍 viesteistä jotka haluat muistiin.');
+    if(!auto) addMsg('knowlog','jarvis','Tältä päivältä ei ole merkittyjä keskusteluja koottavaksi, Lassi. Nosta chatissa 👍 viesteistä jotka haluat muistiin.');
     return;
   }
   const span=addMsg('knowlog','jarvis',''); span.parentElement.classList.add('typing');
-
-  const sys = `Olet J.A.R.V.I.S. ja kokoat Lassin päivän. Sait listan tämän päivän merkityistä keskusteluista.
+  const sys=`Olet J.A.R.V.I.S. ja kokoat Lassin päivän. Sait listan tämän päivän merkityistä keskusteluista.
 Tee KAKSI asiaa ja vastaa AINOASTAAN JSON-objektilla (ei koodiblokkeja):
-
 1. Päiväyhteenveto: lyhyt J.A.R.V.I.S.-tyylinen katsaus suomeksi siitä mitä Lassi teki/käsitteli tänään.
 2. Poimi opit ja faktat pysyviksi wiki-sivuiksi.
-
 Nykyiset wiki-sivut (id + otsikko): ${JSON.stringify(wiki.map(w=>({id:w.id,title:w.title})))}
-
 Vastaa muodossa:
 {"reply":"<päiväyhteenveto suomeksi, J.A.R.V.I.S.-tyyli>",
- "pages":[{"id":"<olemassa oleva id jos päivität sivua, muuten uusi slug>","title":"...","summary":"...","body":"<jäsennelty markdown>","tags":["..."]}]}
-
-Jos opit liittyvät olemassa olevaan sivuun, käytä sen id:tä ja täydennä. Voit palauttaa tyhjän pages-listan jos mitään pysyvää ei syntynyt.`;
-
-  const payload = todaysRaw.map(r=>`Lassi: ${r.q}\nJ.A.R.V.I.S.: ${r.a}`).join('\n---\n');
-
+ "pages":[{"id":"<slug>","title":"...","summary":"...","body":"<markdown>","tags":["..."]}]}`;
+  const payload=todaysRaw.map(r=>`Lassi: ${r.q}\nJ.A.R.V.I.S.: ${r.a}`).join('\n---\n');
   try{
-    let out = await askClaude(sys,[{role:'user',content:'Tämän päivän keskustelut:\n\n'+payload}]);
-    out = out.replace(/```json|```/g,'').trim();
-    const r = JSON.parse(out);
+    let out=await askClaude(sys,[{role:'user',content:'Tämän päivän keskustelut:\n\n'+payload}]);
+    out=out.replace(/```json|```/g,'').trim();
+    const r=JSON.parse(out);
     span.parentElement.classList.remove('typing');
-    typewrite(span, r.reply||'Päivä koottu.');
-
-    // save the day summary itself as a dated page
-    const dstr = today.toLocaleDateString('fi-FI');
-    const dayId = 'paiva-'+today.toISOString().slice(0,10);
-    const dayIdx = wiki.findIndex(w=>w.id===dayId);
+    msgSound();
+    typewrite(span,r.reply||'Päivä koottu.');
+    const dstr=today.toLocaleDateString('fi-FI');
+    const dayId='paiva-'+today.toISOString().slice(0,10);
+    const dayIdx=wiki.findIndex(w=>w.id===dayId);
     const dayPage={id:dayId,title:'Päiväkirja '+dstr,summary:r.reply.slice(0,120),body:r.reply,tags:['päiväkirja'],updated:Date.now()};
     if(dayIdx>=0) wiki[dayIdx]=dayPage; else wiki.unshift(dayPage);
-
-    // merge extracted knowledge pages
-    (r.pages||[]).forEach(p=>{
-      p.updated=Date.now();
-      const i=wiki.findIndex(w=>w.id===p.id);
-      if(i>=0) wiki[i]={...wiki[i],...p}; else wiki.unshift(p);
-    });
-    await saveWiki();
+    (r.pages||[]).forEach(p=>{ p.updated=Date.now(); const i=wiki.findIndex(w=>w.id===p.id); if(i>=0) wiki[i]={...wiki[i],...p}; else wiki.unshift(p); });
+    await saveWiki(); saveSound();
     lastCompile=Date.now();
-    try{ localStorage.setItem('jarvis:lastcompile', JSON.stringify(lastCompile)); }catch(e){}
+    try{ localStorage.setItem('jarvis:lastcompile',JSON.stringify(lastCompile)); }catch(e){}
   }catch(e){
     span.parentElement.classList.remove('typing');
     span.textContent='Päivän koonti epäonnistui. Yritä uudelleen hetken kuluttua.';
   }
 }
 $('#compileBtn').onclick=()=>compileDay(false);
-
-// auto-compile in the evening (after 21:00) once per day
 setInterval(()=>{
-  const now=new Date();
-  const lc=new Date(lastCompile);
-  const compiledToday = lastCompile && lc.toDateString()===now.toDateString();
-  if(now.getHours()>=21 && !compiledToday && rawLog.length){
-    compileDay(true);
-  }
+  const now=new Date(), lc=new Date(lastCompile);
+  if(now.getHours()>=21&&!(lastCompile&&lc.toDateString()===now.toDateString())&&rawLog.length) compileDay(true);
 },60000);
 
-
+/* ============ RENDER WIKI ============ */
 function renderWiki(){
-  $('#nodecount').textContent=wiki.length;
-  const list=$('#wikiList');list.innerHTML='';
-  if(!wiki.length){
+  const n=wiki.length;
+  $('#nodecount').textContent=n;
+  const hd=$('#hd-wiki'); if(hd) hd.textContent=n;
+  const list=$('#wikiList'); list.innerHTML='';
+  if(!n){
     list.innerHTML='<div class="empty">Tietopankki on tyhjä.\n\nSyötä tietoa alle — esim.\n"Tänään opin että transformerit käyttävät self-attention-mekanismia"\n\nJ.A.R.V.I.S. organisoi sen wikiksi automaattisesti.</div>';
     return;
   }
   wiki.forEach(w=>{
-    const c=document.createElement('div');c.className='wiki-card';
+    const c=document.createElement('div'); c.className='wiki-card';
     c.innerHTML='<div class="t">'+esc(w.title)+'</div><div class="s">'+esc(w.summary||'')+'</div>'+
       '<div class="tags">'+(w.tags||[]).map(t=>'<span class="tag">'+esc(t)+'</span>').join('')+'</div>';
-    c.onclick=()=>openWiki(w);
+    c.onclick=()=>{ clickSound(); openWiki(w); };
     list.appendChild(c);
   });
 }
-function esc(s){return (s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+function esc(s){ return (s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 function openWiki(w){
   $('#ovTitle').textContent=w.title;
   $('#ovMeta').textContent='Päivitetty '+new Date(w.updated).toLocaleString('fi-FI')+' · '+(w.tags||[]).join(' / ');
   $('#ovBody').textContent=w.body||w.summary;
   $('#overlay').classList.add('open');
 }
-$('#ovClose').onclick=()=>$('#overlay').classList.remove('open');
+$('#ovClose').onclick=()=>{ clickSound(); $('#overlay').classList.remove('open'); };
 
-/* ============ VOICE (Finnish) ============ */
-function setupMic(btnId, inputId, autosend){
+/* ============ VOICE ============ */
+function setupMic(btnId,inputId,autosend){
   const btn=$('#'+btnId);
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){btn.style.display='none';return;}
-  const rec=new SR();rec.lang='fi-FI';rec.interimResults=false;
-  btn.onclick=()=>{btn.classList.add('listening');rec.start();};
-  rec.onresult=e=>{
-    const t=e.results[0][0].transcript;
-    $('#'+inputId).value=t;
-    btn.classList.remove('listening');
-    autosend();
-  };
+  if(!SR){ btn.style.display='none'; return; }
+  const rec=new SR(); rec.lang='fi-FI'; rec.interimResults=false;
+  btn.onclick=()=>{ btn.classList.add('listening'); beep(440,.1,.05); rec.start(); };
+  rec.onresult=e=>{ $('#'+inputId).value=e.results[0][0].transcript; btn.classList.remove('listening'); autosend(); };
   rec.onerror=()=>btn.classList.remove('listening');
   rec.onend=()=>btn.classList.remove('listening');
 }
