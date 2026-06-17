@@ -335,6 +335,49 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 .flagbtn:hover{border-color:var(--cyan);color:var(--cyan)}
 .flagbtn.on{color:var(--cyan);border-color:rgba(0,229,255,.4);cursor:default}
 .quick-btns{padding:8px 11px;display:flex;flex-direction:column;gap:6px;position:relative;z-index:3}
+
+/* ===== WAKE WORD MODE ===== */
+#wakeBtn{
+  font-family:'Orbitron';font-size:9px;letter-spacing:.18em;padding:7px 14px;
+  background:transparent;border:1px solid rgba(0,229,255,.3);color:var(--txt-dim);
+  border-radius:2px;cursor:pointer;transition:.25s;white-space:nowrap;
+}
+#wakeBtn.idle{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 10px rgba(0,229,255,.2)}
+#wakeBtn.listening{border-color:var(--green);color:var(--green);box-shadow:0 0 14px rgba(0,255,136,.3);animation:wakepulse 1.5s ease-in-out infinite}
+#wakeBtn.speaking{border-color:var(--amber);color:var(--amber);box-shadow:0 0 14px rgba(255,179,0,.3)}
+#wakeBtn.active{border-color:var(--red);color:var(--red);box-shadow:0 0 18px rgba(255,61,61,.4);animation:wakepulse .8s ease-in-out infinite}
+@keyframes wakepulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* wake status bar */
+#wakebar{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  display:none;align-items:center;justify-content:center;gap:12px;
+  padding:8px 20px;border-top:1px solid var(--line);
+  background:rgba(0,5,12,.95);backdrop-filter:blur(8px);
+  font-family:'Orbitron';font-size:10px;letter-spacing:.22em;
+}
+#wakebar.show{display:flex}
+#wakebar .wb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#wakebar .wb-dot.g{background:var(--green);box-shadow:0 0 10px var(--green)}
+#wakebar .wb-dot.a{background:var(--amber);box-shadow:0 0 10px var(--amber);animation:wakepulse .6s infinite}
+#wakebar .wb-dot.r{background:var(--red);box-shadow:0 0 10px var(--red);animation:wakepulse .4s infinite}
+#wakebar .wb-dot.c{background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:wakepulse 1.5s infinite}
+#waveform{display:flex;align-items:center;gap:2px;height:20px}
+#waveform span{display:inline-block;width:3px;border-radius:2px;background:var(--green);animation:wave 1s ease-in-out infinite}
+#waveform span:nth-child(1){animation-delay:.0s}#waveform span:nth-child(2){animation-delay:.1s}
+#waveform span:nth-child(3){animation-delay:.2s}#waveform span:nth-child(4){animation-delay:.3s}
+#waveform span:nth-child(5){animation-delay:.4s}#waveform span:nth-child(6){animation-delay:.3s}
+#waveform span:nth-child(7){animation-delay:.2s}
+@keyframes wave{0%,100%{height:4px}50%{height:18px}}
+#wakebar .end-btn{font-family:'Orbitron';font-size:8px;letter-spacing:.15em;padding:4px 10px;
+  background:transparent;border:1px solid rgba(255,61,61,.5);color:var(--red);
+  border-radius:2px;cursor:pointer;transition:.15s}
+#wakebar .end-btn:hover{background:rgba(255,61,61,.1)}
+
+/* chat end-conv button */
+#endConvBar{display:none;padding:6px 10px;border-top:1px solid var(--line);background:rgba(0,5,12,.9);
+  flex-shrink:0;gap:8px;align-items:center}
+#endConvBar.show{display:flex}
 </style>
 </head>
 <body>
@@ -360,9 +403,12 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
     </div>
     <div class="hdr-coords">LAT <span>60.9500°N</span> &nbsp; LON <span>25.9300°E</span> &nbsp; ALT <span>86m</span></div>
   </div>
-  <div class="clock-wrap">
-    <div class="clock"><span id="time">--:--:--</span></div>
-    <small id="date" style="font-size:8px;color:var(--txt-dim);letter-spacing:.2em;display:block;text-align:right;margin-top:2px">— — —</small>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button id="wakeBtn" onclick="toggleWake()">◉ AINA PÄÄLLÄ</button>
+    <div class="clock-wrap">
+      <div class="clock"><span id="time">--:--:--</span></div>
+      <small id="date" style="font-size:8px;color:var(--txt-dim);letter-spacing:.2em;display:block;text-align:right;margin-top:2px">— — —</small>
+    </div>
   </div>
 </header>
 
@@ -432,6 +478,10 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
       <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
       <div class="scan"></div>
       <div class="log" id="chatlog"></div>
+      <div id="endConvBar">
+        <span style="font-size:9px;color:var(--txt-dim);letter-spacing:.15em;flex:1">Keskustelu aktiivinen</span>
+        <button class="end-btn" onclick="wakeMode?endConversation(false):endTextConversation()" style="font-family:'Orbitron';font-size:8px;letter-spacing:.15em;padding:4px 10px;background:transparent;border:1px solid rgba(255,61,61,.5);color:var(--red);border-radius:2px;cursor:pointer">✕ LOPETA &amp; KOKOA</button>
+      </div>
       <div class="inputbar">
         <button class="btn mic ghost" id="micChat">🎙</button>
         <input id="chatInput" placeholder="Puhu J.A.R.V.I.S.ille…" autocomplete="off">
@@ -483,6 +533,17 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
     </div>
   </aside>
 </main>
+
+<!-- WAKE STATUS BAR -->
+<div id="wakebar">
+  <div class="wb-dot c" id="wbdot"></div>
+  <span id="wbtext" style="color:var(--txt-dim)">ODOTTAA: "JARVIS"</span>
+  <div id="waveform" style="display:none">
+    <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
+  <button class="end-btn" onclick="endConversation(false)">✕ LOPETA</button>
+  <button class="end-btn" onclick="toggleWake()" style="border-color:rgba(0,229,255,.3);color:var(--txt-dim)">SAMMUTA</button>
+</div>
 
 <!-- WIKI OVERLAY -->
 <div class="overlay" id="overlay">
@@ -767,6 +828,192 @@ function setupMic(btnId,inputId,autosend){
 }
 setupMic('micChat','chatInput',()=>$('#sendChat').click());
 setupMic('micKnow','knowInput',()=>$('#sendKnow').click());
+
+/* ===== WAKE WORD & VOICE CONVERSATION ===== */
+let wakeMode=false, convActive=false, jarvisSpeaking=false;
+let wakeRec=null, convTimer=null, voiceConvHistory=[];
+
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+function toggleWake(){
+  if(!SR){alert('Selaimesi ei tue puheentunnistusta. Kokeile Chromea.');return}
+  wakeMode=!wakeMode;
+  if(wakeMode) startWakeLoop();
+  else stopWake();
+  updateWakeUI();
+}
+
+function startWakeLoop(){
+  if(!wakeMode) return;
+  if(wakeRec){try{wakeRec.stop()}catch(e){}}
+  wakeRec=new SR();
+  wakeRec.lang='fi-FI';
+  wakeRec.continuous=false;
+  wakeRec.interimResults=false;
+  wakeRec.onresult=e=>{
+    const txt=e.results[0][0].transcript.toLowerCase().trim();
+    if(!convActive && /jarvis/.test(txt)){
+      activateConv();
+    } else if(convActive && !jarvisSpeaking && txt.length>1){
+      handleVoiceInput(txt);
+    }
+  };
+  wakeRec.onend=()=>{
+    if(wakeMode && !jarvisSpeaking) setTimeout(startWakeLoop,300);
+  };
+  wakeRec.onerror=e=>{
+    if(e.error!=='no-speech' && wakeMode) setTimeout(startWakeLoop,800);
+  };
+  try{wakeRec.start()}catch(e){}
+}
+
+function stopWake(){
+  wakeMode=false; convActive=false;
+  if(wakeRec){try{wakeRec.stop()}catch(e){}}
+  window.speechSynthesis.cancel();
+  clearTimeout(convTimer);
+  $('#wakebar').classList.remove('show');
+  $('#endConvBar').classList.remove('show');
+}
+
+function activateConv(){
+  convActive=true; voiceConvHistory=[];
+  sMsg(); tone(1100,.08,.05); setTimeout(()=>tone(1400,.06,.04),90);
+  document.querySelector('.tab[data-view="chat"]').click();
+  addMsg('chatlog','system','[ JARVIS aktivoitu — kuunnellaan ]');
+  $('#endConvBar').classList.add('show');
+  updateWakeUI();
+  convTimer=setTimeout(()=>endConversation(true),60000);
+  speakTTS('Kuinka voin auttaa, Lassi?',()=>{ if(wakeMode) setTimeout(startWakeLoop,200) });
+}
+
+function handleVoiceInput(txt){
+  if(!convActive) return;
+  clearTimeout(convTimer);
+  // lopeta-sanat
+  if(/\b(lopeta|kiitos jarvis|seis|sammu)\b/.test(txt)){endConversation(false);return}
+  convTimer=setTimeout(()=>endConversation(true),45000);
+  chatCount++;
+  addMsg('chatlog','user',txt);
+  chatHistory.push({role:'user',content:txt});
+  voiceConvHistory.push({role:'user',content:txt});
+  const span=addMsg('chatlog','jarvis','');
+  span.parentElement.classList.add('typing');
+  const wctx=wiki.length?`\n\nLassin tietopankissa on ${wiki.length} sivua: ${wiki.map(w=>w.title).join(', ')}.`:'';
+  askClaude(PERSONA+wctx,chatHistory.slice(-10)).then(reply=>{
+    span.parentElement.classList.remove('typing');
+    typewrite(span,reply);
+    chatHistory.push({role:'assistant',content:reply});
+    voiceConvHistory.push({role:'assistant',content:reply});
+    addFlag(span.parentElement,txt,reply);
+    const e=$('#hd-chat');if(e)e.textContent=chatHistory.filter(m=>m.role==='user').length;
+    sMsg();
+    speakTTS(reply,()=>{ if(wakeMode&&convActive) setTimeout(startWakeLoop,300) });
+  }).catch(()=>{
+    span.parentElement.classList.remove('typing');
+    span.textContent='Pahoittelut, yhteysvirhe.';
+    if(wakeMode&&convActive) setTimeout(startWakeLoop,500);
+  });
+}
+
+function speakTTS(text,cb){
+  jarvisSpeaking=true;
+  if(wakeRec){try{wakeRec.stop()}catch(e){}}
+  window.speechSynthesis.cancel();
+  updateWakeUI();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='fi-FI'; u.rate=1.05; u.pitch=0.88;
+  const voices=window.speechSynthesis.getVoices();
+  const fi=voices.find(v=>v.lang.startsWith('fi'));
+  if(fi) u.voice=fi;
+  u.onend=()=>{jarvisSpeaking=false;updateWakeUI();if(cb)cb()};
+  u.onerror=()=>{jarvisSpeaking=false;updateWakeUI();if(cb)cb()};
+  window.speechSynthesis.speak(u);
+}
+
+async function endConversation(auto){
+  if(!convActive&&voiceConvHistory.length===0) return;
+  convActive=false;
+  clearTimeout(convTimer);
+  $('#endConvBar').classList.remove('show');
+  window.speechSynthesis.cancel();
+  jarvisSpeaking=false;
+  updateWakeUI();
+  const hist=[...voiceConvHistory];
+  voiceConvHistory=[];
+  if(hist.length>=2){
+    addMsg('chatlog','system','[ Luodaan yhteenveto… ]');
+    await summarizeConv(hist);
+  }
+  if(wakeMode){
+    speakTTS('Yhteenveto tallennettu. Kuuntelen sanaa Jarvis.',()=>setTimeout(startWakeLoop,300));
+  }
+}
+
+async function summarizeConv(hist){
+  const sys=`Olet J.A.R.V.I.S. Luo yhteenveto äänessä käydystä keskustelusta.
+Vastaa AINOASTAAN JSON-objektilla (ei koodiblokkeja):
+{"summary":"<lyhyt suomenkielinen yhteenveto mitä keskusteltiin>","save":true/false,"page":{"id":"<slug>","title":"<otsikko>","summary":"<1-2 lausetta>","body":"<jäsennelty markdown>","tags":["..."]}}
+save=true VAIN jos tuli esille konkreettista tietoa joka kannattaa tallentaa pysyvästi.`;
+  try{
+    let raw=await askClaude(sys,hist);
+    raw=raw.replace(/```json|```/g,'').trim();
+    const r=JSON.parse(raw);
+    addMsg('chatlog','jarvis','📋 '+r.summary);
+    if(r.save&&r.page){
+      r.page.updated=Date.now();
+      const i=wiki.findIndex(w=>w.id===r.page.id);
+      if(i>=0)wiki[i]={...wiki[i],...r.page};else wiki.unshift(r.page);
+      await saveWiki(); sSave();
+    }
+  }catch(e){addMsg('chatlog','system','[ Yhteenvedon luonti epäonnistui ]')}
+}
+
+// Manuaalinen "lopeta"-nappi chatissa (tekstikeskustelu)
+async function endTextConversation(){
+  if(chatHistory.length<2){addMsg('chatlog','system','[ Ei riittävästi keskustelua yhteenvetoon ]');return}
+  addMsg('chatlog','system','[ Luodaan yhteenveto… ]');
+  await summarizeConv(chatHistory.slice(-20));
+  chatHistory=[];
+  $('#endConvBar').classList.remove('show');
+}
+
+function updateWakeUI(){
+  const btn=$('#wakeBtn'),bar=$('#wakebar'),dot=$('#wbdot'),txt=$('#wbtext'),wf=$('#waveform');
+  if(!btn) return;
+  btn.className=''; // reset
+  if(!wakeMode){
+    btn.textContent='◉ AINA PÄÄLLÄ';
+    bar.classList.remove('show');
+    return;
+  }
+  bar.classList.add('show');
+  if(jarvisSpeaking){
+    btn.className='speaking'; btn.textContent='◉ PUHUU';
+    dot.className='wb-dot a'; txt.textContent='J.A.R.V.I.S. PUHUU';
+    wf.style.display='none';
+    wf.querySelectorAll('span').forEach(s=>s.style.background='var(--amber)');
+  } else if(convActive){
+    btn.className='active'; btn.textContent='◉ KUUNTELEE';
+    dot.className='wb-dot r'; txt.textContent='KUUNTELEE…';
+    wf.style.display='flex';
+    wf.querySelectorAll('span').forEach(s=>s.style.background='var(--red)');
+  } else {
+    btn.className='idle'; btn.textContent='◉ PÄÄLLÄ';
+    dot.className='wb-dot c'; txt.textContent='ODOTTAA: "JARVIS"';
+    wf.style.display='none';
+  }
+}
+
+// Näytä "lopeta"-nappi kun tekstikeskustelussa on viestejä
+const origSendChat=$('#sendChat').onclick;
+$('#sendChat').onclick=()=>{
+  const v=$('#chatInput').value; $('#chatInput').value=''; sendChat(v);
+  setTimeout(()=>{ if(chatHistory.length>=2) $('#endConvBar').classList.add('show') },500);
+};
+
+// Käynnistä TTS-äänet heti kun selain lataa ne
+window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices();
 
 loadWiki();
 </script>
