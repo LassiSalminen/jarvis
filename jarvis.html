@@ -437,11 +437,17 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
       <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
       <div class="scan"></div>
       <h2>Järjestelmä</h2>
-      <div class="meter"><div class="lbl"><span>YDINTEHO</span><span class="val" id="m1v">98%</span></div><div class="track"><div class="fill ok" id="m1" style="width:98%"></div></div></div>
-      <div class="meter"><div class="lbl"><span>CORE TEMP</span><span class="val" id="m2v">42%</span></div><div class="track"><div class="fill warn" id="m2" style="width:42%"></div></div></div>
-      <div class="meter"><div class="lbl"><span>MUISTI</span><span class="val" id="m3v">61%</span></div><div class="track"><div class="fill ok" id="m3" style="width:61%"></div></div></div>
-      <div class="meter"><div class="lbl"><span>VERKKO</span><span class="val" id="m4v">87%</span></div><div class="track"><div class="fill ok" id="m4" style="width:87%"></div></div></div>
-      <div class="meter" style="margin-top:6px">
+      <div class="meter"><div class="lbl"><span>AKKU</span><span class="val" id="m1v">--</span></div><div class="track"><div class="fill ok" id="m1" style="width:0%"></div></div></div>
+      <div class="meter"><div class="lbl"><span>TALLENNUSTILA</span><span class="val" id="m2v">--</span></div><div class="track"><div class="fill ok" id="m2" style="width:0%"></div></div></div>
+      <div class="meter"><div class="lbl"><span>WIKI-SIVUT</span><span class="val" id="m3v" style="color:var(--cyan)">0</span></div><div class="track"><div class="fill ok" id="m3" style="width:0%"></div></div></div>
+      <div class="meter"><div class="lbl"><span>VERKKO</span><span class="val" id="m4v">--</span></div><div class="track"><div class="fill ok" id="m4" style="width:0%"></div></div></div>
+      <div class="meter" style="margin-top:2px">
+        <div class="lbl"><span>CPU-YTIMET</span><span class="val" id="mCpu" style="color:var(--cyan)">--</span></div>
+      </div>
+      <div class="meter">
+        <div class="lbl"><span>LAITEMUISTI</span><span class="val" id="mRam">--</span></div>
+      </div>
+      <div class="meter">
         <div class="lbl"><span>TIETOSIVUT</span><span class="val" id="nodecount" style="color:var(--cyan)">0</span></div>
       </div>
       <div class="geo-box">
@@ -754,16 +760,53 @@ function tick(){
 setInterval(tick,1000);tick();
 
 /* ===== METERS ===== */
-function jitter(){
-  const set=(id,base,range)=>{
-    const v=Math.round(base+(Math.random()*range-range/2));
-    $('#'+id).style.width=v+'%';$('#'+id+'v').textContent=v+'%';
-    const cls='fill '+(v>85?'crit':v>68?'warn':'ok');
-    if($('#'+id).className!==cls)$('#'+id).className=cls;
-  };
-  set('m1',96,5);set('m2',44,18);set('m3',61,16);set('m4',88,8);
+function setMeter(id,pct,label,cls){
+  const fill=$('#'+id),val=$('#'+id+'v');
+  if(!fill||!val)return;
+  fill.style.width=Math.min(100,Math.max(0,pct))+'%';
+  fill.className='fill '+(cls||(pct>85?'crit':pct>60?'warn':'ok'));
+  val.textContent=label;
 }
-setInterval(jitter,3000);
+
+async function updateSysMetrics(){
+  // Akku
+  if(navigator.getBattery){
+    try{
+      const b=await navigator.getBattery();
+      const pct=Math.round(b.level*100);
+      setMeter('m1',pct,(b.charging?'⚡ ':'')+pct+'%',b.charging?'ok':(pct<20?'crit':pct<50?'warn':'ok'));
+      b.onlevelchange=b.onchargingchange=updateSysMetrics;
+    }catch(e){setMeter('m1',0,'—')}
+  } else { $('#m1v').textContent='—'; }
+
+  // Tallennustila
+  if(navigator.storage?.estimate){
+    try{
+      const {usage,quota}=await navigator.storage.estimate();
+      const pct=Math.round((usage/quota)*100);
+      setMeter('m2',pct,(usage/1024/1024).toFixed(1)+' MB');
+    }catch(e){$('#m2v').textContent='—'}
+  }
+
+  // Verkko
+  const conn=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+  if(conn){
+    const type=conn.effectiveType||conn.type||'?';
+    const dl=conn.downlink?' '+conn.downlink+'M':'';
+    setMeter('m4',{'4g':95,'3g':60,'2g':30,'slow-2g':10}[type]||50,type+dl);
+    conn.onchange=updateSysMetrics;
+  } else {
+    setMeter('m4',navigator.onLine?80:0,navigator.onLine?'online':'offline');
+  }
+
+  // CPU + RAM (kerran riittää)
+  const mc=$('#mCpu'),mr=$('#mRam');
+  if(mc&&mc.textContent==='--') mc.textContent=(navigator.hardwareConcurrency||'?')+' ydintä';
+  if(mr&&mr.textContent==='--') mr.textContent=navigator.deviceMemory?navigator.deviceMemory+' GB':'?';
+}
+
+updateSysMetrics();
+setInterval(updateSysMetrics,30000);
 
 /* ===== GREETING ===== */
 (()=>{const h=new Date().getHours();const g=h<6?'Hyvää yötä':h<11?'Hyvää huomenta':h<17?'Hyvää päivää':'Hyvää iltaa';$('#greet').innerHTML=g+', <span>Lassi</span>'})();
@@ -858,15 +901,41 @@ function renderNews(items){
   ts.style.cssText='font-size:9px;color:var(--txt-dim);opacity:.5;margin-bottom:4px;font-family:Share Tech Mono';
   ts.textContent='PÄIVITETTY '+new Date().toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'});
   feed.appendChild(ts);
+  // "Lue kaikki" -nappi
+  const readAllBtn=document.createElement('button');
+  readAllBtn.style.cssText='width:100%;background:none;border:1px solid var(--line);color:var(--cyan);font-family:Orbitron,sans-serif;font-size:10px;letter-spacing:.1em;padding:5px;cursor:pointer;border-radius:2px;margin-bottom:5px';
+  readAllBtn.textContent='▶ LUE KAIKKI UUTISET';
+  readAllBtn.onclick=()=>readAllNews(items);
+  feed.appendChild(readAllBtn);
+
   items.forEach(item=>{
+    const wrap=document.createElement('div');
+    wrap.style.cssText='display:flex;gap:5px;align-items:flex-start';
+
     const a=document.createElement('a');
     a.className='news-card';
+    a.style.flex='1';
     a.href=item.link||'#';
     a.target='_blank';
     a.rel='noopener';
     a.innerHTML=`<div class="nr">${esc(item.source||'')}</div><div class="nt">${esc(item.title)}</div><div class="ns">${esc(item.reason||'')}</div>`;
-    feed.appendChild(a);
+
+    const btn=document.createElement('button');
+    btn.style.cssText='background:none;border:1px solid var(--line);color:var(--cyan);font-size:10px;padding:4px 7px;cursor:pointer;border-radius:2px;margin-top:2px;flex-shrink:0';
+    btn.textContent='▶';
+    btn.title='Lue ääneen';
+    btn.onclick=()=>speakTTS(`${item.title}. ${item.reason||''}`);
+
+    wrap.appendChild(a);
+    wrap.appendChild(btn);
+    feed.appendChild(wrap);
   });
+}
+
+async function readAllNews(items){
+  if(!items||!items.length) return;
+  const txt='Tässä tämän hetken uutiset. '+items.map((it,i)=>`${i+1}: ${it.title}. ${it.reason||''}`).join(' ');
+  await speakTTS(txt);
 }
 
 // Automaattinen haku aamulla (klo 6–10) tai jos yli 3h sitten
@@ -943,6 +1012,12 @@ function buildContext(){
   const hasEx=wiki.some(w=>w.id===`harjoitus-${today}`);
   if(!hasFood) lines.push('Tänään ei ole kirjattu ruokailuja.');
   if(!hasEx) lines.push('Tänään ei ole kirjattu harjoitusta.');
+
+  // Uutiset — jos haettu, lisää kontekstiin
+  if(newsCache && newsCache.length){
+    const age=Math.round((Date.now()-newsCacheTs)/60000);
+    lines.push(`Tuoreimmat uutiset (haettu ${age} min sitten):\n`+newsCache.map((n,i)=>`${i+1}. ${n.title} — ${n.reason||''}`).join('\n'));
+  }
 
   return lines.length ? '\n\n[KÄYTTÖKONTEKSTI]\n'+lines.join('\n') : '';
 }
@@ -1126,6 +1201,8 @@ function renderWiki(){
   const n=wiki.length;
   $('#nodecount').textContent=n;
   const hw=$('#hd-wiki');if(hw)hw.textContent=n;
+  // Päivitä wiki-mittari — max 100 sivua = 100%
+  setMeter('m3',Math.min(100,n),n+' sivua','ok');
   const list=$('#wikiList');list.innerHTML='';
   if(!n){list.innerHTML='<div class="empty">Tietopankki on tyhjä.\n\nSyötä tietoa alle — esim.\n"Tänään opin että transformerit käyttävät self-attention-mekanismia"\n\nJ.A.R.V.I.S. organisoi sen wikiksi automaattisesti.</div>';return}
   wiki.forEach(w=>{
