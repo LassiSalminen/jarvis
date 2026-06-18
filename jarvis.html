@@ -96,9 +96,52 @@ header::after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:1px
 /* ===== MAIN GRID ===== */
 main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:12px;min-height:0;
   position:relative;z-index:10;overflow:hidden}
-@media(max-width:880px){
-  main{grid-template-columns:1fr}
+@media(max-width:768px){
+  /* Header */
+  header{padding:8px 12px}
+  .hdr-mid{display:none}
+  .brand{font-size:15px}
+  .brand small{display:none}
+  .brand::before,.brand::after{font-size:15px}
+  .clock{font-size:17px}
+  .clock small{font-size:9px}
+  #wakeBtn{font-size:10px;padding:0 10px;height:34px}
+
+  /* Mobiili-infobar sään ja sähkön alle headerin */
+  #mobileBar{display:flex !important}
+
+  /* Main */
+  main{grid-template-columns:1fr;gap:6px;padding:6px}
   .side-left,.side-right{display:none}
+
+  /* Tabs */
+  .tabs{gap:0;overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{font-size:10px;padding:8px 14px;letter-spacing:.15em;white-space:nowrap;flex-shrink:0}
+
+  /* Reaktori pienempi */
+  .reactor-wrap{padding:8px 0 0}
+  .reactor{width:100px;height:100px}
+  .reactor .ring{border-width:1px}
+  .reactor .core{width:28px;height:28px}
+  .reactor .arc{border-width:2px}
+  .greeting{font-size:13px}
+  .status-line{font-size:10px}
+  .home-stats{gap:18px}
+  .hstat .v{font-size:15px}
+  .hstat .l{font-size:8px}
+  .ticker{font-size:8px}
+
+  /* Chat */
+  .inputbar{padding:6px 8px}
+  .log{padding:8px}
+  .msg{font-size:14px;max-width:95%}
+
+  /* Overlay */
+  .overlay .body{font-size:13px}
+
+  /* Wakebar */
+  #wakebar{font-size:11px;padding:6px 10px}
 }
 
 /* ===== PANEL ===== */
@@ -450,6 +493,11 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
     </div>
   </div>
 </header>
+<div id="mobileBar" style="display:none;align-items:center;justify-content:space-between;padding:4px 12px;background:rgba(0,20,40,.85);border-bottom:1px solid var(--cyan-dim);font-size:11px;letter-spacing:.1em;color:var(--txt-dim)">
+  <span id="mbar-weather">— °C</span>
+  <span id="mbar-elec">— snt/kWh</span>
+  <span id="mbar-time2" style="color:var(--cyan)"></span>
+</div>
 
 <main>
   <!-- LEFT -->
@@ -797,6 +845,7 @@ function tick(){
   const d=new Date();
   $('#time').textContent=d.toLocaleTimeString('fi-FI');
   $('#date').textContent=d.toLocaleDateString('fi-FI',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();
+  const mb2=document.getElementById('mbar-time2');if(mb2)mb2.textContent=d.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'});
 }
 setInterval(tick,1000);tick();
 
@@ -857,9 +906,11 @@ async function weather(){
   try{
     const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=60.95&longitude=25.93&current=temperature_2m,weather_code');
     const d=await r.json();
-    $('#wTemp').textContent=Math.round(d.current.temperature_2m)+'°';
+    const temp=Math.round(d.current.temperature_2m);
+    $('#wTemp').textContent=temp+'°';
     const codes={0:'Selkeää',1:'Enimmäkseen selkeää',2:'Puolipilvistä',3:'Pilvistä',45:'Sumua',48:'Sumua',51:'Tihkua',61:'Sadetta',63:'Sadetta',65:'Rankkasade',71:'Lumisadetta',73:'Lumisadetta',75:'Runsas lumisade',80:'Sadekuuroja',95:'Ukkosta'};
     $('#wDesc').textContent=codes[d.current.weather_code]||'—';
+    const mb=document.getElementById('mbar-weather');if(mb)mb.textContent=temp+'°C';
   }catch(e){$('#wDesc').textContent='Ei yhteyttä'}
 }
 weather();setInterval(weather,600000);
@@ -883,6 +934,7 @@ async function fetchElectric(){
       const col=c<5?'#00ff88':c<15?'var(--cyan)':'#ff4466';
       $('#elPrice').style.color=col;
       $('#elStatus').textContent=c<5?'HALPA':c<15?'NORMAALI':'KALLIS';
+      const mb=document.getElementById('mbar-elec');if(mb){mb.textContent=c.toFixed(1)+' snt/kWh';mb.style.color=col;}
     }
     // Pylväskaavio seuraavat 12h
     const bar=$('#elBar');
