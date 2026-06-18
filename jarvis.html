@@ -113,12 +113,12 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
   #mobileBar{display:none!important}
 
   /* Main: täyttää tilan bottom nav pois lukien */
-  main{grid-template-columns:1fr;padding:0;gap:0;overflow:visible;
+  main{grid-template-columns:1fr;padding:0;gap:0;overflow:hidden;
     padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
   .side-left,.side-right{display:none}
 
-  /* Center */
-  .center{gap:0}
+  /* Center: overflow:hidden estää näkymien vuotamisen */
+  .center{gap:0;overflow:hidden}
   .tabs{display:none}
   .view.panel{border:none;border-top:1px solid var(--line);border-radius:0}
   .view .c{display:none}
@@ -512,10 +512,11 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
   <div id="blines"></div>
   <div id="bbar-w"><div id="bbar"></div></div>
   <div id="bfin">JÄRJESTELMÄ VERKOSSA — TERVETULOA, LASSI</div>
+  <div id="bver" style="margin-top:8px;font-size:10px;letter-spacing:.2em;color:var(--txt-dim);opacity:0;transition:opacity .5s .4s"></div>
 </div>
 
 <header>
-  <div class="brand">J.A.R.V.I.S.<small>JUST A RATHER VERY INTELLIGENT SYSTEM</small></div>
+  <div class="brand">J.A.R.V.I.S.<small id="brandSub">JUST A RATHER VERY INTELLIGENT SYSTEM</small></div>
   <div class="hdr-mid">
     <div class="sys-pills">
       <div class="pill"><div class="pill-dot"></div>YDIN</div>
@@ -604,7 +605,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
           <div class="hstat"><span class="v" id="hd-up">0:00</span><span class="l">UPTIME</span></div>
         </div>
       </div>
-      <div class="ticker"><span class="ticker-inner">JARVIS v2.0 ONLINE &nbsp;·&nbsp; NASTOLA COMMAND CENTER &nbsp;·&nbsp; KAIKKI JÄRJESTELMÄT NORMAALITILASSA &nbsp;·&nbsp; TIETOPANKKI SYNKRONOITU &nbsp;·&nbsp; CLAUDE SONNET 4.6 AKTIIVINEN &nbsp;·&nbsp; SIJAINTI: 60.9500°N 25.9300°E &nbsp;·&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+      <div class="ticker"><span class="ticker-inner" id="tickerInner">JARVIS v2.2 ONLINE &nbsp;·&nbsp; NASTOLA COMMAND CENTER &nbsp;·&nbsp; KAIKKI JÄRJESTELMÄT NORMAALITILASSA &nbsp;·&nbsp; TIETOPANKKI SYNKRONOITU &nbsp;·&nbsp; CLAUDE SONNET 4.6 AKTIIVINEN &nbsp;·&nbsp; SIJAINTI: 60.9500°N 25.9300°E &nbsp;·&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
     </div>
 
     <!-- LEARN -->
@@ -802,6 +803,8 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 </div>
 
 <script>
+const VERSION="2.2";
+const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 const API_MODEL="claude-sonnet-4-6";
 const $=s=>document.querySelector(s);
 const WORKER_URL="https://jarvis.lassi-salminen3.workers.dev";
@@ -897,11 +900,14 @@ const sBoot=()=>{tone(220,.2,.06);setTimeout(()=>tone(440,.15,.05),200);setTimeo
 
 /* ===== BOOT ===== */
 (()=>{
-  const lines=['INITIALISOIDAAN J.A.R.V.I.S. v2.0...','LADATAAN YDINMODUULIT... OK','TARKISTETAAN VERKKO... OK','YHDISTETÄÄN CLOUDFLARE KV... OK','LADATAAN CLAUDE SONNET 4.6... OK','AKTIVOIDAAN HOLOGRAFINEN LIITTYMÄ... OK','TARKISTETAAN SIJAINTI: NASTOLA 60.95°N... OK','KALIBROI SÄÄASEMA... OK','KAIKKI JÄRJESTELMÄT VALMIINA.'];
+  const lines=[`INITIALISOIDAAN J.A.R.V.I.S. v${VERSION}...`,'LADATAAN YDINMODUULIT... OK','TARKISTETAAN VERKKO... OK','YHDISTETÄÄN CLOUDFLARE KV... OK','LADATAAN CLAUDE SONNET 4.6... OK','AKTIVOIDAAN HOLOGRAFINEN LIITTYMÄ... OK','TARKISTETAAN SIJAINTI: NASTOLA 60.95°N... OK','KALIBROI SÄÄASEMA... OK','KAIKKI JÄRJESTELMÄT VALMIINA.'];
   const bl=$('#blines'),bar=$('#bbar'),fin=$('#bfin');
   let i=0;
   const next=()=>{
-    if(i>=lines.length){fin.style.opacity='1';sBoot();setTimeout(()=>{$('#boot').classList.add('done');setTimeout(()=>$('#boot').style.display='none',600)},900);return}
+    if(i>=lines.length){
+      fin.style.opacity='1';
+      const bv=$('#bver');if(bv){bv.textContent=`v${VERSION} · ${BUILD}`;bv.style.opacity='1';}
+      sBoot();setTimeout(()=>{$('#boot').classList.add('done');setTimeout(()=>$('#boot').style.display='none',600)},900);return}
     const d=document.createElement('div');d.className='bl';d.textContent='> '+lines[i];bl.appendChild(d);
     bar.style.width=((i+1)/lines.length*100)+'%';
     i++;setTimeout(next,160+Math.random()*100);
@@ -949,6 +955,14 @@ async function saveWiki(){
   renderWiki();
 }
 async function saveRaw(){try{localStorage.setItem('jarvis:raw',JSON.stringify(rawLog))}catch(e){}}
+
+/* ===== VERSION ===== */
+(()=>{
+  const t=$('#tickerInner');
+  if(t)t.textContent=`JARVIS v${VERSION} ONLINE  ·  NASTOLA COMMAND CENTER  ·  KAIKKI JÄRJESTELMÄT NORMAALITILASSA  ·  TIETOPANKKI SYNKRONOITU  ·  CLAUDE SONNET 4.6 AKTIIVINEN  ·  SIJAINTI: 60.9500°N 25.9300°E  ·  BUILD ${BUILD}  ·     `;
+  const bs=$('#brandSub');
+  if(bs)bs.textContent=`v${VERSION} · JUST A RATHER VERY INTELLIGENT SYSTEM`;
+})();
 
 /* ===== CLOCK ===== */
 function tick(){
