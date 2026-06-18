@@ -97,51 +97,62 @@ header::after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:1px
 main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:12px;min-height:0;
   position:relative;z-index:10;overflow:hidden}
 @media(max-width:768px){
-  /* Header */
-  header{padding:8px 12px}
+  html,body{height:100dvh}
+
+  /* Header compact */
+  header{padding:8px 14px;height:52px;min-height:52px;flex-shrink:0}
   .hdr-mid{display:none}
-  .brand{font-size:15px}
+  .brand{font-size:14px}
   .brand small{display:none}
-  .brand::before,.brand::after{font-size:15px}
-  .clock{font-size:17px}
-  .clock small{font-size:9px}
-  #wakeBtn{font-size:10px;padding:0 10px;height:34px}
+  .brand::before,.brand::after{font-size:14px}
+  .clock{font-size:18px}
+  .clock small{display:none}
+  #wakeBtn{font-size:9px;padding:0 10px;height:30px;letter-spacing:.1em}
 
-  /* Mobiili-infobar sään ja sähkön alle headerin */
-  #mobileBar{display:flex !important}
+  /* mobileBar off — info-tab hoitaa */
+  #mobileBar{display:none!important}
 
-  /* Main */
-  main{grid-template-columns:1fr;gap:6px;padding:6px}
+  /* Main: täyttää tilan bottom nav pois lukien */
+  main{grid-template-columns:1fr;padding:0;gap:0;overflow:visible;
+    padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
   .side-left,.side-right{display:none}
 
-  /* Tabs */
-  .tabs{gap:0;overflow-x:auto;scrollbar-width:none}
-  .tabs::-webkit-scrollbar{display:none}
-  .tab{font-size:10px;padding:8px 14px;letter-spacing:.15em;white-space:nowrap;flex-shrink:0}
+  /* Center */
+  .center{gap:0}
+  .tabs{display:none}
+  .view.panel{border:none;border-top:1px solid var(--line);border-radius:0}
+  .view .c{display:none}
+  .view .scan{display:none}
 
-  /* Reaktori pienempi */
-  .reactor-wrap{padding:8px 0 0}
-  .reactor{width:100px;height:100px}
-  .reactor .ring{border-width:1px}
-  .reactor .core{width:28px;height:28px}
-  .reactor .arc{border-width:2px}
-  .greeting{font-size:13px}
-  .status-line{font-size:10px}
-  .home-stats{gap:18px}
-  .hstat .v{font-size:15px}
-  .hstat .l{font-size:8px}
+  /* HUD reaktori: scale-trikki säilyttää sisäiset mitat */
+  .reactor-wrap{padding-top:20px;gap:10px}
+  .reactor{transform:scale(0.6);margin:-48px}
+  .greeting{font-size:14px}
+  .status-line{font-size:11px}
+  .home-stats{gap:20px}
+  .hstat .v{font-size:18px}
+  .hstat .l{font-size:9px}
   .ticker{font-size:8px}
 
   /* Chat */
-  .inputbar{padding:6px 8px}
-  .log{padding:8px}
-  .msg{font-size:14px;max-width:95%}
+  .log{padding:10px}
+  .msg{font-size:14px;max-width:96%}
+  .inputbar{padding:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+  .inputbar input{font-size:16px}/* estää iOS-zoomin */
+
+  /* Knowledge */
+  #knowlog{max-height:22%}
+  #fileDropZone{margin:6px;font-size:9px}
 
   /* Overlay */
-  .overlay .body{font-size:13px}
+  .overlay{padding:16px}
+  .overlay .body{font-size:14px}
 
-  /* Wakebar */
-  #wakebar{font-size:11px;padding:6px 10px}
+  /* Wakebar bottom naviin nähden */
+  #wakebar{bottom:calc(60px + env(safe-area-inset-bottom,0px));font-size:11px;padding:7px 14px}
+
+  /* Mobiili bottom nav näkyviin */
+  #mobileNav{display:flex!important}
 }
 
 /* ===== PANEL ===== */
@@ -449,6 +460,35 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 #endConvBar{display:none;padding:6px 10px;border-top:1px solid var(--line);background:rgba(0,5,12,.9);
   flex-shrink:0;gap:8px;align-items:center}
 #endConvBar.show{display:flex}
+
+/* ===== MOBILE BOTTOM NAV ===== */
+#mobileNav{
+  position:fixed;bottom:0;left:0;right:0;z-index:45;
+  background:rgba(0,3,10,.97);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  height:calc(60px + env(safe-area-inset-bottom,0px));
+  display:none;backdrop-filter:blur(12px);
+}
+.mnav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:8px 0 6px;background:none;border:none;cursor:pointer;
+  font-family:'Orbitron';color:var(--txt-dim);gap:3px;transition:.15s;
+  border-top:2px solid transparent;-webkit-tap-highlight-color:transparent;
+}
+.mnav-btn.active{color:var(--cyan);border-top-color:var(--cyan);
+  text-shadow:0 0 10px var(--cyan-glow);background:rgba(0,229,255,.04)}
+.mnav-icon{font-size:18px;line-height:1;font-style:normal}
+.mnav-lbl{font-size:8px;letter-spacing:.18em}
+
+/* ===== MOBILE INFO VIEW ===== */
+.m-cards{overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;flex:1;
+  scrollbar-width:thin;scrollbar-color:var(--cyan-dim) transparent}
+.m-card{background:rgba(0,8,18,.9);border:1px solid var(--line);border-left:2px solid var(--cyan);
+  border-radius:2px;padding:14px;flex-shrink:0}
+.m-card-title{font-family:'Orbitron';font-size:10px;letter-spacing:.25em;color:var(--cyan);
+  margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.m-card-title .m-refresh{background:none;border:1px solid var(--line);color:var(--cyan);
+  font-family:'Orbitron';font-size:9px;letter-spacing:.1em;padding:3px 8px;cursor:pointer;border-radius:2px}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
@@ -622,6 +662,57 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
         <button class="btn" id="sendKnow">TALLENNA</button>
       </div>
     </div>
+    <!-- INFO (mobiili) -->
+    <div class="view panel" id="view-info">
+      <div class="m-cards">
+        <div class="m-card">
+          <div class="m-card-title">SAÄ · NASTOLA</div>
+          <div style="display:flex;gap:16px;align-items:center">
+            <span id="m-wTemp" style="font-family:'Orbitron';font-size:44px;font-weight:700;color:var(--cyan);text-shadow:0 0 20px var(--cyan-glow);line-height:1">--°</span>
+            <div>
+              <div id="m-wDesc" style="font-size:15px;color:var(--txt)">Haetaan…</div>
+              <div style="font-size:10px;color:var(--txt-dim);letter-spacing:.15em;margin-top:4px">NASTOLA, FI · 60.95°N</div>
+            </div>
+          </div>
+        </div>
+        <div class="m-card">
+          <div class="m-card-title">SÄHKÖ · SPOT-HINTA</div>
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span id="m-elPrice" style="font-family:'Orbitron';font-size:36px;font-weight:700;color:var(--cyan)">--</span>
+            <span style="font-size:13px;color:var(--txt-dim)">snt/kWh</span>
+            <span id="m-elStatus" style="font-size:12px;margin-left:auto;font-family:'Orbitron';letter-spacing:.1em"></span>
+          </div>
+          <div id="m-elBar" style="display:flex;gap:2px;margin-top:8px;height:28px;align-items:flex-end"></div>
+          <div style="font-size:9px;color:var(--txt-dim);margin-top:3px;opacity:.5;letter-spacing:.1em">SEURAAVAT 12H</div>
+        </div>
+        <div class="m-card">
+          <div class="m-card-title">JÄRJESTELMÄ</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+            <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">AKKU<br></span><span id="m-bat" style="color:var(--cyan)">--</span></div>
+            <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">VERKKO<br></span><span id="m-net" style="color:var(--cyan)">--</span></div>
+            <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">WIKI-SIVUT<br></span><span id="m-wiki" style="color:var(--cyan)">--</span></div>
+            <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">SIJAINTI<br></span><span style="color:var(--cyan)">NASTOLA</span></div>
+          </div>
+        </div>
+        <div class="m-card">
+          <div class="m-card-title">PIKAKOMENNOT</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn ghost" data-q="Mikä on tilanneraportti?" style="font-size:13px;min-height:44px;text-align:left;padding:0 14px">Tilanneraportti</button>
+            <button class="btn ghost" data-q="Mitä minun tulisi tehdä seuraavaksi?" style="font-size:13px;min-height:44px;text-align:left;padding:0 14px">Seuraava askel</button>
+            <button class="btn ghost" data-q="Anna yhteenveto kaikesta tallennetusta tiedosta" style="font-size:13px;min-height:44px;text-align:left;padding:0 14px">Tiedon yhteenveto</button>
+          </div>
+        </div>
+        <div class="m-card">
+          <div class="m-card-title">
+            UUTISET
+            <button class="m-refresh" onclick="fetchNews(true)">⟳ PÄIVITÄ</button>
+          </div>
+          <div id="m-newsFeed" style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:11px;color:var(--txt-dim)">Haetaan…</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- RIGHT -->
@@ -682,6 +773,25 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
   <button class="end-btn" onclick="endConversation(false)">✕ LOPETA</button>
   <button class="end-btn" onclick="toggleWake()" style="border-color:rgba(0,229,255,.3);color:var(--txt-dim)">SAMMUTA</button>
 </div>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav id="mobileNav" style="display:none">
+  <button class="mnav-btn active" data-view="home" onclick="mobileSwitch('home')">
+    <i class="mnav-icon">◉</i><span class="mnav-lbl">HUD</span>
+  </button>
+  <button class="mnav-btn" data-view="chat" onclick="mobileSwitch('chat')">
+    <i class="mnav-icon">◎</i><span class="mnav-lbl">CHAT</span>
+  </button>
+  <button class="mnav-btn" data-view="know" onclick="mobileSwitch('know')">
+    <i class="mnav-icon">◈</i><span class="mnav-lbl">TIETO</span>
+  </button>
+  <button class="mnav-btn" data-view="learn" onclick="mobileSwitch('learn')">
+    <i class="mnav-icon">◧</i><span class="mnav-lbl">OPPI</span>
+  </button>
+  <button class="mnav-btn" data-view="info" onclick="mobileSwitch('info')">
+    <i class="mnav-icon">⊞</i><span class="mnav-lbl">INFO</span>
+  </button>
+</nav>
 
 <!-- WIKI OVERLAY -->
 <div class="overlay" id="overlay">
@@ -865,6 +975,7 @@ async function updateSysMetrics(){
       const b=await navigator.getBattery();
       const pct=Math.round(b.level*100);
       setMeter('m1',pct,(b.charging?'⚡ ':'')+pct+'%',b.charging?'ok':(pct<20?'crit':pct<50?'warn':'ok'));
+      const mBat=document.getElementById('m-bat');if(mBat)mBat.textContent=(b.charging?'⚡ ':'')+pct+'%';
       b.onlevelchange=b.onchargingchange=updateSysMetrics;
     }catch(e){setMeter('m1',0,'—')}
   } else { $('#m1v').textContent='—'; }
@@ -884,9 +995,12 @@ async function updateSysMetrics(){
     const type=conn.effectiveType||conn.type||'?';
     const dl=conn.downlink?' '+conn.downlink+'M':'';
     setMeter('m4',{'4g':95,'3g':60,'2g':30,'slow-2g':10}[type]||50,type+dl);
+    const mNet=document.getElementById('m-net');if(mNet)mNet.textContent=type+(dl||'');
     conn.onchange=updateSysMetrics;
   } else {
-    setMeter('m4',navigator.onLine?80:0,navigator.onLine?'online':'offline');
+    const s=navigator.onLine?'online':'offline';
+    setMeter('m4',navigator.onLine?80:0,s);
+    const mNet=document.getElementById('m-net');if(mNet)mNet.textContent=s;
   }
 
   // CPU + RAM (kerran riittää)
@@ -909,8 +1023,10 @@ async function weather(){
     const temp=Math.round(d.current.temperature_2m);
     $('#wTemp').textContent=temp+'°';
     const codes={0:'Selkeää',1:'Enimmäkseen selkeää',2:'Puolipilvistä',3:'Pilvistä',45:'Sumua',48:'Sumua',51:'Tihkua',61:'Sadetta',63:'Sadetta',65:'Rankkasade',71:'Lumisadetta',73:'Lumisadetta',75:'Runsas lumisade',80:'Sadekuuroja',95:'Ukkosta'};
-    $('#wDesc').textContent=codes[d.current.weather_code]||'—';
-    const mb=document.getElementById('mbar-weather');if(mb)mb.textContent=temp+'°C';
+    const desc=codes[d.current.weather_code]||'—';
+    $('#wDesc').textContent=desc;
+    const mT=document.getElementById('m-wTemp');if(mT)mT.textContent=temp+'°';
+    const mD=document.getElementById('m-wDesc');if(mD)mD.textContent=desc;
   }catch(e){$('#wDesc').textContent='Ei yhteyttä'}
 }
 weather();setInterval(weather,600000);
@@ -932,25 +1048,29 @@ async function fetchElectric(){
       $('#elPrice').textContent=c.toFixed(1);
       // Väri: vihreä <5, keltainen 5-15, punainen >15
       const col=c<5?'#00ff88':c<15?'var(--cyan)':'#ff4466';
+      const status=c<5?'HALPA':c<15?'NORMAALI':'KALLIS';
       $('#elPrice').style.color=col;
-      $('#elStatus').textContent=c<5?'HALPA':c<15?'NORMAALI':'KALLIS';
-      const mb=document.getElementById('mbar-elec');if(mb){mb.textContent=c.toFixed(1)+' snt/kWh';mb.style.color=col;}
+      $('#elStatus').textContent=status;
+      const mP=document.getElementById('m-elPrice');if(mP){mP.textContent=c.toFixed(1);mP.style.color=col;}
+      const mS=document.getElementById('m-elStatus');if(mS){mS.textContent=status;mS.style.color=col;}
     }
     // Pylväskaavio seuraavat 12h
-    const bar=$('#elBar');
-    bar.innerHTML='';
     const upcoming=prices.filter(p=>new Date(p.startDate)>=now).slice(0,12);
-    if(upcoming.length){
-      const mx=Math.max(...upcoming.map(p=>p.price),0.1);
-      upcoming.forEach(p=>{
-        const h=Math.max(2,Math.round((p.price/mx)*18));
-        const col=p.price<5?'#00ff88':p.price<15?'var(--cyan)':'#ff4466';
-        const el=document.createElement('div');
-        el.style.cssText=`flex:1;height:${h}px;background:${col};opacity:.7;border-radius:1px`;
-        el.title=new Date(p.startDate).getHours()+'h: '+p.price.toFixed(1)+' snt';
-        bar.appendChild(el);
-      });
-    }
+    ['#elBar','#m-elBar'].forEach(sel=>{
+      const bar=document.querySelector(sel);if(!bar)return;
+      bar.innerHTML='';
+      if(upcoming.length){
+        const mx=Math.max(...upcoming.map(p=>p.price),0.1);
+        upcoming.forEach(p=>{
+          const h=Math.max(2,Math.round((p.price/mx)*24));
+          const col=p.price<5?'#00ff88':p.price<15?'var(--cyan)':'#ff4466';
+          const el=document.createElement('div');
+          el.style.cssText=`flex:1;height:${h}px;background:${col};opacity:.7;border-radius:1px`;
+          el.title=new Date(p.startDate).getHours()+'h: '+p.price.toFixed(1)+' snt';
+          bar.appendChild(el);
+        });
+      }
+    });
   }catch(e){$('#elStatus').textContent='–'}
 }
 fetchElectric();setInterval(fetchElectric,1800000);
@@ -987,42 +1107,36 @@ Palauta VAIN JSON-array, max 6 parasta, järjestettynä relevanteimmasta:
   }
 }
 
-function renderNews(items){
-  const feed=$('#newsFeed');
-  feed.innerHTML='';
+function buildNewsFeed(container, items){
+  container.innerHTML='';
   const ts=document.createElement('div');
   ts.style.cssText='font-size:9px;color:var(--txt-dim);opacity:.5;margin-bottom:4px;font-family:Share Tech Mono';
   ts.textContent='PÄIVITETTY '+new Date().toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'});
-  feed.appendChild(ts);
-  // "Lue kaikki" -nappi
+  container.appendChild(ts);
   const readAllBtn=document.createElement('button');
   readAllBtn.style.cssText='width:100%;background:none;border:1px solid var(--line);color:var(--cyan);font-family:Orbitron,sans-serif;font-size:10px;letter-spacing:.1em;padding:5px;cursor:pointer;border-radius:2px;margin-bottom:5px';
   readAllBtn.textContent='▶ LUE KAIKKI UUTISET';
   readAllBtn.onclick=()=>readAllNews(items);
-  feed.appendChild(readAllBtn);
-
+  container.appendChild(readAllBtn);
   items.forEach(item=>{
     const wrap=document.createElement('div');
     wrap.style.cssText='display:flex;gap:5px;align-items:flex-start';
-
     const a=document.createElement('a');
-    a.className='news-card';
-    a.style.flex='1';
-    a.href=item.link||'#';
-    a.target='_blank';
-    a.rel='noopener';
+    a.className='news-card';a.style.flex='1';a.href=item.link||'#';a.target='_blank';a.rel='noopener';
     a.innerHTML=`<div class="nr">${esc(item.source||'')}</div><div class="nt">${esc(item.title)}</div><div class="ns">${esc(item.reason||'')}</div>`;
-
     const btn=document.createElement('button');
     btn.style.cssText='background:none;border:1px solid var(--line);color:var(--cyan);font-size:10px;padding:4px 7px;cursor:pointer;border-radius:2px;margin-top:2px;flex-shrink:0';
-    btn.textContent='▶';
-    btn.title='Lue ääneen';
+    btn.textContent='▶';btn.title='Lue ääneen';
     btn.onclick=()=>speakTTS(`${item.title}. ${item.reason||''}`);
-
-    wrap.appendChild(a);
-    wrap.appendChild(btn);
-    feed.appendChild(wrap);
+    wrap.appendChild(a);wrap.appendChild(btn);container.appendChild(wrap);
   });
+}
+
+function renderNews(items){
+  const feed=$('#newsFeed');
+  if(feed)buildNewsFeed(feed,items);
+  const mFeed=document.getElementById('m-newsFeed');
+  if(mFeed)buildNewsFeed(mFeed,items);
 }
 
 async function readAllNews(items){
@@ -1040,8 +1154,23 @@ async function readAllNews(items){
 
 /* ===== TABS ===== */
 document.querySelectorAll('.tab').forEach(t=>{
-  t.onclick=()=>{sClick();document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('#view-'+t.dataset.view).classList.add('active')};
+  t.onclick=()=>{sClick();document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('#view-'+t.dataset.view).classList.add('active');
+  if(t.dataset.view==='learn')setTimeout(renderLearnUI,50);
+  };
 });
+
+/* ===== MOBILE NAV ===== */
+function mobileSwitch(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  const view=document.getElementById('view-'+v);
+  if(view)view.classList.add('active');
+  document.querySelectorAll('.mnav-btn').forEach(x=>x.classList.remove('active'));
+  const btn=document.querySelector('.mnav-btn[data-view="'+v+'"]');
+  if(btn)btn.classList.add('active');
+  if(v==='learn')setTimeout(renderLearnUI,50);
+  sClick();
+}
 
 /* ===== CLAUDE ===== */
 async function askClaude(system,messages){
@@ -1134,7 +1263,11 @@ function typewrite(el,txt){el.textContent='';let i=0;const s=()=>{if(i<txt.lengt
 
 $('#sendChat').onclick=()=>{const v=$('#chatInput').value;$('#chatInput').value='';sendChat(v)};
 $('#chatInput').onkeydown=e=>{if(e.key==='Enter')$('#sendChat').click()};
-document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{sClick();document.querySelector('.tab[data-view="chat"]').click();sendChat(b.dataset.q)});
+document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{
+  if(window.innerWidth<=768)mobileSwitch('chat');
+  else document.querySelector('.tab[data-view="chat"]').click();
+  sendChat(b.dataset.q);
+});
 
 /* ===== KNOWLEDGE ===== */
 async function processKnowledge(text){
@@ -1513,7 +1646,7 @@ function renderWiki(){
   const n=wiki.length;
   $('#nodecount').textContent=n;
   const hw=$('#hd-wiki');if(hw)hw.textContent=n;
-  // Päivitä wiki-mittari — max 100 sivua = 100%
+  const mw=document.getElementById('m-wiki');if(mw)mw.textContent=n+' sivua';
   setMeter('m3',Math.min(100,n),n+' sivua','ok');
   const list=$('#wikiList');list.innerHTML='';
   if(!n){list.innerHTML='<div class="empty">Tietopankki on tyhjä.\n\nSyötä tietoa alle — esim.\n"Tänään opin että transformerit käyttävät self-attention-mekanismia"\n\nJ.A.R.V.I.S. organisoi sen wikiksi automaattisesti.</div>';return}
