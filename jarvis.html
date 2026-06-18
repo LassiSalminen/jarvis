@@ -115,11 +115,11 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
   /* Main: täyttää tilan bottom nav pois lukien */
   main{grid-template-columns:1fr;padding:0;gap:0;overflow:hidden;
     padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
-  .side-left,.side-right{display:none}
+  .side-left,.side-right{display:none!important}
 
   /* Center: overflow:hidden estää näkymien vuotamisen */
   .center{gap:0;overflow:hidden}
-  .tabs{display:none}
+  .tabs{display:none!important}
   .view.panel{border:none;border-top:1px solid var(--line);border-radius:0}
   .view .c{display:none}
   .view .scan{display:none}
