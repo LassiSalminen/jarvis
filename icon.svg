@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#000509"/>
+  <circle cx="256" cy="256" r="220" fill="none" stroke="#00e5ff" stroke-width="3" opacity="0.15"/>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#00e5ff" stroke-width="6" stroke-dasharray="20 10" opacity="0.5"/>
+  <circle cx="256" cy="256" r="155" fill="none" stroke="#00e5ff" stroke-width="2" opacity="0.2"/>
+  <circle cx="256" cy="256" r="120" fill="none" stroke="#00e5ff" stroke-width="4" opacity="0.4"/>
+  <circle cx="256" cy="256" r="82" fill="none" stroke="#00e5ff" stroke-width="8" opacity="0.7"/>
+  <circle cx="256" cy="256" r="56" fill="#001820"/>
+  <circle cx="256" cy="256" r="50" fill="none" stroke="#00e5ff" stroke-width="3" opacity="0.9"/>
+  <radialGradient id="g" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#ffffff"/>
+    <stop offset="30%" stop-color="#c0f8ff"/>
+    <stop offset="70%" stop-color="#00e5ff"/>
+    <stop offset="100%" stop-color="#003040" stop-opacity="0"/>
+  </radialGradient>
+  <circle cx="256" cy="256" r="40" fill="url(#g)"/>
+  <circle cx="256" cy="256" r="40" fill="#00e5ff" opacity="0.85"/>
+  <circle cx="256" cy="256" r="22" fill="white"/>
+</svg>
