@@ -158,6 +158,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
   /* HUD reaktori: scale-trikki säilyttää sisäiset mitat */
   .reactor-wrap{padding-top:20px;gap:10px}
   .reactor{transform:scale(0.6);margin:-48px}
+  .ultron-face{width:150px}
   .greeting{font-size:14px}
   .status-line{font-size:11px}
   .home-stats{gap:20px}
@@ -240,8 +241,6 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 .weather .loc{font-size:10px;letter-spacing:.22em;color:var(--txt-dim);margin-top:3px}
 .weather .coords{font-size:9px;color:var(--txt-dim);letter-spacing:.1em;margin-top:5px;opacity:.5}
 
-/* ===== ACTIVITY CHART ===== */
-#actChart{display:block;padding:0 13px 10px;width:100%;opacity:.8}
 
 /* ===== TABS ===== */
 .tabs{display:flex;gap:5px;justify-content:center;position:relative;z-index:20;flex-shrink:0}
@@ -271,6 +270,20 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
   background-size:60px 104px}
 
 .reactor{width:240px;height:240px;position:relative;cursor:crosshair;flex-shrink:0}
+
+/* ULTRON-kasvot — näkyy ultron-moodissa reactorin sijaan */
+.ultron-face{display:none;width:230px;height:auto;flex-shrink:0;cursor:crosshair;
+  filter:drop-shadow(0 0 16px var(--cyan-glow))}
+.uf-head{fill:none;stroke:var(--cyan);stroke-width:2.4;opacity:.9;animation:ufbreath 4s ease-in-out infinite}
+.uf-panel{fill:none;stroke:var(--cyan);stroke-width:1.2;opacity:.35}
+.uf-eye{fill:var(--cyan);filter:url(#uglow);animation:ufeye 3s ease-in-out infinite}
+.uf-mouth line{stroke:var(--cyan);stroke-width:2.2;stroke-linecap:round;opacity:.75}
+@keyframes ufeye{0%,100%{opacity:1}48%{opacity:.4}52%{opacity:.9}}
+@keyframes ufbreath{0%,100%{opacity:.9}50%{opacity:.62}}
+/* Keskuselementin vaihto moodin mukaan */
+body[data-mode="ultron"] .reactor{display:none}
+body[data-mode="ultron"] .ultron-face{display:block}
+body[data-mode="jarvis"] .ultron-face{display:none}
 
 /* pulse rings */
 .pr{position:absolute;border-radius:50%;border:1px solid var(--cyan);opacity:0;animation:prout 4s ease-out infinite}
@@ -495,11 +508,13 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
 .tab[data-view="chat"].active{background:var(--cyan);border-color:var(--cyan)}
 .tab[data-view="know"].active{background:var(--purple);border-color:var(--purple)}
 .tab[data-view="learn"].active{background:var(--amber);border-color:var(--amber)}
+.tab[data-view="news"].active{background:var(--green);border-color:var(--green)}
 
 /* Mobiili nav aktiivisena */
 .mnav-btn[data-view="chat"].active{color:var(--cyan);border-top-color:var(--cyan)}
 .mnav-btn[data-view="know"].active{color:var(--purple);border-top-color:var(--purple);text-shadow:0 0 10px rgba(204,68,255,.6)}
 .mnav-btn[data-view="learn"].active{color:var(--amber);border-top-color:var(--amber);text-shadow:0 0 10px rgba(255,136,0,.6)}
+.mnav-btn[data-view="news"].active{color:var(--green);border-top-color:var(--green);text-shadow:0 0 10px rgba(62,224,143,.6)}
 
 /* Header-pillerit eri värisiksi */
 .sys-pills .pill:nth-child(1) .pill-dot{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
@@ -597,8 +612,8 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
 }
 .mnav-btn.active{color:var(--cyan);border-top-color:var(--cyan);
   text-shadow:0 0 10px var(--cyan-glow);background:rgba(var(--accent-rgb),.04)}
-.mnav-icon{font-size:18px;line-height:1;font-style:normal}
-.mnav-lbl{font-size:8px;letter-spacing:.18em}
+.mnav-icon{font-size:17px;line-height:1;font-style:normal}
+.mnav-lbl{font-size:8px;letter-spacing:.05em;white-space:nowrap}
 
 /* ===== MOBILE INFO VIEW ===== */
 .m-cards{overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;flex:1;
@@ -688,12 +703,6 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
         <div class="geo-row">SIJAINTI <span>NASTOLA</span></div>
       </div>
     </div>
-    <div class="panel" style="flex:0 0 90px">
-      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
-      <div class="scan"></div>
-      <h2>Aktiivisuus</h2>
-      <canvas id="actChart" width="194" height="44" style="display:block;padding:0 12px 10px;width:100%"></canvas>
-    </div>
   </aside>
 
   <!-- CENTER -->
@@ -703,6 +712,7 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
       <button class="tab" data-view="chat">Chat</button>
       <button class="tab" data-view="know">Knowledge</button>
       <button class="tab" data-view="learn">Oppi</button>
+      <button class="tab" data-view="news">Uutiset</button>
     </div>
 
     <!-- HOME -->
@@ -718,6 +728,27 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
           <div class="core-ring2"></div><div class="core-ring3"></div>
           <div class="core"></div>
         </div>
+        <svg class="ultron-face" viewBox="0 0 200 224" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <filter id="uglow" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="3.4" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <path class="uf-head" d="M100,16 C62,16 43,38 40,72 C38,92 43,108 52,124 C61,154 78,190 100,202 C122,190 139,154 148,124 C157,108 162,92 160,72 C157,38 138,16 100,16 Z"/>
+          <path class="uf-panel" d="M100,16 L100,70 M68,30 C54,46 50,66 53,90 M132,30 C146,46 150,66 147,90 M60,150 C74,142 126,142 140,150"/>
+          <path class="uf-eye" d="M50,84 Q72,76 94,100 Q70,98 50,84 Z"/>
+          <path class="uf-eye" d="M150,84 Q128,76 106,100 Q130,98 150,84 Z"/>
+          <g class="uf-mouth">
+            <line x1="84" y1="158" x2="84" y2="172"/>
+            <line x1="90" y1="155" x2="90" y2="176"/>
+            <line x1="96" y1="153" x2="96" y2="179"/>
+            <line x1="100" y1="152" x2="100" y2="180"/>
+            <line x1="104" y1="153" x2="104" y2="179"/>
+            <line x1="110" y1="155" x2="110" y2="176"/>
+            <line x1="116" y1="158" x2="116" y2="172"/>
+          </g>
+        </svg>
         <div class="greeting" id="greet">Järjestelmä <span>verkossa</span></div>
         <div class="status-line" id="homestatus">Kaikki järjestelmät toiminnassa.</div>
         <div class="home-stats">
@@ -835,23 +866,19 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
             <button class="btn ghost" onclick="changePin()" style="font-size:12px;width:100%;min-height:40px">⟲ VAIHDA PIN / KIRJAUDU ULOS</button>
           </div>
         </div>
-        <div class="m-card">
-          <div class="m-card-title">PIKAKOMENNOT</div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <button class="btn ghost" data-q="Mikä on tilanneraportti?" style="font-size:13px;min-height:44px;text-align:left;padding:0 14px">Tilanneraportti</button>
-            <button class="btn ghost" data-q="Mitä minun tulisi tehdä seuraavaksi?" style="font-size:13px;min-height:44px;text-align:left;padding:0 14px">Seuraava askel</button>
-            <button class="btn ghost" data-q="Anna yhteenveto kaikesta tallennetusta tiedosta" style="font-size:13px;min-height:44px;text-align:left;padding:0 14px">Tiedon yhteenveto</button>
-          </div>
-        </div>
-        <div class="m-card">
-          <div class="m-card-title">
-            UUTISET
-            <button class="m-refresh" onclick="fetchNews(true)">⟳ PÄIVITÄ</button>
-          </div>
-          <div id="m-newsFeed" style="display:flex;flex-direction:column;gap:8px">
-            <div style="font-size:11px;color:var(--txt-dim)">Haetaan…</div>
-          </div>
-        </div>
+      </div>
+    </div>
+
+    <!-- NEWS -->
+    <div class="view panel" id="view-news">
+      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
+      <div class="scan"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;border-bottom:1px solid var(--line);flex-shrink:0">
+        <h2 style="margin:0">Uutiset · sinulle valitut</h2>
+        <button onclick="fetchNews(true)" style="background:none;border:1px solid var(--line);color:var(--cyan);font-family:'Orbitron';font-size:10px;letter-spacing:.1em;padding:5px 9px;cursor:pointer;border-radius:2px">⟳ PÄIVITÄ</button>
+      </div>
+      <div id="newsFeed" style="flex:1;overflow-y:auto;padding:10px 13px;display:flex;flex-direction:column;gap:7px">
+        <div style="font-size:12px;color:var(--txt-dim);padding:8px 0">Haetaan uutisia…</div>
       </div>
     </div>
   </section>
@@ -877,28 +904,6 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
         </div>
         <div id="elBar" style="display:flex;gap:1px;margin-top:5px;height:20px;align-items:flex-end"></div>
         <div style="font-size:9px;color:var(--txt-dim);margin-top:2px;opacity:.5">seuraavat 12h</div>
-      </div>
-    </div>
-    <div class="panel" style="flex:1">
-      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
-      <div class="scan"></div>
-      <h2>Pikakomennot</h2>
-      <div class="quick-btns">
-        <button class="btn ghost" data-q="Mikä on tilanneraportti?">Tilanneraportti</button>
-        <button class="btn ghost" data-q="Mitä tiedät ULTRON-projektista?">Projektin tila</button>
-        <button class="btn ghost" data-q="Anna yhteenveto kaikesta tallennetusta tiedosta">Tiedon yhteenveto</button>
-        <button class="btn ghost" data-q="Mitä minun tulisi tehdä seuraavaksi?">Seuraava askel</button>
-      </div>
-    </div>
-    <div class="panel" style="flex:2;overflow:hidden;display:flex;flex-direction:column">
-      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
-      <div class="scan"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 13px 0">
-        <h2 style="margin:0">Uutiset</h2>
-        <button onclick="fetchNews(true)" style="background:none;border:1px solid var(--line);color:var(--cyan);font-family:'Orbitron';font-size:10px;letter-spacing:.1em;padding:3px 7px;cursor:pointer;border-radius:2px">⟳ PÄIVITÄ</button>
-      </div>
-      <div id="newsFeed" style="flex:1;overflow-y:auto;padding:6px 11px;display:flex;flex-direction:column;gap:5px">
-        <div style="font-size:11px;color:var(--txt-dim);padding:8px 0">Haetaan uutisia…</div>
       </div>
     </div>
   </aside>
@@ -928,6 +933,9 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
   </button>
   <button class="mnav-btn" data-view="learn" onclick="mobileSwitch('learn')">
     <i class="mnav-icon">◧</i><span class="mnav-lbl">OPPI</span>
+  </button>
+  <button class="mnav-btn" data-view="news" onclick="mobileSwitch('news')">
+    <i class="mnav-icon">◰</i><span class="mnav-lbl">UUTISET</span>
   </button>
   <button class="mnav-btn" data-view="info" onclick="mobileSwitch('info')">
     <i class="mnav-icon">⊞</i><span class="mnav-lbl">INFO</span>
@@ -1116,21 +1124,6 @@ const sBoot=()=>{tone(220,.2,.06);setTimeout(()=>tone(440,.15,.05),200);setTimeo
   };
   setTimeout(next,400);
 })();
-
-/* ===== ACTIVITY CHART ===== */
-const actD=Array(22).fill(0);
-function drawAct(){
-  const cv=$('#actChart');if(!cv)return;
-  const cx=cv.getContext('2d'),W=cv.width,H=cv.height;
-  cx.clearRect(0,0,W,H);
-  const mx=Math.max(...actD,1),bw=W/actD.length;
-  actD.forEach((v,i)=>{
-    const h=(v/mx)*(H-4),a=.2+.6*(v/mx);
-    cx.fillStyle=`rgba(${AI.rgb},${a})`;cx.fillRect(i*bw+.5,H-h,bw-1,h);
-    if(v>0){cx.fillStyle=`rgba(${AI.rgb},${a+.2})`;cx.fillRect(i*bw+.5,H-h,bw-1,2)}
-  });
-}
-setInterval(()=>{actD.shift();actD.push(chatCount);chatCount=0;drawAct()},3000);drawAct();
 
 /* ===== PARALLAX ===== */
 addEventListener('mousemove',e=>{
@@ -1379,8 +1372,6 @@ function buildNewsFeed(container, items){
 function renderNews(items){
   const feed=$('#newsFeed');
   if(feed)buildNewsFeed(feed,items);
-  const mFeed=document.getElementById('m-newsFeed');
-  if(mFeed)buildNewsFeed(mFeed,items);
 }
 
 async function readAllNews(items){
@@ -1400,6 +1391,7 @@ async function readAllNews(items){
 document.querySelectorAll('.tab').forEach(t=>{
   t.onclick=()=>{sClick();document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('#view-'+t.dataset.view).classList.add('active');
   if(t.dataset.view==='learn')setTimeout(renderLearnUI,50);
+  if(t.dataset.view==='news')fetchNews();
   };
 });
 
@@ -1413,13 +1405,15 @@ function mobileSwitch(v){
   const btn=document.querySelector('.mnav-btn[data-view="'+v+'"]');
   if(btn)btn.classList.add('active');
   if(v==='learn')setTimeout(renderLearnUI,50);
+  if(v==='news')fetchNews();
   sClick();
 }
 
 /* ===== CLAUDE ===== */
-async function askClaude(system,messages){
-  const res=await apiFetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:API_MODEL,max_tokens:1000,system,messages})});
+async function askClaude(system,messages,max=1000){
+  const res=await apiFetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:API_MODEL,max_tokens:max,system,messages})});
   const data=await res.json();
+  if(!data||!Array.isArray(data.content)) throw new Error('worker virhe: '+JSON.stringify(data).slice(0,200));
   return data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
 }
 /* PERSONA tulee aktiivisesta moodista — AI.persona */
@@ -1646,7 +1640,7 @@ async function compileDay(auto){
 {"reply":"<päiväyhteenveto suomeksi ${AI.name}-tyylillä ja -sävyllä>","pages":[{"id":"<slug>","title":"...","summary":"...","body":"<markdown>","tags":["..."]}]}
 Nykyiset wiki-sivut: ${JSON.stringify(wiki.map(w=>({id:w.id,title:w.title})))}`;
   try{
-    let out=await askClaude(sys,[{role:'user',content:'Tämän päivän merkityt:\n\n'+tr.map(r=>`Lassi: ${r.q}\nULTRON: ${r.a}`).join('\n---\n')}]);
+    let out=await askClaude(sys,[{role:'user',content:'Tämän päivän merkityt:\n\n'+tr.map(r=>`Lassi: ${r.q}\n${AI.name}: ${r.a}`).join('\n---\n')}],3000);
     out=out.replace(/```json|```/g,'').trim();
     const r=JSON.parse(out);
     span.parentElement.classList.remove('typing');sMsg();
@@ -1919,44 +1913,52 @@ async function startGenerateLecture(){
   const btn=document.getElementById('lectureGenBtn');
   const listEl=document.getElementById('lectureList');
   btn.textContent='⏳ GENEROIDAAN…';btn.disabled=true;
-  listEl.innerHTML='<div class="learn-placeholder">'+AI.name+' valmistelee syvällistä luentoa aiheesta "'+esc(topic)+'"…\n\nTämä kestää 20–40 sekuntia.</div>';
-
-  const sys=`Olet ${AI.name}, Lassin henkilökohtainen oppimisassistentti.
-
-Tehtävä: Luo SYVÄLLINEN, LAAJA oppimisluento aiheesta: "${topic}".
-
-TÄRKEÄÄ — tämä luento kuunnellaan ääneen kävellessä:
-- Kirjoita luontevaa suomenkielistä proosaa, EI listoja tai bulletpointeja
-- Luonnolliset kappaleet ja siirtymät lukujen välillä
-- Vältä erikoismerkkejä joita ei voi lukea ääneen (%, #, =, <, >)
-- Rakenna jännitettä ja uteliaisuutta koko ajan
-- Kirjoita kuin hyvä luennoitsija puhuisi: innostuneesti, selkeästi
-
-Rakenne:
-- 6 lukua, kukin 280-380 sanaa
-- Luku 1: Koukuttava aloitus, yllättävä fakta tai kysymys
-- Luvut 2-5: Konteksti, historia, mekaniikka, yhteydet muuhun, esimerkit
-- Luku 6: Yhteenveto ja miksi tämä muuttaa tapaa ajatella maailmaa
-
-Palauta VAIN validi JSON-objekti, ei mitään muuta tekstiä:
-{"title":"Luennon otsikko","description":"1-2 lausetta mistä luento kertoo","chapters":[{"title":"Luvun otsikko","content":"Proosaksi kirjoitettu sisältö vähintään 280 sanaa..."}]}`;
+  const setProg=t=>{listEl.innerHTML='<div class="learn-placeholder">'+esc(t)+'</div>';};
 
   try{
-    const raw=await askClaudeLong(sys,[{role:'user',content:'Luo luento: '+topic}]);
-    const match=raw.match(/\{[\s\S]*\}/);
-    if(!match)throw new Error('ei json');
-    const lecture=JSON.parse(match[0]);
-    lecture.id='lecture-'+Date.now();
-    lecture.topic=topic;
-    lecture.created=Date.now();
-    lecture.wordCount=lecture.chapters.reduce((s,c)=>s+(c.content||'').split(' ').length,0);
+    // 1) Suunnittele runko: otsikko, kuvaus, 6 luvun otsikot (pieni JSON)
+    setProg(AI.name+' suunnittelee luennon rakennetta aiheesta "'+topic+'"…');
+    const planSys=`Olet ${AI.name}, taitava luennoitsija. Suunnittele SYVÄLLINEN, LAAJA oppimisluento aiheesta: "${topic}".
+Palauta VAIN validi JSON, ei mitään muuta tekstiä:
+{"title":"Napakka luennon otsikko","description":"1-2 lausetta mistä luento kertoo","chapters":["Luvun 1 otsikko","Luvun 2 otsikko","Luvun 3 otsikko","Luvun 4 otsikko","Luvun 5 otsikko","Luvun 6 otsikko"]}
+Luku 1 = koukuttava aloitus. Luvut 2-5 = konteksti, historia, mekaniikka, yhteydet, esimerkit. Luku 6 = yhteenveto ja miksi tämä muuttaa tapaa ajatella.`;
+    const planRaw=await askClaude(planSys,[{role:'user',content:'Suunnittele luento: '+topic}],1200);
+    const pm=planRaw.match(/\{[\s\S]*\}/); if(!pm) throw new Error('ei runkoa');
+    const plan=JSON.parse(pm[0]);
+    const titles=(plan.chapters||[]).slice(0,6).filter(Boolean);
+    if(!titles.length) throw new Error('ei lukuja');
+
+    // 2) Kirjoita kukin luku erikseen — pelkkä proosa, ei JSON (ei token-katkeamista)
+    const chapters=[];
+    for(let i=0;i<titles.length;i++){
+      setProg(AI.name+' kirjoittaa lukua '+(i+1)+'/'+titles.length+':\n\n"'+titles[i]+'"\n\nÄlä sulje sovellusta — tämä kestää hetken.');
+      const chSys=`Olet ${AI.name}, innostava luennoitsija. Kirjoitat yhtä lukua laajasta, ääneen kuunneltavasta luennosta aiheesta "${topic}".
+Tämän luvun otsikko: "${titles[i]}".
+Koko luennon rakenne kontekstiksi: ${titles.map((t,n)=>(n+1)+'. '+t).join(' / ')}.
+
+OHJEET:
+- Kirjoita 350-500 sanaa luontevaa suomenkielistä PROOSAA. EI listoja, EI väliotsikoita, EI bulletpointeja.
+- Luento kuunnellaan ääneen kävellessä — vältä merkkejä joita ei lueta ääneen (%, #, =, <, >).
+- Selitä syvällisesti mutta selkeästi, rakenna uteliaisuutta, käytä konkreettisia esimerkkejä.
+- Älä toista muiden lukujen sisältöä. Palauta VAIN tämän luvun teksti, ei otsikkoa eikä mitään muuta.`;
+      const txt=await askClaude(chSys,[{role:'user',content:'Kirjoita luku: '+titles[i]}],2500);
+      chapters.push({title:titles[i], content:(txt||'').trim()});
+    }
+
+    const lecture={
+      id:'lecture-'+Date.now(),
+      title:plan.title||topic,
+      description:plan.description||'',
+      topic, created:Date.now(), chapters,
+      wordCount: chapters.reduce((s,c)=>s+(c.content||'').split(/\s+/).length,0)
+    };
     lectures.unshift(lecture);
     saveLectures();
     if(inp)inp.value='';
     sSave();
     renderLectureList();
   }catch(e){
-    listEl.innerHTML='<div class="learn-placeholder">Luennon generointi epäonnistui.\n\n<button class="btn ghost" style="margin-top:10px" onclick="startGenerateLecture()">… Yritä uudelleen</button></div>';
+    listEl.innerHTML='<div class="learn-placeholder">Luennon generointi epäonnistui ('+esc(e.message||'virhe')+').\n\n<button class="btn ghost" style="margin-top:10px" onclick="startGenerateLecture()">↻ Yritä uudelleen</button></div>';
   }
   btn.textContent='⊕ LUO LUENTO';btn.disabled=false;
 }
@@ -2296,7 +2298,7 @@ Formaatti tarkalleen:
 TAI jos keskustelussa tuli esille tallentamisen arvoista tietoa:
 {"summary":"yhteenveto suomeksi","save":true,"page":{"id":"lyhyt-slug","title":"Otsikko","summary":"1-2 lausetta","body":"markdown-sisältö","tags":["tagi"]}}`;
   try{
-    let raw=await askClaude(sys,hist);
+    let raw=await askClaude(sys,hist,2000);
     if(!raw||typeof raw!=='string') throw new Error('empty response: '+JSON.stringify(raw));
     // Etsi JSON mikä tahansa muoto — Claude saattaa silti lisätä tekstiä
     const match=raw.match(/\{[\s\S]*\}/);
@@ -2314,7 +2316,7 @@ TAI jos keskustelussa tuli esille tallentamisen arvoista tietoa:
   }catch(e){
     // Viimeinen keino: tallenna raakana
     addMsg('chatlog','system','[ Yhteenveto epäonnistui — tallennetaan raakaversio ]');
-    const raw=hist.map(m=>(m.role==='user'?'Lassi: ':'ULTRON: ')+m.content).join('\n\n');
+    const raw=hist.map(m=>(m.role==='user'?'Lassi: ':AI.name+': ')+m.content).join('\n\n');
     const slug='keskustelu-'+Date.now();
     wiki.unshift({id:slug,title:'Keskustelu '+new Date().toLocaleString('fi-FI'),summary:'Äänessä käyty keskustelu',body:raw,tags:['keskustelu'],updated:Date.now()});
     await saveWiki(); sSave();
