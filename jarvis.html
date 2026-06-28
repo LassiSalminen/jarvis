@@ -950,6 +950,14 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
   <div class="body" id="ovBody"></div>
 </div>
 
+<!-- LUENTO LUKUTILA (e-kirja) -->
+<div class="overlay" id="lectureReader">
+  <button class="close" onclick="closeLectureReader()">✕</button>
+  <h1 id="lrTitle" style="color:var(--gold)"></h1>
+  <div class="meta" id="lrMeta"></div>
+  <div class="body" id="lrBody" style="font-size:16px;line-height:1.8;max-width:680px;margin:0 auto"></div>
+</div>
+
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 const VERSION="3.0";
@@ -2004,11 +2012,14 @@ function updateLecturePlayer(){
     <div class="lp-chapter">Luku ${lp.chapter+1}/${total}: ${esc(ch?.title||'')}</div>
     <div class="lp-progress"><div class="lp-fill" style="width:${pct}%"></div></div>
     <div class="lp-controls">
-      <button class="btn ghost" style="font-size:14px;padding:0 12px;min-height:40px" onclick="lpPrev()">🔥/button>
-      <button class="btn" style="font-size:13px;min-height:40px;flex:1" onclick="lpToggle()">${lp.playing?'⏸ TAUKO':'◧ TOISTA'}</button>
-      <button class="btn ghost" style="font-size:14px;padding:0 12px;min-height:40px" onclick="lpNext()">🔥/button>
-      <button class="lp-speed" onclick="lpCycleSpeed()">${lp.speed}▋/button>
-      <button class="btn ghost" style="font-size:11px;padding:0 10px;min-height:40px;color:var(--red);border-color:rgba(255,61,61,.4)" onclick="lpClose()">✕</button>
+      <button class="btn ghost" style="font-size:16px;padding:0 14px;min-height:42px" onclick="lpPrev()" title="Edellinen luku">⏮</button>
+      <button class="btn" style="font-size:13px;min-height:42px;flex:1" onclick="lpToggle()">${lp.playing?'⏸ TAUKO':'▶ TOISTA'}</button>
+      <button class="btn ghost" style="font-size:16px;padding:0 14px;min-height:42px" onclick="lpNext()" title="Seuraava luku">⏭</button>
+    </div>
+    <div class="lp-controls" style="margin-top:6px">
+      <button class="btn ghost" style="font-size:12px;min-height:38px;flex:1" onclick="openLectureReader()">▤ LUE TEKSTINÄ</button>
+      <button class="lp-speed" onclick="lpCycleSpeed()" title="Nopeus">${lp.speed.toFixed(1)}×</button>
+      <button class="btn ghost" style="font-size:12px;padding:0 12px;min-height:38px;color:var(--red);border-color:rgba(255,61,61,.4)" onclick="lpClose()" title="Sulje">✕</button>
     </div>`;
 }
 
@@ -2028,14 +2039,24 @@ function lpToggle(){
   }
 }
 
+// Valitse paras saatavilla oleva suomalainen ääni
+function pickFinnishVoice(){
+  const fi=ttsVoices.filter(v=>v.lang&&v.lang.toLowerCase().startsWith('fi'));
+  if(!fi.length)return null;
+  // Verkkopohjaiset/Google-äänet kuulostavat paljon paremmilta kuin laitteen oletus
+  return fi.find(v=>/google/i.test(v.name))
+      || fi.find(v=>!v.localService)
+      || fi.find(v=>/natural|neural|enhanced|premium|satu|onni|wavenet/i.test(v.name))
+      || fi[0];
+}
 function lpPlayChapter(){
   if(!lp.lecture)return;
   const ch=lp.lecture.chapters[lp.chapter];
   window.speechSynthesis.cancel();
   const text='Luku '+(lp.chapter+1)+': '+ch.title+'. '+ch.content;
   const u=new SpeechSynthesisUtterance(text);
-  u.lang='fi-FI';u.rate=lp.speed;u.pitch=0.95;
-  const fi=ttsVoices.find(v=>v.lang==='fi-FI')||ttsVoices.find(v=>v.lang.startsWith('fi'));
+  u.lang='fi-FI';u.rate=lp.speed;u.pitch=1.0;
+  const fi=pickFinnishVoice();
   if(fi)u.voice=fi;
   u.onend=()=>{
     if(lp.chapter<lp.lecture.chapters.length-1){lp.chapter++;lpPlayChapter();}
@@ -2058,6 +2079,23 @@ function lpCycleSpeed(){
   else updateLecturePlayer();
 }
 function lpClose(){window.speechSynthesis.cancel();lp.playing=false;lp.lecture=null;updateLecturePlayer();}
+
+// E-kirja-lukutila: koko luennon teksti luettavassa muodossa
+function openLectureReader(){
+  if(!lp.lecture)return;
+  const l=lp.lecture;
+  document.getElementById('lrTitle').textContent=l.title||'Luento';
+  const mins=Math.round((l.wordCount||0)/130);
+  document.getElementById('lrMeta').textContent=(l.chapters?.length||0)+' lukua · ~'+mins+' min · '+(l.description||'');
+  const body=(l.chapters||[]).map((c,i)=>
+    '<h2 style="font-family:\'Orbitron\';font-size:15px;color:var(--gold);letter-spacing:.05em;margin:26px 0 12px;line-height:1.4">'+(i+1)+'. '+esc(c.title||'')+'</h2>'+
+    '<p style="margin:0 0 16px">'+esc(c.content||'').replace(/\n+/g,'</p><p style="margin:0 0 16px">')+'</p>'
+  ).join('');
+  const bodyEl=document.getElementById('lrBody');
+  bodyEl.innerHTML=body;bodyEl.scrollTop=0;
+  document.getElementById('lectureReader').classList.add('open');
+}
+function closeLectureReader(){document.getElementById('lectureReader').classList.remove('open');}
 function deleteLecture(idx){
   if(lp.lecture&&lectures[idx]?.id===lp.lecture?.id)lpClose();
   lectures.splice(idx,1);saveLectures();renderLectureList();
