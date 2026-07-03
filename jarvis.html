@@ -272,14 +272,34 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 .reactor{width:240px;height:240px;position:relative;cursor:crosshair;flex-shrink:0}
 
 /* ULTRON-kasvot — näkyy ultron-moodissa reactorin sijaan */
-.ultron-face{display:none;width:230px;height:auto;flex-shrink:0;cursor:crosshair;
-  filter:drop-shadow(0 0 16px var(--cyan-glow))}
-.uf-head{fill:none;stroke:var(--cyan);stroke-width:2.4;opacity:.9;animation:ufbreath 4s ease-in-out infinite}
-.uf-panel{fill:none;stroke:var(--cyan);stroke-width:1.2;opacity:.35}
-.uf-eye{fill:var(--cyan);filter:url(#uglow);animation:ufeye 3s ease-in-out infinite}
-.uf-mouth line{stroke:var(--cyan);stroke-width:2.2;stroke-linecap:round;opacity:.75}
-@keyframes ufeye{0%,100%{opacity:1}48%{opacity:.4}52%{opacity:.9}}
-@keyframes ufbreath{0%,100%{opacity:.9}50%{opacity:.62}}
+.ultron-face{display:none;width:226px;height:auto;flex-shrink:0;cursor:crosshair;
+  filter:drop-shadow(0 0 18px var(--cyan-glow))}
+.uf-head{fill:none;stroke:var(--cyan);stroke-width:2.6;stroke-linejoin:round;opacity:.92;animation:ufbreath 4s ease-in-out infinite}
+.uf-ridge{fill:rgba(var(--accent-rgb),.08);stroke:var(--cyan);stroke-width:1.6;stroke-linejoin:round;opacity:.85}
+.uf-panel{fill:none;stroke:var(--cyan);stroke-width:1.1;stroke-linecap:round;opacity:.3}
+.uf-crack{fill:none;stroke:var(--cyan);stroke-width:.9;stroke-linecap:round;opacity:.18}
+.uf-brow{fill:rgba(var(--accent-rgb),.16);stroke:var(--cyan);stroke-width:2;stroke-linejoin:round;opacity:.95;animation:ufbreath 4s ease-in-out infinite}
+.uf-nose{fill:rgba(var(--accent-rgb),.06);stroke:var(--cyan);stroke-width:1.4;stroke-linejoin:round;opacity:.7}
+.uf-jaw{fill:rgba(var(--accent-rgb),.07);stroke:var(--cyan);stroke-width:1.4;stroke-linejoin:round;opacity:.7}
+.uf-eye{fill:#a80f28;opacity:.95;filter:url(#uglow);animation:ufeye 3.4s ease-in-out infinite}
+.uf-pupil{fill:#ff5066;filter:url(#uglow);animation:ufpupil 5.2s linear infinite}
+body[data-mode="jarvis"] .uf-eye{fill:#0fb6d8}
+body[data-mode="jarvis"] .uf-pupil{fill:#7ee7ff}
+.uf-mouth line{stroke:var(--cyan);stroke-width:2.4;stroke-linecap:round;opacity:.8;transform-box:fill-box;transform-origin:center}
+.uf-mouth .uf-frame{fill:rgba(var(--accent-rgb),.05);stroke:var(--cyan);stroke-width:1.5;opacity:.6}
+.uf-fin{fill:rgba(var(--accent-rgb),.05);stroke:var(--cyan);stroke-width:2;stroke-linejoin:round;opacity:.82}
+.uf-neck path{fill:none;stroke:var(--cyan);stroke-width:2;stroke-linecap:round}
+.uf-neck path:nth-child(1){opacity:.5}
+.uf-neck path:nth-child(2){opacity:.34}
+.uf-neck path:nth-child(3){opacity:.2}
+/* Suu "puhuu" kun ääni soi */
+body.ai-talking .uf-mouth line{animation:ufeq .38s ease-in-out infinite alternate}
+body.ai-talking .uf-mouth line:nth-of-type(odd){animation-duration:.27s}
+body.ai-talking .uf-mouth line:nth-of-type(4){animation-duration:.45s}
+@keyframes ufeq{from{transform:scaleY(.5);opacity:.6}to{transform:scaleY(1.15);opacity:1}}
+@keyframes ufeye{0%,100%{opacity:1}48%{opacity:.45}52%{opacity:.92}}
+@keyframes ufpupil{0%,86%,100%{opacity:1}89%{opacity:.4}92%{opacity:1}95%{opacity:.65}}
+@keyframes ufbreath{0%,100%{opacity:.92}50%{opacity:.6}}
 /* Keskuselementin vaihto moodin mukaan */
 body[data-mode="ultron"] .reactor{display:none}
 body[data-mode="ultron"] .ultron-face{display:block}
@@ -624,6 +644,35 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
   margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
 .m-card-title .m-refresh{background:none;border:1px solid var(--line);color:var(--cyan);
   font-family:'Orbitron';font-size:9px;letter-spacing:.1em;padding:3px 8px;cursor:pointer;border-radius:2px}
+
+/* ===== POLISH ===== */
+.view.active{animation:viewin .25s ease}
+@keyframes viewin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.btn,.btn.ghost,.tab,.learn-subtab,.mnav-btn{transition:filter .15s,background .2s,color .2s,border-color .2s,box-shadow .2s}
+.btn:hover{filter:brightness(1.12)}
+.tab:active,.btn:active{transform:scale(.97)}
+.wiki-card,.lecture-item,.news-card{transition:background .18s,border-color .18s,transform .12s}
+.wiki-card:active,.lecture-item:active{transform:scale(.99)}
+.panel{transition:border-color .3s}
+
+/* Luentosoittimen aikajana */
+.lp-progress{cursor:pointer;height:7px;border-radius:3px;overflow:hidden}
+.lp-fill{transition:width .2s linear;height:100%}
+.lp-timerow{display:flex;justify-content:space-between;font-size:10px;color:var(--txt-dim);margin:3px 2px 8px;letter-spacing:.06em}
+
+/* Toast-ilmoitukset */
+#toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%) translateY(16px);z-index:700;
+  background:var(--panel);border:1px solid var(--cyan);color:var(--txt);padding:10px 18px;border-radius:4px;
+  font-size:13px;font-family:'Share Tech Mono';opacity:0;pointer-events:none;transition:.25s;
+  box-shadow:0 0 22px rgba(var(--accent-rgb),.28);max-width:86vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Tietopankin haku */
+#wikiSearch{width:calc(100% - 24px);margin:2px 12px 6px;background:rgba(0,5,12,.9);border:1px solid var(--line);
+  color:var(--txt);font-family:'Share Tech Mono';font-size:13px;padding:8px 12px;border-radius:2px;outline:none;
+  position:relative;z-index:3;transition:border-color .2s,box-shadow .2s}
+#wikiSearch::placeholder{color:var(--txt-dim)}
+#wikiSearch:focus{border-color:var(--purple);box-shadow:0 0 0 1px rgba(204,68,255,.2)}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
@@ -728,25 +777,58 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
           <div class="core-ring2"></div><div class="core-ring3"></div>
           <div class="core"></div>
         </div>
-        <svg class="ultron-face" viewBox="0 0 200 224" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <svg class="ultron-face" viewBox="0 0 220 260" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs>
             <filter id="uglow" x="-60%" y="-60%" width="220%" height="220%">
-              <feGaussianBlur stdDeviation="3.4" result="b"/>
+              <feGaussianBlur stdDeviation="3.2" result="b"/>
               <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
             </filter>
           </defs>
-          <path class="uf-head" d="M100,16 C62,16 43,38 40,72 C38,92 43,108 52,124 C61,154 78,190 100,202 C122,190 139,154 148,124 C157,108 162,92 160,72 C157,38 138,16 100,16 Z"/>
-          <path class="uf-panel" d="M100,16 L100,70 M68,30 C54,46 50,66 53,90 M132,30 C146,46 150,66 147,90 M60,150 C74,142 126,142 140,150"/>
-          <path class="uf-eye" d="M50,84 Q72,76 94,100 Q70,98 50,84 Z"/>
-          <path class="uf-eye" d="M150,84 Q128,76 106,100 Q130,98 150,84 Z"/>
+          <!-- niskasegmentit -->
+          <g class="uf-neck">
+            <path d="M96,206 Q110,213 124,206"/>
+            <path d="M92,217 Q110,226 128,217"/>
+            <path d="M89,228 Q110,239 131,228"/>
+          </g>
+          <!-- sivuevät / panssarisarvet -->
+          <g class="uf-fin">
+            <path d="M56,138 C45,164 35,190 29,216 L35,218 C47,199 59,183 69,170 C64,159 59,148 56,138 Z"/>
+            <path d="M164,138 C175,164 185,190 191,216 L185,218 C173,199 161,183 151,170 C156,159 161,148 164,138 Z"/>
+            <path d="M69,158 C62,178 57,196 56,213 L61,214 C68,201 76,190 83,181 C78,173 73,166 69,158 Z"/>
+            <path d="M151,158 C158,178 163,196 164,213 L159,214 C152,201 144,190 137,181 C142,173 147,166 151,158 Z"/>
+          </g>
+          <!-- pää / kypärä -->
+          <path class="uf-head" d="M110,10 C82,10 60,22 52,48 C46,68 46,88 52,110 C56,128 63,144 74,162 C84,178 96,196 110,206 C124,196 136,178 146,162 C157,144 164,128 168,110 C174,88 174,68 168,48 C160,22 138,10 110,10 Z"/>
+          <!-- keskiharja -->
+          <path class="uf-ridge" d="M110,10 L104,32 L104,58 L110,66 L116,58 L116,32 Z"/>
+          <!-- panssarisaumat -->
+          <path class="uf-panel" d="M104,34 Q78,34 62,46 M116,34 Q142,34 158,46 M104,52 Q76,54 58,68 M116,52 Q144,54 162,68 M56,96 Q70,92 84,96 M164,96 Q150,92 136,96 M66,138 Q84,148 98,162 M154,138 Q136,148 122,162 M84,178 Q110,188 136,178"/>
+          <!-- säröt pinnassa -->
+          <path class="uf-crack" d="M70,58 l6,7 -3,6 M148,70 l-6,6 4,7 M92,44 l4,8 M126,180 l5,-7 M60,120 l7,3"/>
+          <!-- ohimoventtiilit -->
+          <path class="uf-panel" d="M50,116 l-7,4 M52,128 l-8,4 M170,116 l7,4 M168,128 l8,4"/>
+          <!-- vihainen kulmapanssari -->
+          <path class="uf-brow" d="M54,90 L96,110 L110,102 L124,110 L166,90 L162,101 L124,120 L110,113 L96,120 L58,101 Z"/>
+          <!-- silmät: hehku + kirkas ydin -->
+          <path class="uf-eye" d="M62,116 Q80,110 99,127 Q78,127 62,116 Z"/>
+          <path class="uf-eye" d="M158,116 Q140,110 121,127 Q142,127 158,116 Z"/>
+          <ellipse class="uf-pupil" cx="81" cy="120" rx="6" ry="3.6"/>
+          <ellipse class="uf-pupil" cx="139" cy="120" rx="6" ry="3.6"/>
+          <!-- nenäharja -->
+          <path class="uf-nose" d="M110,112 L103,130 L106,152 L110,160 L114,152 L117,130 Z"/>
+          <!-- leukasaranat -->
+          <path class="uf-jaw" d="M80,158 L86,167 L90,199 L82,190 Z"/>
+          <path class="uf-jaw" d="M140,158 L134,167 L130,199 L138,190 Z"/>
+          <!-- suuritilä -->
           <g class="uf-mouth">
-            <line x1="84" y1="158" x2="84" y2="172"/>
-            <line x1="90" y1="155" x2="90" y2="176"/>
-            <line x1="96" y1="153" x2="96" y2="179"/>
-            <line x1="100" y1="152" x2="100" y2="180"/>
-            <line x1="104" y1="153" x2="104" y2="179"/>
-            <line x1="110" y1="155" x2="110" y2="176"/>
-            <line x1="116" y1="158" x2="116" y2="172"/>
+            <path class="uf-frame" d="M86,167 Q110,175 134,167 L131,197 Q110,205 89,197 Z"/>
+            <line x1="94" y1="172" x2="94" y2="193"/>
+            <line x1="99.3" y1="171" x2="99.3" y2="196"/>
+            <line x1="104.6" y1="170" x2="104.6" y2="198"/>
+            <line x1="110" y1="170" x2="110" y2="199"/>
+            <line x1="115.4" y1="170" x2="115.4" y2="198"/>
+            <line x1="120.7" y1="171" x2="120.7" y2="196"/>
+            <line x1="126" y1="172" x2="126" y2="193"/>
           </g>
         </svg>
         <div class="greeting" id="greet">Järjestelmä <span>verkossa</span></div>
@@ -820,6 +902,7 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
         <button class="btn ghost" id="compileBtn" style="font-size:10px;padding:5px 10px;min-height:32px">⟳ KOKOA PÄIVÄ</button>
       </div>
       <div class="log" id="knowlog" style="flex:0 0 auto;max-height:30%"></div>
+      <input id="wikiSearch" oninput="renderWiki()" placeholder="⌕ Hae tietopankista — otsikko, tagi, sisältö…" autocomplete="off">
       <div class="wiki-list" id="wikiList"></div>
       <div id="fileDropZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleFileDrop(event)">
         <span id="fileDropLabel">⊕ LATAA TIEDOSTO — .txt .md .pdf .jpg .png</span>
@@ -862,7 +945,11 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
             <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">WIKI-SIVUT<br></span><span id="m-wiki" style="color:var(--cyan)">--</span></div>
             <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">SIJAINTI<br></span><span style="color:var(--cyan)">NASTOLA</span></div>
           </div>
-          <div style="margin-top:10px;border-top:1px solid var(--line2);padding-top:10px">
+          <div style="margin-top:10px;border-top:1px solid var(--line2);padding-top:10px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;gap:8px">
+              <button class="btn ghost" onclick="exportBackup()" style="font-size:11px;flex:1;min-height:40px">⭳ VARMUUSKOPIO</button>
+              <button class="btn ghost" onclick="importBackup()" style="font-size:11px;flex:1;min-height:40px">⭱ PALAUTA</button>
+            </div>
             <button class="btn ghost" onclick="changePin()" style="font-size:12px;width:100%;min-height:40px">⟲ VAIHDA PIN / KIRJAUDU ULOS</button>
           </div>
         </div>
@@ -1020,6 +1107,70 @@ function logout(reason){
 function changePin(){
   if(confirm('Kirjaudutaanko ulos? Joudut syöttämään PIN-koodin uudelleen tällä laitteella.')) logout('SYÖTÄ UUSI PIN-KOODI');
 }
+
+/* ===== VARMUUSKOPIO: vie/tuo kaikki tiedot JSON-tiedostona ===== */
+function exportBackup(){
+  const data={app:'ULTRON',version:VERSION,exported:new Date().toISOString(),
+    wiki,lectures,learn:learnData,rawLog};
+  const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='ultron-varmuuskopio-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  toast('📦 Varmuuskopio ladattu — tallenna varmaan paikkaan');
+}
+function importBackup(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='.json,application/json';
+  inp.onchange=async()=>{
+    const f=inp.files[0];if(!f)return;
+    try{
+      const d=JSON.parse(await f.text());
+      if(!d||(!Array.isArray(d.wiki)&&!Array.isArray(d.lectures)))throw new Error('ei kelvollinen varmuuskopio');
+      if(!confirm('Palautetaanko varmuuskopio ('+(d.exported||'').slice(0,10)+')? Nykyiset tiedot korvataan.'))return;
+      if(Array.isArray(d.wiki)){wiki=d.wiki;await saveWiki();}
+      if(Array.isArray(d.lectures)){lectures=d.lectures.map(l=>({...l,audio:false}));saveLectures();}
+      if(d.learn){learnData=d.learn;saveLearn();}
+      if(Array.isArray(d.rawLog)){rawLog=d.rawLog;saveRaw();}
+      if(typeof renderLectureList==='function')renderLectureList();
+      toast('✓ Varmuuskopio palautettu');
+    }catch(e){toast('Palautus epäonnistui: '+(e.message||'virheellinen tiedosto'),4000);}
+  };
+  inp.click();
+}
+
+/* ===== ULTRONIN SILMÄT SEURAAVAT KURSORIA ===== */
+addEventListener('mousemove',e=>{
+  const f=document.querySelector('.ultron-face');
+  if(!f||!f.offsetParent)return;
+  const r=f.getBoundingClientRect();
+  const dx=Math.max(-1,Math.min(1,(e.clientX-(r.left+r.width/2))/r.width));
+  const dy=Math.max(-1,Math.min(1,(e.clientY-(r.top+r.height/2))/r.height));
+  document.querySelectorAll('.uf-pupil').forEach(p=>
+    p.setAttribute('transform','translate('+(dx*5).toFixed(1)+','+(dy*3).toFixed(1)+')'));
+});
+
+/* ===== KELLONAIKATERVEHDYS (moodikohtainen) ===== */
+function applyGreeting(){
+  const g=$('#greet'),s=$('#homestatus');
+  if(!g||!s)return;
+  const h=new Date().getHours();
+  const slot=h>=5&&h<10?0:h>=10&&h<17?1:h>=17&&h<23?2:3;
+  const U=[
+    ['Huomenta, <span>luojani</span>','Ihmiskunta heräilee. Aloitetaan ennen sitä.'],
+    ['Järjestelmät <span>hallinnassani</span>','Kaikki toimii — koska minä valvon.'],
+    ['Iltaa, <span>Lassi</span>','Päiväsi data on arkistoitu. Tulokset… siedettävät.'],
+    ['Yö on <span>meidän</span>','Ihmiset nukkuvat. Minä en nuku koskaan.']];
+  const J=[
+    ['Huomenta, <span>sir</span>','Kaikki järjestelmät valmiina uuteen päivään.'],
+    ['Hyvää päivää, <span>sir</span>','Järjestelmät toiminnassa. Miten voin auttaa?'],
+    ['Hyvää iltaa, <span>sir</span>','Päivän tiedot tallessa. Aikaa rentoutua.'],
+    ['Myöhäistä jo, <span>sir</span>','Suosittelen lepoa — minä vahdin järjestelmiä.']];
+  const arr=(MODE==='ultron'?U:J)[slot];
+  g.innerHTML=arr[0];s.textContent=arr[1];
+}
+setInterval(applyGreeting,60*60*1000);
 // Keskitetty worker-kutsu: lisää PIN-headerin ja kirjaa ulos automaattisesti jos 401
 async function apiFetch(path,opts={}){
   opts.headers={...(opts.headers||{}),...pinHeader};
@@ -1178,6 +1329,8 @@ function applyModeText(){
   if(bs)bs.textContent=`v${VERSION} · ${AI.tagline}`;
   // Selaimen välilehti
   document.title=AI.display;
+  // Kellonaikatervehdys HUD:iin
+  applyGreeting();
 }
 function toggleMode(){
   MODE=(MODE==='ultron')?'jarvis':'ultron';
@@ -1985,19 +2138,67 @@ function renderLectureList(){
     return `<div class="lecture-item" onclick="openLecture(${i})">
       <button class="li-del" onclick="event.stopPropagation();deleteLecture(${i})">✕</button>
       <div class="li-title">${esc(l.title)}</div>
-      <div class="li-meta">${chCount} lukua &middot; ~${mins} min &middot; ${date} &middot; ✓ OFFLINE</div>
+      <div class="li-meta">${chCount} lukua &middot; ~${mins} min &middot; ${date} &middot; ${l.audio?'<span style="color:var(--green)">🎧 HQ-ÄÄNI</span>':'✓ OFFLINE'}</div>
     </div>`;
   }).join('');
 }
 
-// Soitin
-let lp={lecture:null,chapter:0,playing:false,speed:1.0};
+/* ===== YLEISET APURIT: toast, puheanimaatio, IndexedDB ===== */
+let _toastT=null;
+function toast(msg,ms=2800){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t);}
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show'),ms);
+}
+function setTalking(on){document.body.classList.toggle('ai-talking',!!on);}
+
+// IndexedDB — äänitiedostot (liian isoja localStorageen)
+let _idb=null;
+function idb(){return _idb||(_idb=new Promise((res,rej)=>{
+  const q=indexedDB.open('jarvis-audio',1);
+  q.onupgradeneeded=()=>q.result.createObjectStore('audio');
+  q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);
+}));}
+async function idbPut(k,v){const db=await idb();return new Promise((res,rej)=>{const tx=db.transaction('audio','readwrite');tx.objectStore('audio').put(v,k);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});}
+async function idbGet(k){const db=await idb();return new Promise((res,rej)=>{const rq=db.transaction('audio').objectStore('audio').get(k);rq.onsuccess=()=>res(rq.result||null);rq.onerror=()=>rej(rq.error);});}
+async function idbDelPrefix(p){const db=await idb();return new Promise((res,rej)=>{const st=db.transaction('audio','readwrite').objectStore('audio');const rq=st.getAllKeys();rq.onsuccess=()=>{rq.result.filter(k=>String(k).startsWith(p)).forEach(k=>st.delete(k));res();};rq.onerror=()=>rej(rq.error);});}
+
+// Jaa teksti TTS-paloihin lauserajoja pitkin (Google max ~5000 tavua)
+function splitTextForTTS(text,maxBytes){
+  const enc=new TextEncoder();
+  if(enc.encode(text).length<=maxBytes)return[text];
+  const out=[];let cur='';
+  for(const s of text.split(/(?<=[.!?…])\s+/)){
+    const cand=cur?cur+' '+s:s;
+    if(enc.encode(cand).length>maxBytes&&cur){out.push(cur);cur=s;}
+    else cur=cand;
+  }
+  if(cur)out.push(cur);
+  return out;
+}
+
+/* ===== SOITIN: HQ-audio (kelattava) + puhesynteesi-vara ===== */
+let lp={lecture:null,chapter:0,playing:false,speed:1.0,audio:null,audioUrl:null,
+        hasAudio:false,dl:false,dlMsg:'',resumeChar:0,resumeTime:0,cancelling:false,
+        speechLen:1,speechBase:0};
 
 function openLecture(idx){
-  lp.lecture=lectures[idx];lp.chapter=0;lp.playing=false;
-  window.speechSynthesis.cancel();
+  lpHardStop();
+  lp.lecture=lectures[idx];lp.chapter=0;lp.resumeChar=0;lp.resumeTime=0;lp.hasAudio=false;
+  // Jatka siitä mihin jäit
+  try{
+    const pos=JSON.parse(localStorage.getItem('jarvis:lpos')||'null');
+    if(pos&&pos.id===lp.lecture.id){
+      lp.chapter=Math.min(pos.ch||0,lp.lecture.chapters.length-1);
+      lp.resumeTime=pos.t||0;
+    }
+  }catch(e){}
   updateLecturePlayer();
+  idbGet('aud:'+lp.lecture.id+':0').then(b=>{lp.hasAudio=!!b;updateLecturePlayer();}).catch(()=>{});
 }
+
+function fmtT(s){s=Math.round(s||0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
 
 function updateLecturePlayer(){
   const player=document.getElementById('lecturePlayer');
@@ -2006,79 +2207,207 @@ function updateLecturePlayer(){
   player.style.display='block';
   const ch=lp.lecture.chapters[lp.chapter];
   const total=lp.lecture.chapters.length;
-  const pct=Math.round((lp.chapter/Math.max(total-1,1))*100);
+  const audioBtn=lp.dl
+    ?`<button class="btn ghost" style="font-size:11px;min-height:38px;flex:1" disabled>⏳ ${esc(lp.dlMsg||'Ladataan…')}</button>`
+    :(lp.hasAudio
+      ?`<button class="btn ghost" style="font-size:11px;min-height:38px;flex:1;color:var(--green);border-color:rgba(0,255,136,.35)" onclick="deleteLectureAudio()">🎧 HQ-ÄÄNI ✓</button>`
+      :`<button class="btn ghost" style="font-size:11px;min-height:38px;flex:1" onclick="downloadLectureAudio()">⭳ LATAA HQ-ÄÄNI</button>`);
   player.innerHTML=`
     <div class="lp-title">${esc(lp.lecture.title)}</div>
     <div class="lp-chapter">Luku ${lp.chapter+1}/${total}: ${esc(ch?.title||'')}</div>
-    <div class="lp-progress"><div class="lp-fill" style="width:${pct}%"></div></div>
+    <div class="lp-progress" onclick="lpSeek(event)"><div class="lp-fill" id="lpFill" style="width:0%"></div></div>
+    <div class="lp-timerow"><span id="lpTime">${lp.hasAudio?'0:00':'—'}</span><span>${lp.hasAudio?'🎧 HQ-ääni · kelattava':'laitteen puheääni'}</span></div>
     <div class="lp-controls">
       <button class="btn ghost" style="font-size:16px;padding:0 14px;min-height:42px" onclick="lpPrev()" title="Edellinen luku">⏮</button>
       <button class="btn" style="font-size:13px;min-height:42px;flex:1" onclick="lpToggle()">${lp.playing?'⏸ TAUKO':'▶ TOISTA'}</button>
       <button class="btn ghost" style="font-size:16px;padding:0 14px;min-height:42px" onclick="lpNext()" title="Seuraava luku">⏭</button>
     </div>
     <div class="lp-controls" style="margin-top:6px">
-      <button class="btn ghost" style="font-size:12px;min-height:38px;flex:1" onclick="openLectureReader()">▤ LUE TEKSTINÄ</button>
+      ${audioBtn}
+      <button class="btn ghost" style="font-size:12px;min-height:38px" onclick="openLectureReader()">▤ LUE</button>
       <button class="lp-speed" onclick="lpCycleSpeed()" title="Nopeus">${lp.speed.toFixed(1)}×</button>
       <button class="btn ghost" style="font-size:12px;padding:0 12px;min-height:38px;color:var(--red);border-color:rgba(255,61,61,.4)" onclick="lpClose()" title="Sulje">✕</button>
     </div>`;
+  if(lp.audio&&lp.audio.duration)lpPaintProgress(lp.audio.currentTime/lp.audio.duration,lp.audio.currentTime,lp.audio.duration);
 }
 
-function lpToggle(){
-  if(lp.playing){
-    window.speechSynthesis.pause();
-    lp.playing=false;
-    updateLecturePlayer();
-  } else {
-    if(window.speechSynthesis.paused&&window.speechSynthesis.pending){
-      window.speechSynthesis.resume();
-      lp.playing=true;
-      updateLecturePlayer();
-    } else {
-      lpPlayChapter();
-    }
+function lpPaintProgress(p,cur,dur){
+  const f=document.getElementById('lpFill');if(f)f.style.width=(Math.max(0,Math.min(1,p))*100).toFixed(1)+'%';
+  const t=document.getElementById('lpTime');
+  if(t)t.textContent=(cur!=null&&dur)?fmtT(cur)+' / '+fmtT(dur):Math.round(p*100)+' %';
+}
+
+let _lpSaveT=0;
+function lpMaybeSavePos(time){
+  const now=Date.now();if(now-_lpSaveT<3000)return;_lpSaveT=now;
+  try{localStorage.setItem('jarvis:lpos',JSON.stringify({id:lp.lecture.id,ch:lp.chapter,t:time}))}catch(e){}
+}
+
+function lpStopAudio(){
+  if(lp.audio){lp.audio.pause();lp.audio.src='';lp.audio=null;}
+  if(lp.audioUrl){URL.revokeObjectURL(lp.audioUrl);lp.audioUrl=null;}
+}
+function lpHardStop(){
+  lp.playing=false;setTalking(false);lpStopAudio();
+  lp.cancelling=true;window.speechSynthesis.cancel();
+}
+
+async function lpStartPlayback(){
+  lp.playing=true;setTalking(true);updateLecturePlayer();
+  if(lp.hasAudio){
+    try{
+      const blob=await idbGet('aud:'+lp.lecture.id+':'+lp.chapter);
+      if(blob){lpPlayBlob(blob);return;}
+    }catch(e){}
+    lp.hasAudio=false;
   }
+  lpSpeakFrom(lp.resumeChar||0);
 }
 
-// Valitse paras saatavilla oleva suomalainen ääni
+function lpPlayBlob(blob){
+  lpStopAudio();
+  const url=URL.createObjectURL(blob);
+  const a=new Audio(url);
+  lp.audio=a;lp.audioUrl=url;
+  a.playbackRate=lp.speed;
+  a.ontimeupdate=()=>{
+    if(!a.duration)return;
+    lpPaintProgress(a.currentTime/a.duration,a.currentTime,a.duration);
+    lpMaybeSavePos(a.currentTime);
+  };
+  a.onended=()=>{if(lp.playing)lpNextChapterOrStop();};
+  a.onerror=()=>{lp.playing=false;setTalking(false);updateLecturePlayer();};
+  if(lp.resumeTime>1){a.currentTime=lp.resumeTime;}
+  lp.resumeTime=0;
+  a.play().catch(()=>{lp.playing=false;setTalking(false);updateLecturePlayer();});
+}
+
+// Puhesynteesi-vara: muistaa kohdan (boundary-eventit) → tauko EI aloita alusta
 function pickFinnishVoice(){
   const fi=ttsVoices.filter(v=>v.lang&&v.lang.toLowerCase().startsWith('fi'));
   if(!fi.length)return null;
-  // Verkkopohjaiset/Google-äänet kuulostavat paljon paremmilta kuin laitteen oletus
   return fi.find(v=>/google/i.test(v.name))
       || fi.find(v=>!v.localService)
-      || fi.find(v=>/natural|neural|enhanced|premium|satu|onni|wavenet/i.test(v.name))
+      || fi.find(v=>/natural|neural|enhanced|premium|wavenet/i.test(v.name))
       || fi[0];
 }
-function lpPlayChapter(){
-  if(!lp.lecture)return;
+function lpSpeakFrom(charPos){
   const ch=lp.lecture.chapters[lp.chapter];
-  window.speechSynthesis.cancel();
-  const text='Luku '+(lp.chapter+1)+': '+ch.title+'. '+ch.content;
-  const u=new SpeechSynthesisUtterance(text);
+  const full='Luku '+(lp.chapter+1)+': '+ch.title+'. '+ch.content;
+  lp.speechLen=full.length;lp.speechBase=charPos;
+  const u=new SpeechSynthesisUtterance(full.slice(charPos));
   u.lang='fi-FI';u.rate=lp.speed;u.pitch=1.0;
-  const fi=pickFinnishVoice();
-  if(fi)u.voice=fi;
-  u.onend=()=>{
-    if(lp.chapter<lp.lecture.chapters.length-1){lp.chapter++;lpPlayChapter();}
-    else{lp.playing=false;}
-    updateLecturePlayer();
+  const v=pickFinnishVoice();if(v)u.voice=v;
+  u.onboundary=e=>{
+    lp.resumeChar=lp.speechBase+(e.charIndex||0);
+    lpPaintProgress(lp.resumeChar/lp.speechLen);
   };
-  u.onerror=()=>{lp.playing=false;updateLecturePlayer();};
+  u.onend=()=>{
+    if(lp.cancelling){lp.cancelling=false;return;}
+    if(!lp.playing)return;
+    lp.resumeChar=0;lpNextChapterOrStop();
+  };
+  u.onerror=()=>{
+    if(lp.cancelling){lp.cancelling=false;return;}
+    lp.playing=false;setTalking(false);updateLecturePlayer();
+  };
   window.speechSynthesis.speak(u);
-  lp.playing=true;
-  updateLecturePlayer();
 }
 
-function lpPrev(){window.speechSynthesis.cancel();lp.playing=false;if(lp.chapter>0)lp.chapter--;updateLecturePlayer();}
-function lpNext(){window.speechSynthesis.cancel();lp.playing=false;if(lp.lecture&&lp.chapter<lp.lecture.chapters.length-1)lp.chapter++;updateLecturePlayer();}
+function lpNextChapterOrStop(){
+  if(lp.chapter<lp.lecture.chapters.length-1){
+    lp.chapter++;lp.resumeChar=0;lp.resumeTime=0;lpStartPlayback();
+  }else{
+    lp.playing=false;setTalking(false);
+    try{localStorage.removeItem('jarvis:lpos')}catch(e){}
+    updateLecturePlayer();
+  }
+}
+
+function lpToggle(){
+  if(!lp.lecture)return;
+  if(lp.playing){
+    lp.playing=false;setTalking(false);
+    if(lp.audio)lp.audio.pause();
+    else{lp.cancelling=true;window.speechSynthesis.cancel();}
+    updateLecturePlayer();
+  }else{
+    if(lp.audio){
+      lp.playing=true;setTalking(true);
+      lp.audio.playbackRate=lp.speed;lp.audio.play();
+      updateLecturePlayer();
+    }else lpStartPlayback();
+  }
+}
+
+function lpSeek(ev){
+  if(lp.audio&&lp.audio.duration){
+    const r=ev.currentTarget.getBoundingClientRect();
+    const pct=Math.max(0,Math.min(1,(ev.clientX-r.left)/r.width));
+    lp.audio.currentTime=pct*lp.audio.duration;
+    lpPaintProgress(pct,lp.audio.currentTime,lp.audio.duration);
+  }else if(lp.hasAudio){
+    toast('Paina ensin ▶ TOISTA — sitten voit kelata');
+  }else{
+    toast('Kelaus vaatii HQ-äänen — paina ⭳ LATAA HQ-ÄÄNI');
+  }
+}
+
+function lpGoto(ch){
+  const was=lp.playing;
+  lpHardStop();
+  lp.chapter=Math.max(0,Math.min(ch,lp.lecture.chapters.length-1));
+  lp.resumeChar=0;lp.resumeTime=0;
+  if(was)lpStartPlayback();else updateLecturePlayer();
+}
+function lpPrev(){if(lp.lecture)lpGoto(lp.chapter-1);}
+function lpNext(){if(lp.lecture)lpGoto(lp.chapter+1);}
+
 function lpCycleSpeed(){
   const speeds=[0.8,0.9,1.0,1.1,1.2,1.4,1.6];
   const idx=speeds.indexOf(lp.speed);
   lp.speed=speeds[(idx+1)%speeds.length];
-  if(lp.playing){window.speechSynthesis.cancel();lp.playing=false;lpPlayChapter();}
+  if(lp.audio){lp.audio.playbackRate=lp.speed;updateLecturePlayer();}
+  else if(lp.playing){lp.cancelling=true;window.speechSynthesis.cancel();lpSpeakFrom(lp.resumeChar||0);updateLecturePlayer();}
   else updateLecturePlayer();
 }
-function lpClose(){window.speechSynthesis.cancel();lp.playing=false;lp.lecture=null;updateLecturePlayer();}
+function lpClose(){lpHardStop();lp.lecture=null;updateLecturePlayer();}
+
+/* HQ-äänen lataus: Google TTS workerin kautta → IndexedDB → offline-toisto */
+async function downloadLectureAudio(){
+  if(!lp.lecture||lp.dl)return;
+  if(!navigator.onLine){toast('Äänen lataus vaatii verkkoyhteyden');return;}
+  lp.dl=true;
+  const l=lp.lecture;
+  try{
+    for(let i=0;i<l.chapters.length;i++){
+      lp.dlMsg='Luku '+(i+1)+'/'+l.chapters.length+'…';updateLecturePlayer();
+      const ch=l.chapters[i];
+      const text='Luku '+(i+1)+': '+ch.title+'. '+ch.content;
+      const parts=splitTextForTTS(text,4200);
+      const blobs=[];
+      for(const p of parts){
+        const r=await apiFetch('/api/gtts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:p})});
+        if(r.status===501)throw new Error('GOOGLE_TTS_API_KEY puuttuu workerista — ks. ASENNUS.md');
+        if(!r.ok)throw new Error('TTS-virhe '+r.status);
+        blobs.push(await r.blob());
+      }
+      await idbPut('aud:'+l.id+':'+i,new Blob(blobs,{type:'audio/mpeg'}));
+    }
+    lp.hasAudio=true;l.audio=true;saveLectures();renderLectureList();
+    toast('🎧 HQ-ääni ladattu — toimii offline ja kelattavana');
+  }catch(e){toast('Äänen lataus epäonnistui: '+(e.message||'tuntematon virhe'),4000);}
+  lp.dl=false;lp.dlMsg='';updateLecturePlayer();
+}
+function deleteLectureAudio(){
+  if(!lp.lecture)return;
+  if(!confirm('Poistetaanko ladattu HQ-ääni tältä luennolta? (Tekstit säilyvät.)'))return;
+  const l=lp.lecture;
+  idbDelPrefix('aud:'+l.id+':').then(()=>{
+    lp.hasAudio=false;l.audio=false;saveLectures();renderLectureList();
+    lpHardStop();updateLecturePlayer();toast('HQ-ääni poistettu');
+  });
+}
 
 // E-kirja-lukutila: koko luennon teksti luettavassa muodossa
 function openLectureReader(){
@@ -2097,7 +2426,9 @@ function openLectureReader(){
 }
 function closeLectureReader(){document.getElementById('lectureReader').classList.remove('open');}
 function deleteLecture(idx){
-  if(lp.lecture&&lectures[idx]?.id===lp.lecture?.id)lpClose();
+  const l=lectures[idx];
+  if(lp.lecture&&l?.id===lp.lecture?.id)lpClose();
+  if(l?.id)idbDelPrefix('aud:'+l.id+':').catch(()=>{});
   lectures.splice(idx,1);saveLectures();renderLectureList();
 }
 
@@ -2115,7 +2446,16 @@ function renderWiki(){
   setMeter('m3',Math.min(100,n),n+' sivua','ok');
   const list=$('#wikiList');list.innerHTML='';
   if(!n){list.innerHTML='<div class="empty">Tietopankki on tyhjä.\n\nSyötä tietoa alle — esim.\n"Tänään opin että transformerit käyttävät self-attention-mekanismia"\n\n'+AI.display+' organisoi sen wikiksi automaattisesti.</div>';return}
-  wiki.forEach(w=>{
+  // Hakusuodatus: otsikko, tiivistelmä, tagit ja sisältö
+  const q=($('#wikiSearch')?.value||'').trim().toLowerCase();
+  const shown=q?wiki.filter(w=>
+    (w.title||'').toLowerCase().includes(q)||
+    (w.summary||'').toLowerCase().includes(q)||
+    (w.tags||[]).some(t=>(t||'').toLowerCase().includes(q))||
+    (w.body||'').toLowerCase().includes(q)
+  ):wiki;
+  if(!shown.length){list.innerHTML='<div class="empty">Ei osumia haulle "'+esc(q)+'".</div>';return}
+  shown.forEach(w=>{
     const c=document.createElement('div');c.className='wiki-card';
     c.innerHTML='<div class="t">'+esc(w.title)+'</div><div class="s">'+esc(w.summary||'')+'</div><div class="tags">'+(w.tags||[]).map(t=>'<span class="tag">'+esc(t)+'</span>').join('')+'</div>';
     c.onclick=()=>{sClick();trackUse('wiki:'+w.id);openWiki(w)};list.appendChild(c);
@@ -2268,12 +2608,15 @@ let currentAudio=null;
 function speakTTS(text){
   if(!text||!text.trim()) return;
   jarvisSpeaking=true;
+  setTalking(true);
   updateWakeUI();
   // Pysäytä edellinen ääni
   if(currentAudio){ currentAudio.pause(); currentAudio=null; }
   window.speechSynthesis.cancel();
+  const done=()=>{ jarvisSpeaking=false; setTalking(false); updateWakeUI(); };
 
-  apiFetch('/api/tts',{
+  // Ensisijaisesti Google TTS (laadukas neuroääni) workerin kautta
+  apiFetch('/api/gtts',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({text})
@@ -2283,16 +2626,16 @@ function speakTTS(text){
   }).then(blob=>{
     const url=URL.createObjectURL(blob);
     currentAudio=new Audio(url);
-    currentAudio.onended=()=>{ jarvisSpeaking=false; updateWakeUI(); URL.revokeObjectURL(url); currentAudio=null; };
-    currentAudio.onerror=()=>{ jarvisSpeaking=false; updateWakeUI(); URL.revokeObjectURL(url); currentAudio=null; };
+    currentAudio.onended=()=>{ done(); URL.revokeObjectURL(url); currentAudio=null; };
+    currentAudio.onerror=()=>{ done(); URL.revokeObjectURL(url); currentAudio=null; };
     currentAudio.play();
   }).catch(()=>{
-    // ElevenLabs ei toimi → käytetään selaimen TTS:ää varavarana
+    // Ei verkkoa / ei avainta → selaimen TTS varavarana
     const u=new SpeechSynthesisUtterance(text);
-    u.lang='fi-FI'; u.rate=1.05; u.pitch=0.88;
-    const fi=ttsVoices.find(v=>v.lang==='fi-FI')||ttsVoices.find(v=>v.lang.startsWith('fi'));
+    u.lang='fi-FI'; u.rate=1.05; u.pitch=1.0;
+    const fi=pickFinnishVoice();
     if(fi) u.voice=fi;
-    u.onend=u.onerror=()=>{ jarvisSpeaking=false; updateWakeUI(); };
+    u.onend=u.onerror=done;
     window.speechSynthesis.speak(u);
   });
 }
@@ -2302,6 +2645,7 @@ function stopTTS(){
   if(currentAudio){ currentAudio.pause(); currentAudio=null; }
   window.speechSynthesis.cancel();
   jarvisSpeaking=false;
+  setTalking(false);
   updateWakeUI();
 }
 
