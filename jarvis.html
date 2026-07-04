@@ -1630,10 +1630,40 @@ function addFlag(el,q,a){
   f.onclick=()=>{if(f.classList.contains('on'))return;f.classList.add('on');rawLog.push({ts:Date.now(),q,a});saveRaw();sSave();f.textContent='✓ tallennettu'};
   el.appendChild(f);
 }
-function buildContext(){
+// Etsii nykyiseen viestiin liittyvät wiki-sivut yksinkertaisella avainsanaosumalla
+// (otsikko/tagi painaa enemmän kuin tiivistelmä/body) — ei vaadi erillistä Claude-kutsua.
+const STOPWORDS=new Set(['mitä','miten','kuka','onko','olen','minä','sinä','tänään','eilen','joku','tämä','tuo','se','ja','on','oli','ovat','en','ei','olla','kanssa','myös','vielä','sitten','koska','että','niin','kyllä']);
+function findRelevantWiki(text,limit=3){
+  const words=(text||'').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s]/gu,' ').split(/\s+/).filter(w=>w.length>3&&!STOPWORDS.has(w));
+  if(!words.length||!wiki.length)return[];
+  const scored=wiki.map(w=>{
+    const title=(w.title||'').toLowerCase(),tags=(w.tags||[]).join(' ').toLowerCase(),
+      summary=(w.summary||'').toLowerCase(),body=(w.body||'').toLowerCase();
+    let score=0;
+    words.forEach(word=>{
+      if(title.includes(word))score+=4;
+      if(tags.includes(word))score+=3;
+      if(summary.includes(word))score+=2;
+      if(body.includes(word))score+=1;
+    });
+    return{w,score};
+  }).filter(s=>s.score>=3).sort((a,b)=>b.score-a.score);
+  return scored.slice(0,limit).map(s=>s.w);
+}
+
+function buildContext(text){
   const now=Date.now();
   const DAY=86400000;
   const lines=[];
+
+  // Nykyiseen viestiin liittyvät wiki-sivut kokonaisuudessaan — jotta persoona voi oikeasti
+  // muistaa ja viitata niihin, ei vain tietää että ne ovat olemassa.
+  const relevant=findRelevantWiki(text);
+  if(relevant.length){
+    lines.push('Näihin Lassin viestiin liittyviin wiki-sivuihin kannattaa nojata jos relevanttia:\n'+
+      relevant.map(w=>`### ${w.title}\n${w.body||w.summary||''}`).join('\n\n'));
+    relevant.forEach(w=>trackUse('wiki:'+w.id));
+  }
 
   // Wiki-sivut — tunnista käyttämättömät ja viimeksi käytetyt
   if(wiki.length){
@@ -1683,7 +1713,7 @@ async function sendChat(text){
   trackUse('chat');
   addMsg('chatlog','user',text);chatHistory.push({role:'user',content:text});
   const span=addMsg('chatlog','jarvis','');span.parentElement.classList.add('typing');
-  const ctx=buildContext();
+  const ctx=buildContext(text);
   try{
     const reply=await askClaude(AI.persona+ctx,chatHistory.slice(-10));
     span.parentElement.classList.remove('typing');sMsg();
@@ -1992,6 +2022,68 @@ Nykyiset wiki-sivut: ${JSON.stringify(wiki.map(w=>({id:w.id,title:w.title})))}`;
 }
 $('#compileBtn').onclick=()=>compileDay(false);
 setInterval(()=>{const n=new Date(),lc=new Date(lastCompile);if(n.getHours()>=21&&!(lastCompile&&lc.toDateString()===n.toDateString())&&rawLog.length)compileDay(true)},60000);
+
+/* ===== WIKI-SIIVOUS (automaattinen unohtaminen) ===== */
+let lastPrune=0;
+try{const v=localStorage.getItem('jarvis:lastprune');if(v)lastPrune=JSON.parse(v)}catch(e){}
+
+async function pruneWiki(auto){
+  if(wiki.length<4)return; // liian pieni tietopankki siivottavaksi
+  const now=Date.now(),DAY=86400000;
+  const idx=wiki.map(w=>{
+    const u=usage['wiki:'+w.id];
+    return{
+      id:w.id,title:w.title,summary:w.summary,tags:w.tags||[],
+      paivia_muokattu_sitten:Math.round((now-(w.updated||now))/DAY),
+      viimeksi_katsottu:u?Math.round((now-u.last)/DAY)+' pv sitten':'ei koskaan'
+    };
+  });
+  const sys=`Olet ${AI.name} ja ylläpidät Lassin henkilökohtaista tietopankkia (PKB). Siivoa se ajan tasalle — poista vanhentunut/merkityksetön ja yhdistä päällekkäiset sivut, jotta tietopankki pysyy arvokkaana eikä täyty turhalla.
+
+ÄLÄ POISTA:
+- opittuja asioita, pysyviä faktoja, henkilökohtaisia mieltymyksiä/tietoja
+- käynnissä olevia projekteja tai tavoitteita
+- mitä tahansa mikä vaikuttaa pitkäaikaisesti arvokkaalta, vaikka olisi vanha
+Kun epävarma, ÄLÄ poista.
+
+POISTA (jos löytyy):
+- yksittäisiä päivän ruoka-/harjoituspäiväkirjamerkintöjä jotka ovat yli 45 päivää vanhoja eivätkä sisällä mitään erityistä opittavaa
+- selkeitä duplikaatteja samasta asiasta — näistä YHDISTÄ, älä poista molempia
+- kertaluontoisia mitättömiä merkintöjä joilla ei ole enää arvoa
+
+Tänään: ${new Date().toLocaleDateString('fi-FI')}
+Wiki-sivut: ${JSON.stringify(idx)}
+
+Vastaa AINOASTAAN JSON-objektilla, ei koodiblokkeja:
+{"poista":[{"id":"...","syy":"lyhyt syy"}],"yhdista":[{"sailytettava":"id","poistettava":"id","syy":"..."}]}
+Jos mitään ei kannata poistaa/yhdistää, palauta {"poista":[],"yhdista":[]}.`;
+  try{
+    let raw=await askClaude(sys,[{role:'user',content:'Siivoa tietopankki.'}],1500);
+    raw=raw.replace(/```json|```/g,'').trim();
+    const r=JSON.parse(raw);
+    const removed=[];
+    (r.yhdista||[]).forEach(m=>{
+      const keep=wiki.find(w=>w.id===m.sailytettava),drop=wiki.find(w=>w.id===m.poistettava);
+      if(keep&&drop&&keep.id!==drop.id){
+        keep.body=(keep.body||'')+'\n\n---\n'+(drop.body||drop.summary||'');
+        keep.updated=Date.now();
+        wiki=wiki.filter(w=>w.id!==drop.id);
+        removed.push(`${drop.title} → yhdistetty sivuun ${keep.title}`);
+      }
+    });
+    (r.poista||[]).forEach(p=>{
+      const i=wiki.findIndex(w=>w.id===p.id);
+      if(i>=0){removed.push(`${wiki[i].title} (${p.syy||'vanhentunut'})`);wiki.splice(i,1);}
+    });
+    if(removed.length){
+      await saveWiki();
+      addMsg('knowlog','jarvis','🧹 Siivosin tietopankkia:\n'+removed.join('\n'));
+    }
+    lastPrune=Date.now();try{localStorage.setItem('jarvis:lastprune',JSON.stringify(lastPrune))}catch(e){}
+  }catch(e){/* taustasiivous epäonnistui hiljaa, yritetään uudelleen huomenna */}
+}
+// Ajetaan kerran päivässä samassa 21:00-ikkunassa kuin päivän koonti
+setInterval(()=>{const n=new Date(),lp=new Date(lastPrune);if(n.getHours()>=21&&!(lastPrune&&lp.toDateString()===n.toDateString()))pruneWiki(true)},60000);
 
 /* ===== OPPIMISMOOTTORI ===== */
 let learnData = {topics:[], streak:0, lastDate:'', todayDone:false};
