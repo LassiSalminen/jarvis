@@ -37,6 +37,12 @@ Käyttöliittymä (GitHub Pages) → Cloudflare Worker → Claude API + KV-muist
 ## Estetiikka
 Arc reactor -animaatio, navy + cyan, Orbitron + Share Tech Mono -fontit, HUD-tunnelma.
 
+## Julkaisu (git)
+Kun muokkaat julkaistavia tiedostoja (`jarvis.html`, `manifest.json`, `sw.js`,
+ikonit), committaa ja pushaa muutokset GitHubiin automaattisesti muokkauksen
+jälkeen — GitHub Pages päivittyy pushista. `worker.js` EI koskaan GitHubiin
+(.gitignore hoitaa tämän).
+
 ## Seuraavat askeleet
 Pystytys ASENNUS.md:n mukaan: API-avain → Cloudflare Worker + KV → WORKER_URL
 HTML:ään → GitHub Pages → asennus sovelluksena laitteille.
