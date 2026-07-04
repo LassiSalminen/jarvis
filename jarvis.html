@@ -917,8 +917,8 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
       <input id="wikiSearch" oninput="renderWiki()" placeholder="⌕ Hae tietopankista — otsikko, tagi, sisältö…" autocomplete="off">
       <div class="wiki-list" id="wikiList"></div>
       <div id="fileDropZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleFileDrop(event)">
-        <span id="fileDropLabel">⊕ LATAA TIEDOSTO — .txt .md .pdf .jpg .png</span>
-        <input type="file" id="fileInput" accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.gif,.webp" style="display:none" onchange="handleFileInput(this)">
+        <span id="fileDropLabel">⊕ LATAA TIEDOSTO — .txt .md .pdf .jpg .png .mp3 .m4a</span>
+        <input type="file" id="fileInput" accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.gif,.webp,.mp3,.m4a,.wav,.ogg,.webm,.aac" style="display:none" onchange="handleFileInput(this)">
       </div>
       <div class="inputbar">
         <button class="btn mic ghost" id="micKnow">🎙</button>
@@ -1788,14 +1788,17 @@ function handleFileInput(inp){
   inp.value='';
 }
 const IMG_TYPES=['image/jpeg','image/png','image/gif','image/webp'];
-const RESET_LABEL='⊕ LATAA TIEDOSTO — .txt .md .pdf .jpg .png';
+const AUDIO_TYPES=['audio/mpeg','audio/mp4','audio/wav','audio/webm','audio/ogg','audio/x-m4a','audio/aac'];
+const RESET_LABEL='⊕ LATAA TIEDOSTO — .txt .md .pdf .jpg .png .mp3 .m4a';
 
 async function readFile(file){
   trackUse('fileupload');
   const lbl=$('#fileDropLabel');
   lbl.textContent='⏳ LUETAAN: '+file.name;
   try{
-    if(IMG_TYPES.includes(file.type)||/\.(jpe?g|png|gif|webp)$/i.test(file.name)){
+    if(AUDIO_TYPES.includes(file.type)||/\.(mp3|m4a|wav|ogg|webm|aac)$/i.test(file.name)){
+      await processAudio(file);
+    } else if(IMG_TYPES.includes(file.type)||/\.(jpe?g|png|gif|webp)$/i.test(file.name)){
       await processImage(file);
     } else if(file.type==='application/pdf'||file.name.endsWith('.pdf')){
       const text=await extractPdf(file);
@@ -1844,6 +1847,48 @@ Vastaa VAIN JSON-objektilla, ei muuta tekstiä:
     await saveWiki(); sSave();
   }
 }
+async function processAudio(file){
+  const lbl=$('#fileDropLabel');
+  lbl.textContent='🎙️ Litteroidaan: '+file.name;
+  const fd=new FormData();
+  fd.append('file',file,file.name||'audio.webm');
+  fd.append('language_code','fin');
+  const r=await apiFetch('/api/stt',{method:'POST',body:fd});
+  const d=await r.json();
+  if(!d.text) throw new Error(d.error==='no_elevenlabs_key'?'ElevenLabs-avain puuttuu workerista':'Litterointi epäonnistui');
+  lbl.textContent='📝 Jäsennetään yhteenvetoa…';
+  await processAudioLog(d.text,file.name);
+}
+
+// Litteroitu äänimuistio → kattava päiväkirjamerkintä + mahdolliset erilliset opit
+async function processAudioLog(transcript,filename){
+  addMsg('knowlog','system','[ Äänimuistio litteroitu: '+filename+' ]');
+  const today=new Date().toISOString().slice(0,10);
+  const dayId='paiva-'+today;
+  const existing=wiki.find(w=>w.id===dayId);
+  const sys=`Olet ${AI.name}. Lassi äänitti puheena tämän päivän tapahtumat, ja tässä on sen litteroitu teksti (saattaa sisältää pieniä tunnistusvirheitä — tulkitse järkevästi).
+Tee siitä KATTAVA mutta jäsennelty päiväkirjamerkintä: mitä tapahtui, mitä opittiin, mitä on tärkeää muistaa. Älä vain toista litterointia sellaisenaan — tiivistä ja jäsennä se selkeäksi, lukukelpoiseksi tekstiksi.
+${existing?('Tälle päivälle on jo päiväkirjamerkintä — LISÄÄ tämä sen perään, älä korvaa:\n'+existing.body):'Tälle päivälle ei ole vielä päiväkirjamerkintää.'}
+Jos litteroinnista löytyy erillisiä pysyviä oppeja/faktoja jotka kannattaisi tallentaa omana wiki-sivuna (ei vain päiväkirjaan), poimi ne myös "pages"-listaan.
+
+Vastaa AINOASTAAN JSON-objektilla, ei koodiblokkeja:
+{"reply":"<lyhyt vahvistus Lassille>","diaryBody":"<koko päivän päiväkirjamerkinnän lopullinen markdown-sisältö, olemassaoleva + uusi yhdistettynä>","pages":[{"id":"<slug>","title":"...","summary":"...","body":"...","tags":["..."]}]}`;
+  const span=addMsg('knowlog','jarvis','');span.parentElement.classList.add('typing');
+  try{
+    let raw=await askClaude(sys,[{role:'user',content:transcript}],3000);
+    raw=raw.replace(/```json|```/g,'').trim();
+    const r=JSON.parse(raw);
+    span.parentElement.classList.remove('typing');sMsg();
+    typewrite(span,r.reply||'Äänimuistio tallennettu.');
+    const dstr=new Date().toLocaleDateString('fi-FI');
+    const dp={id:dayId,title:'Päiväkirja '+dstr,summary:(r.diaryBody||transcript).slice(0,120),body:r.diaryBody||transcript,tags:['päiväkirja'],updated:Date.now()};
+    const di=wiki.findIndex(w=>w.id===dayId);
+    if(di>=0)wiki[di]=dp;else wiki.unshift(dp);
+    (r.pages||[]).forEach(p=>{p.updated=Date.now();const i=wiki.findIndex(w=>w.id===p.id);if(i>=0)wiki[i]={...wiki[i],...p};else wiki.unshift(p)});
+    await saveWiki();sSave();
+  }catch(e){span.parentElement.classList.remove('typing');span.textContent='En kyennyt jäsentämään äänimuistiota.'}
+}
+
 async function extractPdf(file){
   if(!window.pdfjsLib) throw new Error('PDF.js ei latautunut');
   const buf=await file.arrayBuffer();
