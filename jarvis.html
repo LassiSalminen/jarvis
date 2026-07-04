@@ -473,6 +473,15 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
 .news-card .nt{font-size:13px;color:var(--txt);line-height:1.4;margin-bottom:3px}
 .news-card .ns{font-size:11px;color:var(--txt-dim);line-height:1.3}
 .news-card .nr{font-family:'Orbitron';font-size:9px;color:var(--cyan);opacity:.7;margin-bottom:3px;letter-spacing:.06em}
+.pf-card{background:rgba(0,5,12,.95);border:1px solid var(--line);border-left:2px solid var(--gold);border-radius:3px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pf-card .pf-sym{font-family:'Orbitron';font-size:13px;color:var(--txt)}
+.pf-card .pf-meta{font-size:10px;color:var(--txt-dim);margin-top:2px}
+.pf-card .pf-val{text-align:right;font-family:'Share Tech Mono'}
+.pf-card .pf-price{font-size:14px}
+.pf-card .pf-gain{font-size:11px;margin-top:2px}
+.pf-gain.up{color:var(--green)}
+.pf-gain.down{color:var(--red)}
+.pf-disclaimer{font-size:10px;color:var(--txt-dim);opacity:.75;padding:8px 12px 0;line-height:1.5}
 .wiki-card{background:rgba(0,5,12,.95);border:1px solid var(--line);border-left:2px solid var(--cyan);
   border-radius:2px;padding:10px 12px;cursor:pointer;transition:.15s;position:relative;overflow:hidden;
   animation:min .25s ease forwards}
@@ -529,12 +538,14 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
 .tab[data-view="know"].active{background:var(--purple);border-color:var(--purple)}
 .tab[data-view="learn"].active{background:var(--amber);border-color:var(--amber)}
 .tab[data-view="news"].active{background:var(--green);border-color:var(--green)}
+.tab[data-view="invest"].active{background:var(--gold);border-color:var(--gold)}
 
 /* Mobiili nav aktiivisena */
 .mnav-btn[data-view="chat"].active{color:var(--cyan);border-top-color:var(--cyan)}
 .mnav-btn[data-view="know"].active{color:var(--purple);border-top-color:var(--purple);text-shadow:0 0 10px rgba(204,68,255,.6)}
 .mnav-btn[data-view="learn"].active{color:var(--amber);border-top-color:var(--amber);text-shadow:0 0 10px rgba(255,136,0,.6)}
 .mnav-btn[data-view="news"].active{color:var(--green);border-top-color:var(--green);text-shadow:0 0 10px rgba(62,224,143,.6)}
+.mnav-btn[data-view="invest"].active{color:var(--gold);border-top-color:var(--gold);text-shadow:0 0 10px rgba(255,206,74,.6)}
 
 /* Header-pillerit eri värisiksi */
 .sys-pills .pill:nth-child(1) .pill-dot{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
@@ -762,6 +773,7 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
       <button class="tab" data-view="know">Knowledge</button>
       <button class="tab" data-view="learn">Oppi</button>
       <button class="tab" data-view="news">Uutiset</button>
+      <button class="tab" data-view="invest">Sijoitus</button>
     </div>
 
     <!-- HOME -->
@@ -968,6 +980,25 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
         <div style="font-size:12px;color:var(--txt-dim);padding:8px 0">Haetaan uutisia…</div>
       </div>
     </div>
+
+    <!-- INVEST -->
+    <div class="view panel" id="view-invest">
+      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
+      <div class="scan"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px 2px;position:relative;z-index:3">
+        <h2 style="padding:0">Sijoitusneuvoja</h2>
+        <button class="btn ghost" id="dailyPicksBtn" style="font-size:10px;padding:5px 10px;min-height:32px">📈 PÄIVÄN POIMINNAT</button>
+      </div>
+      <div class="pf-disclaimer">⚠️ Ei virallista sijoitusneuvontaa — tekoäly yhdistää live-hintadatan ja uutiset arvioksi. Päätökset ja riski omalla vastuulla.</div>
+      <div id="portfolioSummary" style="padding:8px 12px 0;font-size:11px;color:var(--txt-dim)"></div>
+      <div class="wiki-list" id="portfolioList" style="flex:0 1 auto;max-height:34%"></div>
+      <div class="log" id="investlog" style="flex:1 1 auto"></div>
+      <div class="inputbar">
+        <button class="btn mic ghost" id="micInvest">🎙</button>
+        <input id="investInput" placeholder="Kysy neuvoa tai kerro kaupasta: 'ostin 10 Nokia à 11€'…" autocomplete="off">
+        <button class="btn" id="sendInvest">LÄHETÄ</button>
+      </div>
+    </div>
   </section>
 
   <!-- RIGHT -->
@@ -1023,6 +1054,9 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
   </button>
   <button class="mnav-btn" data-view="news" onclick="mobileSwitch('news')">
     <i class="mnav-icon">◰</i><span class="mnav-lbl">UUTISET</span>
+  </button>
+  <button class="mnav-btn" data-view="invest" onclick="mobileSwitch('invest')">
+    <i class="mnav-icon">◆</i><span class="mnav-lbl">SIJOITUS</span>
   </button>
   <button class="mnav-btn" data-view="info" onclick="mobileSwitch('info')">
     <i class="mnav-icon">⊞</i><span class="mnav-lbl">INFO</span>
@@ -1180,6 +1214,7 @@ async function apiFetch(path,opts={}){
 }
 
 let wiki=[],chatHistory=[],rawLog=[],lastCompile=0,chatCount=0;
+let portfolio=[]; // {id, symbol, name, shares, price, side:'buy'|'sell', currency, date}
 let usage={}; // {feature/wiki-id: {count, last}}
 try{const v=localStorage.getItem('jarvis:usage');if(v)usage=JSON.parse(v)}catch(e){}
 function trackUse(key){
@@ -1218,6 +1253,7 @@ function startApp(){
   // Käynnistä boot-sekvenssi ja sovellus
   $('#boot').style.display='flex';
   loadWiki();
+  loadPortfolio();
 }
 
 // Enter-näppäin PIN-kentässä
@@ -1553,6 +1589,7 @@ document.querySelectorAll('.tab').forEach(t=>{
   t.onclick=()=>{sClick();document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('#view-'+t.dataset.view).classList.add('active');
   if(t.dataset.view==='learn')setTimeout(renderLearnUI,50);
   if(t.dataset.view==='news')fetchNews();
+  if(t.dataset.view==='invest')renderPortfolio();
   };
 });
 
@@ -1567,6 +1604,7 @@ function mobileSwitch(v){
   if(btn)btn.classList.add('active');
   if(v==='learn')setTimeout(renderLearnUI,50);
   if(v==='news')fetchNews();
+  if(v==='invest')renderPortfolio();
   sClick();
 }
 
@@ -1616,7 +1654,7 @@ function buildContext(){
   // Ominaisuuksien käyttötilastot
   const features=[
     ['chat','Chat'],['knowledge','Knowledge/PKB'],['wakemode','Ääniohjaus'],
-    ['foodlog','Ruokapäiväkirja'],['exerciselog','Harjoituspäiväkirja'],['fileupload','Tiedostoupload']
+    ['foodlog','Ruokapäiväkirja'],['exerciselog','Harjoituspäiväkirja'],['fileupload','Tiedostoupload'],['invest','Sijoitusneuvoja']
   ];
   const unused_f=features.filter(([k])=>{
     const u=usage[k];
@@ -1789,6 +1827,143 @@ async function extractPdf(file){
   return text;
 }
 $('#knowInput').onkeydown=e=>{if(e.key==='Enter')$('#sendKnow').click()};
+
+/* ===== SIJOITUS ===== */
+async function loadPortfolio(){
+  try{const r=await apiFetch('/api/portfolio');portfolio=await r.json();if(!Array.isArray(portfolio))portfolio=[]}catch(e){portfolio=[]}
+  renderPortfolio();
+}
+async function savePortfolio(){
+  try{await apiFetch('/api/portfolio',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(portfolio)})}catch(e){}
+  renderPortfolio();
+}
+// Aggregoi kaupat symbolikohtaisiksi omistuksiksi (määrä + keskihankintahinta)
+function holdings(){
+  const map={};
+  portfolio.forEach(t=>{
+    if(!map[t.symbol])map[t.symbol]={symbol:t.symbol,name:t.name||t.symbol,shares:0,cost:0,currency:t.currency||'EUR'};
+    const h=map[t.symbol];
+    if(t.side==='sell'){h.shares-=t.shares;h.cost-=t.shares*(t.price||0);}
+    else{h.shares+=t.shares;h.cost+=t.shares*(t.price||0);}
+  });
+  return Object.values(map).filter(h=>h.shares>0.0001);
+}
+async function getQuotes(symbols){
+  if(!symbols.length)return{};
+  try{
+    const r=await apiFetch('/api/quote?symbols='+encodeURIComponent([...new Set(symbols)].join(',')));
+    const d=await r.json();
+    const m={};(d.quotes||[]).forEach(q=>m[q.symbol]=q);
+    return m;
+  }catch(e){return{}}
+}
+async function renderPortfolio(){
+  const list=$('#portfolioList'),sum=$('#portfolioSummary');
+  if(!list)return;
+  const held=holdings();
+  if(!held.length){
+    list.innerHTML='<div class="empty">Salkku on tyhjä.\n\nKerro kaupoista alle — esim.\n"ostin 10 Nokia à 11€" tai "myin kaikki Applet"\n\nTai kysy suoraan sijoitusneuvoa.</div>';
+    if(sum)sum.textContent='';
+    return;
+  }
+  const quotes=await getQuotes(held.map(h=>h.symbol));
+  list.innerHTML='';
+  let totalVal=0,totalCost=0;
+  held.forEach(h=>{
+    const q=quotes[h.symbol]||{};
+    const avgCost=h.cost/h.shares;
+    const price=q.price!=null?q.price:avgCost;
+    const val=price*h.shares;
+    const gainPct=avgCost?((price-avgCost)/avgCost*100):0;
+    totalVal+=val;totalCost+=h.cost;
+    const c=document.createElement('div');c.className='pf-card';
+    c.innerHTML='<div><div class="pf-sym">'+esc(h.symbol)+'</div><div class="pf-meta">'+esc(h.name)+' · '+h.shares+' kpl · osto '+avgCost.toFixed(2)+' '+esc(q.currency||h.currency)+'</div></div>'
+      +'<div class="pf-val"><div class="pf-price">'+price.toFixed(2)+' '+esc(q.currency||h.currency)+'</div><div class="pf-gain '+(gainPct>=0?'up':'down')+'">'+(gainPct>=0?'+':'')+gainPct.toFixed(1)+'%</div></div>';
+    list.appendChild(c);
+  });
+  if(sum){
+    const totalGain=totalCost?((totalVal-totalCost)/totalCost*100):0;
+    sum.innerHTML='Salkun arvo: <b style="color:var(--gold)">'+totalVal.toFixed(2)+'</b> · tuotto <b class="'+(totalGain>=0?'pf-gain up':'pf-gain down')+'" style="display:inline">'+(totalGain>=0?'+':'')+totalGain.toFixed(1)+'%</b>';
+  }
+}
+
+async function processInvest(text){
+  if(!text.trim())return;sClick();
+  trackUse('invest');
+  addMsg('investlog','user',text);
+  const span=addMsg('investlog','jarvis','');span.parentElement.classList.add('typing');
+  const held=holdings();
+  const quotes=await getQuotes(held.map(h=>h.symbol));
+  const sys=`Olet ${AI.name}, Lassin henkilökohtainen sijoitusneuvoja. Et ole lisensoitu sijoitusneuvoja — muistuta tästä lyhyesti tarvittaessa, mutta anna silti konkreettinen, perusteltu näkemys.
+Tunnista syötteen tyyppi:
+- OSTO/MYYNTI: "ostin", "myin", "ostan", "möin" + osake/krypto + määrä (+ mahdollisesti hinta) → action:"trade"
+- KYSYMYS: kaikki muu (esim. "mitä pitäisi ostaa", "kannattaako myydä X") → action:"query"
+
+Käytä Yahoo Finance -symbolimuotoa: USA-osakkeet esim. AAPL, NVDA; Helsingin pörssi esim. NOKIA.HE, SAMPO1V.HE, KNEBV.HE; krypto esim. BTC-USD, ETH-USD; ETF/rahastot esim. VOO, IWDA.L.
+
+Lassin nykyinen salkku: ${JSON.stringify(held.map(h=>({symbol:h.symbol,shares:h.shares,avgCost:h.shares?(h.cost/h.shares).toFixed(2):0})))}
+Live-hinnat salkun symboleille: ${JSON.stringify(quotes)}
+
+Vastaa AINOASTAAN JSON-objektilla, ei koodiblokkeja:
+Kysymys: {"action":"query","reply":"<perusteltu vastaus, mainitse konkreettisia hintoja jos relevanttia>"}
+Kauppa: {"action":"trade","reply":"<lyhyt vahvistus>","trade":{"symbol":"<Yahoo-symboli>","name":"<yhtiön/kohteen nimi>","shares":<määrä>,"price":<hinta — käytä käyttäjän antamaa, tai live-hintaa jos ei annettu>,"side":"buy"|"sell","currency":"<esim EUR/USD>"}}
+Jos osto/myyntitieto on epäselvä (esim. symbolia ei voi päätellä), käytä action:"query" ja pyydä tarkennusta.`;
+  try{
+    let raw=await askClaude(sys,[{role:'user',content:text}],800);
+    raw=raw.replace(/```json|```/g,'').trim();
+    const r=JSON.parse(raw);
+    span.parentElement.classList.remove('typing');sMsg();
+    typewrite(span,r.reply||'Käsitelty.');
+    if(r.action==='trade'&&r.trade){
+      const t=r.trade;
+      portfolio.push({id:'t'+Date.now(),symbol:t.symbol,name:t.name||t.symbol,shares:Number(t.shares)||0,price:Number(t.price)||0,side:t.side==='sell'?'sell':'buy',currency:t.currency||'EUR',date:Date.now()});
+      await savePortfolio();sSave();
+    }
+    if(wakeMode||convActive) speakTTS(r.reply||'');
+  }catch(e){span.parentElement.classList.remove('typing');span.textContent='En kyennyt käsittelemään pyyntöä.'}
+}
+$('#sendInvest').onclick=()=>{const v=$('#investInput').value;$('#investInput').value='';processInvest(v)};
+$('#investInput').onkeydown=e=>{if(e.key==='Enter')$('#sendInvest').click()};
+
+async function dailyPicks(){
+  sClick();
+  const btn=$('#dailyPicksBtn');btn.disabled=true;btn.textContent='⏳ ANALYSOIDAAN…';
+  const span=addMsg('investlog','jarvis','');span.parentElement.classList.add('typing');
+  try{
+    const held=holdings();
+    let news=[];
+    try{const r=await apiFetch('/api/finnews');const d=await r.json();news=(d.items||[]).slice(0,20)}catch(e){}
+
+    const sys1=`Olet ${AI.name}, sijoitusanalyytikko. Ehdota 8-14 kiinnostavaa tickeriä tarkasteltavaksi tänään ostoa/myyntiä varten — kata laajasti: USA:n osakkeet, Helsingin pörssi (.HE-symbolit), krypto ja tunnetut ETF:t/indeksirahastot.
+Käytä Yahoo Finance -symbolimuotoa (esim. AAPL, NOKIA.HE, BTC-USD, VOO).
+Ota huomioon tuoreet talousuutiset ja Lassin nykyinen salkku (jotta voit ehdottaa sen symboleita mukaan tarkasteluun).
+Uutiset: ${JSON.stringify(news.map(n=>n.title))}
+Salkku: ${JSON.stringify(held.map(h=>h.symbol))}
+Vastaa AINOASTAAN JSON-arrayna symboleista, esim: ["AAPL","NOKIA.HE","BTC-USD"]`;
+    let raw1=await askClaude(sys1,[{role:'user',content:'Ehdota tickerit.'}],400);
+    const m1=raw1.match(/\[[\s\S]*\]/);
+    const candidates=m1?JSON.parse(m1[0]):[];
+    const allSymbols=[...new Set([...candidates,...held.map(h=>h.symbol)])].slice(0,30);
+    const quotes=await getQuotes(allSymbols);
+
+    const sys2=`Olet ${AI.name}, Lassin henkilökohtainen sijoitusneuvoja. Et ole lisensoitu sijoitusneuvoja.
+Tässä on tämänhetkiset live-hinnat: ${JSON.stringify(quotes)}
+Tuoreet talousuutiset: ${JSON.stringify(news.map(n=>n.title+' — '+(n.desc||'')).slice(0,15))}
+Lassin nykyinen salkku (symboli, määrä, keskihankintahinta): ${JSON.stringify(held.map(h=>({symbol:h.symbol,shares:h.shares,avgCost:h.shares?(h.cost/h.shares).toFixed(2):0})))}
+
+Anna konkreettinen, perusteltu päivän katsaus suomeksi:
+1) 2-4 ostoehdotusta ja millä suunnilleen hinnalla (käytä annettuja live-hintoja), lyhyt perustelu kullekin.
+2) Jos salkussa on jotain mitä nyt kannattaisi harkita myytäväksi (esim. selkeä voitto/tappio tai huono uutinen), mainitse konkreettisesti mitkä ja miksi — muuten sano ettei myyntipainetta ole.
+3) Päätä lyhyeen muistutukseen ettei tämä ole virallista sijoitusneuvontaa ja että päätös on Lassin.
+Pidä vastaus jäsenneltynä mutta tiiviinä (max n. 200 sanaa). Vastaa PELKÄLLÄ tekstillä, ei JSON.`;
+    const reply=await askClaude(sys2,[{role:'user',content:'Anna päivän poiminnat.'}],900);
+    span.parentElement.classList.remove('typing');sMsg();
+    typewrite(span,reply);
+    if(wakeMode||convActive) speakTTS(reply);
+  }catch(e){span.parentElement.classList.remove('typing');span.textContent='Päivän poimintojen haku epäonnistui.'}
+  btn.disabled=false;btn.textContent='📈 PÄIVÄN POIMINNAT';
+}
+$('#dailyPicksBtn').onclick=dailyPicks;
 
 /* ===== DAILY COMPILE ===== */
 async function compileDay(auto){
@@ -2482,6 +2657,7 @@ function setupMic(btnId,inputId,autosend){
 }
 setupMic('micChat','chatInput',()=>$('#sendChat').click());
 setupMic('micKnow','knowInput',()=>$('#sendKnow').click());
+setupMic('micInvest','investInput',()=>$('#sendInvest').click());
 
 /* ===== WAKE WORD & VOICE CONVERSATION ===== */
 let wakeMode=false, convActive=false, jarvisSpeaking=false;
@@ -2754,6 +2930,7 @@ window.speechSynthesis.onvoiceschanged=loadVoices;
 // Käynnistys: jos PIN on jo tallennettu, suoraan sovellukseen
 if(JARVIS_PIN){
   loadWiki();
+  loadPortfolio();
 }
 </script>
 </body>
