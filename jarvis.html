@@ -1254,6 +1254,7 @@ function startApp(){
   $('#boot').style.display='flex';
   loadWiki();
   loadPortfolio();
+  loadLectures();
 }
 
 // Enter-näppäin PIN-kentässä
@@ -2351,8 +2352,25 @@ document.querySelector('.tab[data-view="learn"]').addEventListener('click',()=>{
 
 /* ===== LUENNOT ===== */
 let lectures=[];
-try{const v=localStorage.getItem('jarvis:lectures');if(v)lectures=JSON.parse(v)}catch(e){}
-function saveLectures(){try{localStorage.setItem('jarvis:lectures',JSON.stringify(lectures))}catch(e){}}
+async function loadLectures(){
+  try{
+    const r=await apiFetch('/api/lectures');lectures=await r.json();if(!Array.isArray(lectures))lectures=[];
+    // Kertamigraatio: jos KV on tyhjä mutta laitteella on vanhoja paikallisia luentoja, siirrä ne KV:hen
+    if(!lectures.length){
+      try{
+        const local=localStorage.getItem('jarvis:lectures');
+        if(local){
+          const parsed=JSON.parse(local);
+          if(Array.isArray(parsed)&&parsed.length){lectures=parsed;await saveLectures();localStorage.removeItem('jarvis:lectures');}
+        }
+      }catch(e){}
+    }
+  }catch(e){lectures=[]}
+  renderLectureList();
+}
+async function saveLectures(){
+  try{await apiFetch('/api/lectures',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(lectures)})}catch(e){}
+}
 
 let currentLearnTab='oppi';
 
@@ -3068,6 +3086,7 @@ window.speechSynthesis.onvoiceschanged=loadVoices;
 if(JARVIS_PIN){
   loadWiki();
   loadPortfolio();
+  loadLectures();
 }
 </script>
 </body>
