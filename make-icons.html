@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<body style="background:#000;color:#0ef;font-family:monospace;padding:40px;text-align:center">
+<h2>JARVIS Icon Generator</h2>
+<p id="s">Generoidaan kuvakkeet...</p>
+<script>
+function drawIcon(size){
+  const c=document.createElement('canvas');
+  c.width=c.height=size;
+  const x=c.getContext('2d');
+  const cx=size/2,cy=size/2,s=size/512;
+
+  x.fillStyle='#000509';x.fillRect(0,0,size,size);
+
+  // Renkaat
+  [[220,3,.15,false],[190,6,.5,true],[155,2,.2,false],[120,4,.4,false],[82,8,.7,false]].forEach(([r,lw,a,dash])=>{
+    x.strokeStyle='#00e5ff';x.lineWidth=lw*s;x.globalAlpha=a;
+    if(dash)x.setLineDash([20*s,10*s]);else x.setLineDash([]);
+    x.beginPath();x.arc(cx,cy,r*s,0,Math.PI*2);x.stroke();
+  });
+  x.setLineDash([]);
+
+  // Ydin
+  x.globalAlpha=1;
+  x.fillStyle='#001820';
+  x.beginPath();x.arc(cx,cy,56*s,0,Math.PI*2);x.fill();
+
+  x.strokeStyle='#00e5ff';x.lineWidth=3*s;x.globalAlpha=.9;
+  x.beginPath();x.arc(cx,cy,50*s,0,Math.PI*2);x.stroke();
+
+  const g=x.createRadialGradient(cx,cy,0,cx,cy,44*s);
+  g.addColorStop(0,'#ffffff');g.addColorStop(.25,'#c0f8ff');
+  g.addColorStop(.6,'#00e5ff');g.addColorStop(1,'rgba(0,48,64,0)');
+  x.globalAlpha=1;x.fillStyle=g;
+  x.beginPath();x.arc(cx,cy,44*s,0,Math.PI*2);x.fill();
+
+  x.fillStyle='rgba(0,229,255,.8)';
+  x.beginPath();x.arc(cx,cy,44*s,0,Math.PI*2);x.fill();
+
+  x.fillStyle='#e0faff';
+  x.beginPath();x.arc(cx,cy,20*s,0,Math.PI*2);x.fill();
+
+  return c.toDataURL('image/png');
+}
+
+['192','512'].forEach(sz=>{
+  const a=document.createElement('a');
+  a.href=drawIcon(+sz);
+  a.download=`icon-${sz}.png`;
+  document.body.appendChild(a);
+  a.click();
+});
+document.getElementById('s').textContent='✓ Ladattu: icon-192.png ja icon-512.png — lataa nämä GitHubiin!';
+</script>
+</body>
+</html>

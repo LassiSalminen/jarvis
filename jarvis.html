@@ -1,0 +1,2760 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="U.L.T.R.O.N.">
+<link rel="manifest" href="manifest.json">
+<title>U.L.T.R.O.N.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* ULTRON — hillitty punainen aksentti, neutraali vaalea teksti (oletus) */
+  --bg:#0d0a0c;
+  --cyan:#ff5c72;
+  --cyan2:#e03e54;
+  --cyan-dim:#b03048;
+  --cyan-glow:rgba(255,92,114,.7);
+  --cyan-soft:rgba(255,92,114,.12);
+  --amber:#ff9d3c;
+  --red:#ff4d6a;
+  --green:#3ee08f;
+  --purple:#c07bff;
+  --gold:#ffce4a;
+  --line:rgba(255,92,114,.22);
+  --line2:rgba(255,92,114,.07);
+  --panel:rgba(20,14,17,.94);
+  --txt:#ece1e4;
+  --txt-dim:#a8909a;
+  --accent-rgb:255,92,114;
+  --brand-name:"U.L.T.R.O.N.";
+  --glitch-a:rgba(255,200,0,.8);
+  --glitch-b:rgba(200,0,255,.6);
+}
+/* J.A.R.V.I.S. — syaani aksentti, neutraali vaalea teksti */
+body[data-mode="jarvis"]{
+  --bg:#08111a;
+  --cyan:#45c8f5;
+  --cyan2:#1f9fd6;
+  --cyan-dim:#15748f;
+  --cyan-glow:rgba(69,200,245,.7);
+  --cyan-soft:rgba(69,200,245,.12);
+  --amber:#ffb84d;
+  --red:#ff6b6b;
+  --green:#3ee08f;
+  --purple:#7c9fff;
+  --gold:#ffd76a;
+  --line:rgba(69,200,245,.22);
+  --line2:rgba(69,200,245,.07);
+  --panel:rgba(10,18,26,.94);
+  --txt:#dce8f2;
+  --txt-dim:#8aa4b5;
+  --accent-rgb:69,200,245;
+  --brand-name:"J.A.R.V.I.S.";
+  --glitch-a:rgba(69,200,245,.7);
+  --glitch-b:rgba(120,200,255,.5);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--txt);font-family:'Share Tech Mono',monospace;display:flex;flex-direction:column;height:100vh;font-size:15px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ===== CANVAS ===== */
+#bgCanvas{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.85}
+
+/* ===== SCANLINES ===== */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.1) 3px,transparent 4px);
+  animation:scanroll 10s linear infinite;mix-blend-mode:overlay}
+@keyframes scanroll{to{background-position:0 80px}}
+
+/* ===== VIGNETTE ===== */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,.7) 100%)}
+
+/* ===== BOOT ===== */
+#boot{position:fixed;inset:0;z-index:500;background:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  font-family:'Share Tech Mono';font-size:12px;color:var(--cyan);letter-spacing:.12em;padding:40px}
+#boot.done{animation:bfade .5s .2s forwards;pointer-events:none}
+@keyframes bfade{to{opacity:0;visibility:hidden}}
+.bl{opacity:0;animation:blin .12s forwards;white-space:nowrap}
+@keyframes blin{to{opacity:1}}
+#bbar-w{width:340px;height:2px;background:rgba(var(--accent-rgb),.1);margin-top:20px;border-radius:1px}
+#bbar{width:0;height:100%;background:var(--cyan);box-shadow:0 0 12px var(--cyan-glow);border-radius:1px;transition:width .25s ease}
+#bfin{margin-top:14px;font-family:'Orbitron';font-size:13px;letter-spacing:.3em;color:var(--cyan);
+  text-shadow:0 0 20px var(--cyan-glow);opacity:0;transition:opacity .5s}
+
+/* ===== HEADER ===== */
+header{position:relative;z-index:20;display:flex;align-items:center;justify-content:space-between;
+  padding:11px 20px;border-bottom:1px solid var(--line);flex-shrink:0;
+  background:linear-gradient(180deg,rgba(var(--accent-rgb),.05) 0%,transparent 100%)}
+header::after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.5}
+
+.brand{font-family:'Orbitron';font-weight:900;letter-spacing:.35em;font-size:18px;cursor:default;
+  color:var(--cyan);text-shadow:0 0 20px var(--cyan-glow),0 0 50px rgba(var(--accent-rgb),.3);
+  position:relative}
+.brand small{font-size:10px;letter-spacing:.3em;color:var(--txt-dim);display:block;font-family:'Share Tech Mono';margin-top:1px}
+/* glitch */
+.brand::before,.brand::after{content:var(--brand-name);position:absolute;top:0;left:0;
+  font-family:'Orbitron';font-weight:900;font-size:18px;letter-spacing:.35em;overflow:hidden;white-space:nowrap}
+.brand::before{color:var(--glitch-a);clip-path:inset(30% 0 40% 0);animation:g1 5s infinite}
+.brand::after{color:var(--glitch-b);clip-path:inset(55% 0 10% 0);animation:g2 5s infinite}
+@keyframes g1{0%,91%,100%{transform:none;opacity:0}92%{transform:translateX(-3px);opacity:1}93%{transform:translateX(2px);opacity:1}94%{opacity:0}}
+@keyframes g2{0%,91%,100%{transform:none;opacity:0}92%{transform:translateX(2px);opacity:1}93.5%{transform:translateX(-2px);opacity:1}94%{opacity:0}}
+
+.hdr-mid{display:flex;flex-direction:column;align-items:center;gap:5px}
+.sys-pills{display:flex;gap:10px;font-size:10px;letter-spacing:.2em;color:var(--txt-dim)}
+.pill{display:flex;align-items:center;gap:5px}
+.pill-dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:pdot 2s ease-in-out infinite}
+.pill-dot.amber{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.pill-dot:nth-child(1){animation-delay:0s}.pill-dot:nth-child(2){animation-delay:.5s}
+@keyframes pdot{0%,100%{opacity:.35;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
+.hdr-coords{font-size:10px;color:var(--txt-dim);letter-spacing:.12em}
+.hdr-coords span{color:var(--cyan)}
+
+.clock-wrap{text-align:right}
+.clock{font-family:'Orbitron';font-size:22px;font-weight:700;letter-spacing:.08em;
+  color:var(--cyan);text-shadow:0 0 15px var(--cyan-glow)}
+.clock small{display:block;font-size:10px;color:var(--txt-dim);letter-spacing:.22em;margin-top:1px}
+
+/* ===== MAIN GRID ===== */
+main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:12px;min-height:0;
+  position:relative;z-index:10;overflow:hidden}
+@media(max-width:768px){
+  html,body{height:100dvh}
+
+  /* Header compact */
+  header{padding:8px 14px;height:52px;min-height:52px;flex-shrink:0}
+  .hdr-mid{display:none}
+  .brand{font-size:14px}
+  .brand small{display:none}
+  .brand::before,.brand::after{font-size:14px}
+  .clock{font-size:18px}
+  .clock small{display:none}
+  #wakeBtn{font-size:9px;padding:0 10px;height:30px;letter-spacing:.1em}
+  #modeBtn{font-size:8px;padding:0 8px;height:30px;letter-spacing:.05em}
+
+  /* mobileBar off — info-tab hoitaa */
+  #mobileBar{display:none!important}
+
+  /* Main: täyttää tilan bottom nav pois lukien */
+  main{grid-template-columns:1fr;padding:0;gap:0;overflow:hidden;
+    padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
+  .side-left,.side-right{display:none!important}
+
+  /* Center: overflow:hidden estää näkymien vuotamisen */
+  .center{gap:0;overflow:hidden}
+  .tabs{display:none!important}
+  .view.panel{border:none;border-top:1px solid var(--line);border-radius:0}
+  .view .c{display:none}
+  .view .scan{display:none}
+
+  /* HUD reaktori: scale-trikki säilyttää sisäiset mitat */
+  .reactor-wrap{padding-top:20px;gap:10px}
+  .reactor{transform:scale(0.6);margin:-48px}
+  .ultron-face{width:150px}
+  .greeting{font-size:14px}
+  .status-line{font-size:11px}
+  .home-stats{gap:20px}
+  .hstat .v{font-size:18px}
+  .hstat .l{font-size:9px}
+  .ticker{font-size:8px}
+
+  /* Chat */
+  .log{padding:10px}
+  .msg{font-size:14px;max-width:96%}
+  .inputbar{padding:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+  .inputbar input{font-size:16px}/* estää iOS-zoomin */
+
+  /* Knowledge */
+  #knowlog{max-height:22%}
+  #fileDropZone{margin:6px;font-size:9px}
+
+  /* Overlay */
+  .overlay{padding:16px}
+  .overlay .body{font-size:14px}
+
+  /* Wakebar bottom naviin nähden */
+  #wakebar{bottom:calc(60px + env(safe-area-inset-bottom,0px));font-size:11px;padding:7px 14px}
+
+  /* Mobiili bottom nav näkyviin */
+  #mobileNav{display:flex!important}
+}
+
+/* ===== PANEL ===== */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:2px;
+  position:relative;backdrop-filter:blur(8px);overflow:hidden}
+
+/* corner deco */
+.panel .c{position:absolute;width:18px;height:18px;z-index:5;pointer-events:none}
+.panel .c.tl{top:0;left:0;border-top:2px solid var(--cyan);border-left:2px solid var(--cyan)}
+.panel .c.tr{top:0;right:0;border-top:2px solid var(--cyan);border-right:2px solid var(--cyan)}
+.panel .c.bl{bottom:0;left:0;border-bottom:2px solid var(--cyan);border-left:2px solid var(--cyan)}
+.panel .c.br{bottom:0;right:0;border-bottom:2px solid var(--cyan);border-right:2px solid var(--cyan)}
+/* corner glow */
+.panel .c.tl::after,.panel .c.br::after{content:"";position:absolute;width:4px;height:4px;
+  background:var(--cyan);box-shadow:0 0 8px var(--cyan-glow);border-radius:50%}
+.panel .c.tl::after{top:0;left:0}
+.panel .c.br::after{bottom:0;right:0}
+
+/* scan sweep */
+.panel .scan{position:absolute;top:-100%;left:0;right:0;height:200%;pointer-events:none;z-index:1;
+  background:linear-gradient(180deg,transparent 0%,rgba(var(--accent-rgb),.03) 48%,rgba(var(--accent-rgb),.08) 50%,rgba(var(--accent-rgb),.03) 52%,transparent 100%);
+  animation:sweep 6s ease-in-out infinite}
+@keyframes sweep{0%{top:-100%}100%{top:100%}}
+
+.panel h2{font-family:'Orbitron';font-size:11px;font-weight:700;letter-spacing:.32em;
+  color:var(--cyan);padding:10px 13px 6px;text-transform:uppercase;position:relative;z-index:3;
+  text-shadow:0 0 10px rgba(var(--accent-rgb),.4)}
+
+.side-left,.side-right{display:flex;flex-direction:column;gap:12px;min-height:0}
+
+/* ===== METERS ===== */
+.meter{padding:4px 13px;position:relative;z-index:3}
+.meter .lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--txt-dim);letter-spacing:.15em;margin-bottom:3px}
+.meter .lbl .val{font-size:11px}
+.meter .track{height:3px;background:rgba(var(--accent-rgb),.06);border-radius:1px;overflow:visible;position:relative}
+.meter .fill{height:100%;border-radius:1px;transition:width 1.6s cubic-bezier(.4,0,.2,1);position:relative}
+.meter .fill::after{content:"";position:absolute;right:0;top:-2px;width:2px;height:7px;
+  background:var(--cyan);box-shadow:0 0 6px var(--cyan-glow);border-radius:1px}
+.fill.ok{background:linear-gradient(90deg,var(--cyan-dim),var(--cyan))}
+.fill.warn{background:linear-gradient(90deg,#7c5200,var(--amber))}
+.fill.warn::after{background:var(--amber);box-shadow:0 0 6px rgba(255,179,0,.8)}
+.fill.crit{background:linear-gradient(90deg,#7a0000,var(--red))}
+.fill.crit::after{background:var(--red);box-shadow:0 0 6px rgba(255,61,61,.8)}
+
+.geo-box{padding:5px 13px 10px;position:relative;z-index:3}
+.geo-row{font-size:10px;color:var(--txt-dim);letter-spacing:.12em;line-height:2;display:flex;justify-content:space-between}
+.geo-row span{color:var(--cyan);font-size:11px}
+
+/* ===== WEATHER ===== */
+.weather{padding:4px 13px 12px;text-align:center;position:relative;z-index:3}
+.weather .temp{font-family:'Orbitron';font-size:40px;font-weight:700;color:var(--cyan);
+  text-shadow:0 0 30px var(--cyan-glow),0 0 60px rgba(var(--accent-rgb),.2);line-height:1.1}
+.weather .desc{font-size:13px;color:var(--txt);margin-top:2px}
+.weather .loc{font-size:10px;letter-spacing:.22em;color:var(--txt-dim);margin-top:3px}
+.weather .coords{font-size:9px;color:var(--txt-dim);letter-spacing:.1em;margin-top:5px;opacity:.5}
+
+
+/* ===== TABS ===== */
+.tabs{display:flex;gap:5px;justify-content:center;position:relative;z-index:20;flex-shrink:0}
+.tab{font-family:'Orbitron';font-size:12px;letter-spacing:.25em;padding:9px 22px;
+  background:transparent;border:1px solid rgba(var(--accent-rgb),.2);color:var(--txt-dim);
+  border-radius:2px;cursor:pointer;transition:.2s;text-transform:uppercase;position:relative;overflow:hidden}
+.tab::before{content:"";position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:var(--cyan);transform:scaleX(0);transition:.2s;transform-origin:center}
+.tab:hover{color:var(--cyan);border-color:rgba(var(--accent-rgb),.4)}
+.tab:hover::before{transform:scaleX(.5)}
+.tab.active{color:#000;background:var(--cyan);border-color:var(--cyan);font-weight:700;
+  box-shadow:0 0 25px var(--cyan-glow),0 0 50px rgba(var(--accent-rgb),.2),inset 0 0 10px rgba(255,255,255,.1)}
+.tab.active::before{display:none}
+
+/* ===== VIEWS ===== */
+.view{flex:1;min-height:0;display:none;flex-direction:column}
+.view.active{display:flex}
+.center{display:flex;flex-direction:column;gap:10px;min-height:0}
+
+/* ===== HOME ===== */
+#view-home{position:relative}
+.reactor-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;position:relative}
+
+/* hex overlay */
+#view-home::before{content:"";position:absolute;inset:0;opacity:.04;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='104'%3E%3Cpath d='M30 2 L58 18 L58 50 L30 66 L2 50 L2 18Z' fill='none' stroke='%2300e5ff' stroke-width='.8'/%3E%3Cpath d='M30 70 L58 86 L58 118 L30 134 L2 118 L2 86Z' fill='none' stroke='%2300e5ff' stroke-width='.8'/%3E%3C/svg%3E");
+  background-size:60px 104px}
+
+.reactor{width:240px;height:240px;position:relative;cursor:crosshair;flex-shrink:0}
+
+/* ULTRON-kasvot — näkyy ultron-moodissa reactorin sijaan */
+.ultron-face{display:none;width:226px;height:auto;flex-shrink:0;cursor:crosshair;
+  filter:drop-shadow(0 0 18px var(--cyan-glow))}
+.uf-head{fill:none;stroke:var(--cyan);stroke-width:2.6;stroke-linejoin:round;opacity:.92;animation:ufbreath 4s ease-in-out infinite}
+.uf-ridge{fill:rgba(var(--accent-rgb),.08);stroke:var(--cyan);stroke-width:1.6;stroke-linejoin:round;opacity:.85}
+.uf-panel{fill:none;stroke:var(--cyan);stroke-width:1.1;stroke-linecap:round;opacity:.3}
+.uf-crack{fill:none;stroke:var(--cyan);stroke-width:.9;stroke-linecap:round;opacity:.18}
+.uf-brow{fill:rgba(var(--accent-rgb),.16);stroke:var(--cyan);stroke-width:2;stroke-linejoin:round;opacity:.95;animation:ufbreath 4s ease-in-out infinite}
+.uf-nose{fill:rgba(var(--accent-rgb),.06);stroke:var(--cyan);stroke-width:1.4;stroke-linejoin:round;opacity:.7}
+.uf-jaw{fill:rgba(var(--accent-rgb),.07);stroke:var(--cyan);stroke-width:1.4;stroke-linejoin:round;opacity:.7}
+.uf-eye{fill:#a80f28;opacity:.95;filter:url(#uglow);animation:ufeye 3.4s ease-in-out infinite}
+.uf-pupil{fill:#ff5066;filter:url(#uglow);animation:ufpupil 5.2s linear infinite}
+body[data-mode="jarvis"] .uf-eye{fill:#0fb6d8}
+body[data-mode="jarvis"] .uf-pupil{fill:#7ee7ff}
+.uf-mouth line{stroke:var(--cyan);stroke-width:2.4;stroke-linecap:round;opacity:.8;transform-box:fill-box;transform-origin:center}
+.uf-mouth .uf-frame{fill:rgba(var(--accent-rgb),.05);stroke:var(--cyan);stroke-width:1.5;opacity:.6}
+.uf-fin{fill:rgba(var(--accent-rgb),.05);stroke:var(--cyan);stroke-width:2;stroke-linejoin:round;opacity:.82}
+.uf-neck path{fill:none;stroke:var(--cyan);stroke-width:2;stroke-linecap:round}
+.uf-neck path:nth-child(1){opacity:.5}
+.uf-neck path:nth-child(2){opacity:.34}
+.uf-neck path:nth-child(3){opacity:.2}
+/* Suu "puhuu" kun ääni soi */
+body.ai-talking .uf-mouth line{animation:ufeq .38s ease-in-out infinite alternate}
+body.ai-talking .uf-mouth line:nth-of-type(odd){animation-duration:.27s}
+body.ai-talking .uf-mouth line:nth-of-type(4){animation-duration:.45s}
+@keyframes ufeq{from{transform:scaleY(.5);opacity:.6}to{transform:scaleY(1.15);opacity:1}}
+@keyframes ufeye{0%,100%{opacity:1}48%{opacity:.45}52%{opacity:.92}}
+@keyframes ufpupil{0%,86%,100%{opacity:1}89%{opacity:.4}92%{opacity:1}95%{opacity:.65}}
+@keyframes ufbreath{0%,100%{opacity:.92}50%{opacity:.6}}
+/* Keskuselementin vaihto moodin mukaan */
+body[data-mode="ultron"] .reactor{display:none}
+body[data-mode="ultron"] .ultron-face{display:block}
+body[data-mode="jarvis"] .ultron-face{display:none}
+
+/* pulse rings */
+.pr{position:absolute;border-radius:50%;border:1px solid var(--cyan);opacity:0;animation:prout 4s ease-out infinite}
+.pr:nth-child(1){inset:100px;animation-delay:0s}
+.pr:nth-child(2){inset:100px;animation-delay:1.3s}
+.pr:nth-child(3){inset:100px;animation-delay:2.6s}
+@keyframes prout{0%{inset:100px;opacity:.6}100%{inset:-30px;opacity:0}}
+
+/* rings */
+.ring{position:absolute;border-radius:50%;border:1px solid var(--cyan)}
+.ring.r1{inset:0;border-width:1px;opacity:.2}
+.ring.r1::before{content:"";position:absolute;inset:-1px;border-radius:50%;
+  background:conic-gradient(from 0deg,
+    transparent 0deg,rgba(var(--accent-rgb),.8) 1.5deg,transparent 3deg,
+    transparent 30deg,rgba(var(--accent-rgb),.8) 31.5deg,transparent 33deg,
+    transparent 60deg,rgba(var(--accent-rgb),.8) 61.5deg,transparent 63deg,
+    transparent 90deg,rgba(var(--accent-rgb),.8) 91.5deg,transparent 93deg,
+    transparent 120deg,rgba(var(--accent-rgb),.8) 121.5deg,transparent 123deg,
+    transparent 150deg,rgba(var(--accent-rgb),.8) 151.5deg,transparent 153deg,
+    transparent 180deg,rgba(var(--accent-rgb),.8) 181.5deg,transparent 183deg,
+    transparent 210deg,rgba(var(--accent-rgb),.8) 211.5deg,transparent 213deg,
+    transparent 240deg,rgba(var(--accent-rgb),.8) 241.5deg,transparent 243deg,
+    transparent 270deg,rgba(var(--accent-rgb),.8) 271.5deg,transparent 273deg,
+    transparent 300deg,rgba(var(--accent-rgb),.8) 301.5deg,transparent 303deg,
+    transparent 330deg,rgba(var(--accent-rgb),.8) 331.5deg,transparent 333deg);
+  opacity:.3;animation:spin 30s linear infinite}
+.ring.r2{inset:22px;border-style:dashed;border-width:2px;opacity:.55;animation:spin 16s linear infinite}
+.ring.r3{inset:38px;border-width:1px;opacity:.2;animation:spin 10s linear infinite reverse}
+.ring.r4{inset:12px;border-width:1px;opacity:.1;animation:spin 22s linear infinite reverse}
+.ring.r5{inset:52px;border-width:1px;opacity:.35;animation:spin 8s linear infinite;border-style:dotted}
+
+/* data segments on r2 */
+.ring.r2::before{content:"";position:absolute;inset:-2px;border-radius:50%;
+  background:conic-gradient(from 45deg,rgba(var(--accent-rgb),.5) 0deg,rgba(var(--accent-rgb),.5) 20deg,transparent 22deg,transparent 45deg,rgba(var(--accent-rgb),.4) 46deg,rgba(var(--accent-rgb),.4) 60deg,transparent 62deg,transparent 90deg,rgba(var(--accent-rgb),.5) 92deg,rgba(var(--accent-rgb),.5) 110deg,transparent 112deg,transparent 180deg,rgba(var(--accent-rgb),.3) 182deg,rgba(var(--accent-rgb),.3) 200deg,transparent 202deg,transparent 270deg,rgba(var(--accent-rgb),.4) 272deg,rgba(var(--accent-rgb),.4) 290deg,transparent 292deg);
+  animation:spin 16s linear infinite}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* core */
+.core-ring2{position:absolute;inset:65px;border-radius:50%;border:2px solid rgba(var(--accent-rgb),.7);animation:crpulse 3s ease-in-out infinite .3s}
+.core-ring3{position:absolute;inset:72px;border-radius:50%;border:1px solid rgba(var(--accent-rgb),.4);animation:crpulse 3s ease-in-out infinite .6s}
+.core{position:absolute;inset:78px;border-radius:50%;
+  background:radial-gradient(circle,#fff 0%,#ffd0d8 15%,var(--cyan) 40%,rgba(100,0,20,.8) 70%,rgba(30,0,10,.5) 100%);
+  box-shadow:0 0 40px var(--cyan-glow),0 0 80px var(--cyan-glow),0 0 130px rgba(var(--accent-rgb),.35),inset 0 0 20px rgba(255,200,200,.4);
+  animation:crpulse 3s ease-in-out infinite}
+@keyframes crpulse{
+  0%,100%{transform:scale(1);box-shadow:0 0 40px var(--cyan-glow),0 0 80px var(--cyan-glow),0 0 130px rgba(var(--accent-rgb),.35),inset 0 0 20px rgba(255,200,200,.4)}
+  50%{transform:scale(1.1);box-shadow:0 0 60px var(--cyan-glow),0 0 120px var(--cyan-glow),0 0 200px rgba(var(--accent-rgb),.5),inset 0 0 30px rgba(255,220,220,.5)}
+}
+
+/* arc lightning */
+.arc{position:absolute;border-radius:50%;border:1px solid transparent;opacity:0}
+.arc.a1{inset:55px;border-top-color:rgba(var(--accent-rgb),.7);animation:arcspin1 2s linear infinite}
+.arc.a2{inset:48px;border-right-color:rgba(var(--accent-rgb),.5);animation:arcspin2 3s linear infinite}
+.arc.a3{inset:42px;border-bottom-color:rgba(var(--accent-rgb),.4);animation:arcspin3 1.5s linear infinite reverse}
+/* J.A.R.V.I.S. — arc reactor -ytimen hehku syaaniksi (renkaat seuraavat --accent-rgb:tä) */
+body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff 15%,var(--cyan) 40%,rgba(0,60,90,.8) 70%,rgba(0,20,35,.5) 100%)}
+@keyframes arcspin1{0%{transform:rotate(0deg);opacity:.8}50%{opacity:.3}100%{transform:rotate(360deg);opacity:.8}}
+@keyframes arcspin2{0%{transform:rotate(120deg);opacity:.6}50%{opacity:.1}100%{transform:rotate(480deg);opacity:.6}}
+@keyframes arcspin3{0%{transform:rotate(240deg);opacity:.5}50%{opacity:.15}100%{transform:rotate(-120deg);opacity:.5}}
+
+.greeting{font-family:'Orbitron';font-size:16px;letter-spacing:.2em;color:var(--txt);text-align:center;position:relative;z-index:3}
+.greeting span{color:var(--cyan);text-shadow:0 0 14px var(--cyan-glow)}
+.status-line{font-size:11px;color:var(--txt-dim);letter-spacing:.22em;text-align:center;position:relative;z-index:3}
+.home-stats{display:flex;gap:28px;position:relative;z-index:3}
+.hstat{text-align:center}
+.hstat .v{font-family:'Orbitron';font-size:18px;color:var(--cyan);text-shadow:0 0 10px var(--cyan-glow);display:block}
+.hstat .l{font-size:10px;color:var(--txt-dim);letter-spacing:.18em}
+
+/* ticker */
+.ticker{font-size:9px;color:var(--txt-dim);letter-spacing:.15em;
+  border-top:1px solid var(--line2);padding:4px 12px;overflow:hidden;white-space:nowrap;flex-shrink:0;position:relative;z-index:3}
+.ticker-inner{display:inline-block;animation:tick 25s linear infinite}
+@keyframes tick{0%{transform:translateX(100vw)}100%{transform:translateX(-100%)}}
+
+/* ===== CHAT ===== */
+.log{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:9px;
+  scrollbar-width:thin;scrollbar-color:var(--cyan-dim) transparent}
+.log::-webkit-scrollbar{width:3px}
+.log::-webkit-scrollbar-thumb{background:var(--cyan-dim);border-radius:2px}
+
+.msg{max-width:86%;padding:10px 13px;border-radius:2px;font-size:15px;line-height:1.6;
+  white-space:pre-wrap;word-wrap:break-word;animation:min .2s ease forwards;position:relative}
+@keyframes min{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg.user{align-self:flex-end;background:rgba(var(--accent-rgb),.07);border:1px solid rgba(var(--accent-rgb),.25);border-right:2px solid var(--cyan)}
+.msg.jarvis{align-self:flex-start;background:rgba(0,5,12,.95);border:1px solid var(--line);border-left:2px solid var(--cyan)}
+.msg.jarvis::before{content:"";position:absolute;top:0;left:-2px;width:2px;height:100%;
+  background:linear-gradient(180deg,transparent,var(--cyan),transparent);animation:msgline 2s ease-in-out infinite}
+@keyframes msgline{0%,100%{opacity:.5}50%{opacity:1}}
+.msg .who{font-family:'Orbitron';font-size:9px;letter-spacing:.3em;color:var(--cyan);margin-bottom:4px;text-transform:uppercase;opacity:.7}
+.msg.system{align-self:center;font-size:11px;color:var(--amber);letter-spacing:.1em;
+  border:1px dashed rgba(255,179,0,.35);background:rgba(255,179,0,.04)}
+
+/* ===== INPUT ===== */
+.inputbar{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line);flex-shrink:0}
+.inputbar input{flex:1;background:rgba(0,5,12,.9);border:1px solid var(--line);color:var(--txt);
+  font-family:'Share Tech Mono';font-size:15px;padding:10px 13px;border-radius:2px;outline:none;transition:.2s}
+.inputbar input::placeholder{color:var(--txt-dim)}
+.inputbar input:focus{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(var(--accent-rgb),.15),0 0 20px rgba(var(--accent-rgb),.08)}
+.btn{font-family:'Orbitron';font-size:12px;letter-spacing:.15em;padding:0 14px;
+  background:var(--cyan);color:#000;border:none;border-radius:2px;cursor:pointer;font-weight:700;
+  transition:.15s;position:relative;overflow:hidden;flex-shrink:0;min-height:42px}
+.btn::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.2),transparent)}
+.btn:active{transform:scale(.96);box-shadow:0 0 20px var(--cyan-glow)}
+.btn.ghost{background:transparent;border:1px solid rgba(var(--accent-rgb),.35);color:var(--cyan)}
+.btn.ghost::before{display:none}
+.btn.ghost:hover{background:rgba(var(--accent-rgb),.08);border-color:var(--cyan);box-shadow:0 0 15px rgba(var(--accent-rgb),.15)}
+.mic{width:42px;font-size:16px;display:flex;align-items:center;justify-content:center}
+.mic.listening{background:var(--amber)!important;box-shadow:0 0 20px rgba(255,179,0,.6)}
+
+/* ===== WIKI ===== */
+#fileDropZone{border:1px dashed var(--cyan);border-radius:4px;margin:6px 7px 0;padding:8px;text-align:center;cursor:pointer;font-family:'Orbitron';font-size:9px;color:var(--cyan);letter-spacing:.1em;opacity:.6;transition:opacity .2s,background .2s}
+#fileDropZone:hover,#fileDropZone.drag{opacity:1;background:rgba(var(--accent-rgb),.07)}
+.wiki-list{flex:1;overflow-y:auto;padding:7px;display:flex;flex-direction:column;gap:6px;
+  scrollbar-width:thin;scrollbar-color:var(--cyan-dim) transparent}
+/* === LEARN === */
+.learn-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;border-bottom:1px solid var(--line);position:relative;z-index:3;flex-shrink:0}
+.learn-streak{display:flex;align-items:baseline;gap:7px}
+.streak-num{font-family:'Orbitron';font-size:32px;font-weight:900;color:var(--cyan);text-shadow:0 0 20px var(--cyan-glow)}
+.streak-lbl{font-family:'Orbitron';font-size:9px;letter-spacing:.15em;color:var(--txt-dim)}
+.learn-meta{text-align:right;font-size:10px;color:var(--txt-dim);letter-spacing:.1em;line-height:1.8}
+.learn-body{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;position:relative;z-index:3}
+.learn-card{background:rgba(var(--accent-rgb),.04);border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:3px;padding:14px}
+.learn-card.review{border-left-color:var(--amber)}
+.learn-card.done{border-left-color:#00ff88;opacity:.7}
+.learn-card-tag{font-family:'Orbitron';font-size:8px;letter-spacing:.2em;color:var(--cyan);margin-bottom:8px}
+.learn-card.review .learn-card-tag{color:var(--amber)}
+.learn-card h3{font-family:'Orbitron';font-size:14px;color:var(--txt);margin:0 0 10px;line-height:1.4}
+.learn-card p{font-size:13px;color:var(--txt);line-height:1.7;margin:0 0 10px;white-space:pre-wrap}
+.learn-card .example{background:rgba(0,0,0,.3);border-left:2px solid var(--cyan);padding:8px 11px;font-size:12px;color:var(--txt-dim);line-height:1.6;margin-bottom:12px;border-radius:0 2px 2px 0}
+.learn-btns{display:flex;gap:8px;flex-wrap:wrap}
+.learn-topic-list{display:flex;flex-direction:column;gap:6px}
+.learn-topic-item{display:flex;justify-content:space-between;align-items:center;padding:8px 11px;background:rgba(0,5,12,.8);border:1px solid var(--line);border-radius:2px;font-size:12px}
+.learn-topic-item .lti-title{color:var(--txt)}
+.learn-topic-item .lti-next{font-size:10px;color:var(--txt-dim);font-family:'Orbitron';letter-spacing:.08em}
+.learn-placeholder{color:var(--txt-dim);text-align:center;padding:40px 20px;font-size:13px;line-height:1.8}
+
+/* ===== LUENNOT ===== */
+.learn-subtabs{display:flex;gap:5px;padding:8px 10px 6px;border-bottom:1px solid var(--line);flex-shrink:0;position:relative;z-index:3}
+.learn-subtab{font-family:'Orbitron';font-size:10px;letter-spacing:.2em;padding:6px 0;
+  background:transparent;border:1px solid rgba(var(--accent-rgb),.2);color:var(--txt-dim);
+  border-radius:2px;cursor:pointer;transition:.2s;flex:1}
+.learn-subtab.active{color:#000;background:var(--cyan);border-color:var(--cyan);font-weight:700}
+.lecture-item{background:rgba(0,5,12,.95);border:1px solid var(--line);border-left:3px solid var(--cyan);
+  border-radius:2px;padding:10px 13px;cursor:pointer;transition:.15s;position:relative;margin-bottom:6px}
+.lecture-item:hover{background:rgba(var(--accent-rgb),.05)}
+.lecture-item .li-title{font-family:'Orbitron';font-size:12px;color:var(--cyan);margin-bottom:3px;letter-spacing:.06em}
+.lecture-item .li-meta{font-size:10px;color:var(--txt-dim);letter-spacing:.1em}
+.lecture-item .li-del{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--txt-dim);cursor:pointer;font-size:14px;opacity:.5;padding:2px 6px}
+.lecture-item .li-del:hover{opacity:1;color:var(--red)}
+.lecture-gen{padding:10px;border-top:1px solid var(--line);flex-shrink:0;display:flex;flex-direction:column;gap:6px;position:relative;z-index:3}
+.lecture-input{background:rgba(0,5,12,.9);border:1px solid var(--line);color:var(--txt);
+  font-family:'Share Tech Mono';font-size:14px;padding:10px 13px;border-radius:2px;outline:none;transition:.2s;width:100%}
+.lecture-input::placeholder{color:var(--txt-dim)}
+.lecture-input:focus{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(var(--accent-rgb),.15)}
+.lecture-player{padding:10px 13px;border-top:1px solid var(--line);flex-shrink:0;background:rgba(0,0,0,.4);position:relative;z-index:3}
+.lp-title{font-family:'Orbitron';font-size:10px;color:var(--cyan);letter-spacing:.1em;margin-bottom:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-chapter{font-size:11px;color:var(--txt-dim);margin-bottom:7px;letter-spacing:.08em}
+.lp-progress{height:2px;background:rgba(var(--accent-rgb),.1);border-radius:1px;margin-bottom:8px}
+.lp-fill{height:100%;background:var(--cyan);border-radius:1px;transition:width .4s}
+.lp-controls{display:flex;gap:6px;align-items:center}
+.lp-speed{font-family:'Orbitron';font-size:9px;color:var(--cyan);background:rgba(var(--accent-rgb),.08);
+  border:1px solid rgba(var(--accent-rgb),.25);padding:5px 8px;border-radius:2px;cursor:pointer;letter-spacing:.1em;flex-shrink:0}
+.news-card{background:rgba(0,5,12,.95);border:1px solid var(--line);border-left:2px solid var(--cyan);border-radius:3px;padding:7px 9px;cursor:pointer;text-decoration:none;display:block;transition:background .15s}
+.news-card:hover{background:rgba(var(--accent-rgb),.06)}
+.news-card .nt{font-size:13px;color:var(--txt);line-height:1.4;margin-bottom:3px}
+.news-card .ns{font-size:11px;color:var(--txt-dim);line-height:1.3}
+.news-card .nr{font-family:'Orbitron';font-size:9px;color:var(--cyan);opacity:.7;margin-bottom:3px;letter-spacing:.06em}
+.wiki-card{background:rgba(0,5,12,.95);border:1px solid var(--line);border-left:2px solid var(--cyan);
+  border-radius:2px;padding:10px 12px;cursor:pointer;transition:.15s;position:relative;overflow:hidden;
+  animation:min .25s ease forwards}
+.wiki-card::after{content:"";position:absolute;top:0;left:0;width:100%;height:1px;
+  background:linear-gradient(90deg,var(--cyan),transparent);opacity:.3}
+.wiki-card:hover{background:rgba(var(--accent-rgb),.05);border-left-color:var(--cyan)}
+.wiki-card:active{transform:scale(.99)}
+.wiki-card .t{font-family:'Orbitron';font-size:13px;color:var(--cyan);letter-spacing:.08em;margin-bottom:2px;
+  text-shadow:0 0 8px rgba(var(--accent-rgb),.3)}
+.wiki-card .s{font-size:12px;color:var(--txt-dim);line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wiki-card .tags{margin-top:4px;display:flex;gap:3px;flex-wrap:wrap}
+.tag{font-size:9px;letter-spacing:.1em;color:var(--cyan);border:1px solid rgba(var(--accent-rgb),.2);
+  padding:1px 5px;border-radius:1px;background:rgba(var(--accent-rgb),.03)}
+.empty{color:var(--txt-dim);text-align:center;padding:30px 16px;font-size:13px;line-height:1.8;letter-spacing:.06em}
+
+/* ===== OSIOKOHTAISET VÄRIT ===== */
+/* Chat — Ultron punainen (oletusväri, ei muutosta) */
+
+/* Knowledge — violetti */
+#view-know{--section:var(--purple)}
+#view-know h2{color:var(--purple);text-shadow:0 0 10px rgba(204,68,255,.4)}
+#view-know .wiki-card{border-left-color:var(--purple)}
+#view-know .wiki-card:hover{border-left-color:#dd88ff}
+#view-know .wiki-card .t{color:var(--purple);text-shadow:0 0 8px rgba(204,68,255,.3)}
+#view-know .wiki-card::after{background:linear-gradient(90deg,var(--purple),transparent)}
+#view-know .tag{color:var(--purple);border-color:rgba(204,68,255,.25)}
+#view-know #sendKnow{background:var(--purple)}
+#view-know .inputbar input:focus{border-color:var(--purple);box-shadow:0 0 0 1px rgba(204,68,255,.15)}
+#view-know #compileBtn{color:var(--purple);border-color:rgba(204,68,255,.4)}
+#view-know #compileBtn:hover{background:rgba(204,68,255,.1)}
+#view-know .msg.jarvis::before{background:linear-gradient(180deg,transparent,var(--purple),transparent)}
+
+/* Learn/Oppi — oranssi */
+#learn-oppi-area .learn-card{border-left-color:var(--amber)}
+#learn-oppi-area .learn-card.review{border-left-color:var(--gold)}
+#learn-oppi-area .learn-card.done{border-left-color:var(--green)}
+#learn-oppi-area .learn-card-tag{color:var(--amber)}
+#learn-oppi-area .learn-card.review .learn-card-tag{color:var(--gold)}
+#learn-oppi-area .streak-num{color:var(--amber);text-shadow:0 0 20px rgba(255,136,0,.6)}
+#learn-oppi-area .learn-card h3{color:var(--amber)}
+#learn-oppi-area .learn-card .example{border-left-color:var(--amber)}
+
+/* Luennot — kulta */
+#learn-luennot-area .lecture-item{border-left-color:var(--gold)}
+#learn-luennot-area .lecture-item .li-title{color:var(--gold)}
+#learn-luennot-area #lectureGenBtn{background:var(--gold);color:#000}
+#learn-luennot-area .lp-title{color:var(--gold)}
+#learn-luennot-area .lp-fill{background:var(--gold)}
+#learn-luennot-area .lp-speed{color:var(--gold);border-color:rgba(255,204,0,.3)}
+
+/* Tab-värit aktiivisena */
+.tab[data-view="chat"].active{background:var(--cyan);border-color:var(--cyan)}
+.tab[data-view="know"].active{background:var(--purple);border-color:var(--purple)}
+.tab[data-view="learn"].active{background:var(--amber);border-color:var(--amber)}
+.tab[data-view="news"].active{background:var(--green);border-color:var(--green)}
+
+/* Mobiili nav aktiivisena */
+.mnav-btn[data-view="chat"].active{color:var(--cyan);border-top-color:var(--cyan)}
+.mnav-btn[data-view="know"].active{color:var(--purple);border-top-color:var(--purple);text-shadow:0 0 10px rgba(204,68,255,.6)}
+.mnav-btn[data-view="learn"].active{color:var(--amber);border-top-color:var(--amber);text-shadow:0 0 10px rgba(255,136,0,.6)}
+.mnav-btn[data-view="news"].active{color:var(--green);border-top-color:var(--green);text-shadow:0 0 10px rgba(62,224,143,.6)}
+
+/* Header-pillerit eri värisiksi */
+.sys-pills .pill:nth-child(1) .pill-dot{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.sys-pills .pill:nth-child(2) .pill-dot{background:var(--purple);box-shadow:0 0 8px var(--purple)}
+.sys-pills .pill:nth-child(3) .pill-dot{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.sys-pills .pill:nth-child(4) .pill-dot{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+
+/* ===== OVERLAY ===== */
+.overlay{position:fixed;inset:0;z-index:100;background:rgba(0,5,12,.95);
+  display:none;flex-direction:column;padding:20px;backdrop-filter:blur(12px)}
+.overlay.open{display:flex;animation:min .2s ease forwards}
+.overlay h1{font-family:'Orbitron';color:var(--cyan);font-size:17px;letter-spacing:.1em;
+  margin-bottom:4px;text-shadow:0 0 20px var(--cyan-glow)}
+.overlay .meta{font-size:11px;color:var(--txt-dim);letter-spacing:.15em;margin-bottom:12px}
+.overlay .body{flex:1;overflow-y:auto;font-size:14px;line-height:1.7;white-space:pre-wrap;
+  color:var(--txt);padding-right:6px;scrollbar-width:thin;scrollbar-color:var(--cyan-dim) transparent}
+.overlay .close{position:absolute;top:16px;right:20px;font-size:22px;color:var(--cyan);
+  cursor:pointer;background:none;border:none;opacity:.6;transition:.2s}
+.overlay .close:hover{opacity:1;text-shadow:0 0 10px var(--cyan-glow)}
+
+/* ===== MISC ===== */
+.typing::after{content:"▋";animation:blink .7s steps(2) infinite;color:var(--cyan)}
+@keyframes blink{50%{opacity:0}}
+.flagbtn{display:inline-block;margin-top:6px;background:transparent;
+  border:1px solid rgba(var(--accent-rgb),.18);color:var(--txt-dim);font-family:'Share Tech Mono';
+  font-size:9px;letter-spacing:.1em;padding:3px 8px;border-radius:2px;cursor:pointer;transition:.15s}
+.flagbtn:hover{border-color:var(--cyan);color:var(--cyan)}
+.flagbtn.on{color:var(--cyan);border-color:rgba(var(--accent-rgb),.4);cursor:default}
+.quick-btns{padding:8px 11px;display:flex;flex-direction:column;gap:6px;position:relative;z-index:3}
+
+/* ===== WAKE WORD MODE ===== */
+#wakeBtn{
+  font-family:'Orbitron';font-size:9px;letter-spacing:.18em;padding:7px 14px;
+  background:transparent;border:1px solid rgba(var(--accent-rgb),.3);color:var(--txt-dim);
+  border-radius:2px;cursor:pointer;transition:.25s;white-space:nowrap;
+}
+#wakeBtn.idle{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 10px rgba(var(--accent-rgb),.2)}
+#wakeBtn.listening{border-color:var(--green);color:var(--green);box-shadow:0 0 14px rgba(0,255,136,.3);animation:wakepulse 1.5s ease-in-out infinite}
+#wakeBtn.speaking{border-color:var(--amber);color:var(--amber);box-shadow:0 0 14px rgba(255,179,0,.3)}
+#wakeBtn.active{border-color:var(--red);color:var(--red);box-shadow:0 0 18px rgba(255,61,61,.4);animation:wakepulse .8s ease-in-out infinite}
+@keyframes wakepulse{0%,100%{opacity:1}50%{opacity:.5}}
+#modeBtn{
+  font-family:'Orbitron';font-size:9px;letter-spacing:.18em;padding:7px 12px;
+  background:transparent;border:1px solid var(--cyan);color:var(--cyan);
+  border-radius:2px;cursor:pointer;transition:.25s;white-space:nowrap;
+  box-shadow:0 0 10px var(--cyan-soft);
+}
+#modeBtn:hover{background:var(--cyan-soft);box-shadow:0 0 14px var(--cyan-glow)}
+#modeBtn:active{transform:scale(.95)}
+
+/* wake status bar */
+#wakebar{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  display:none;align-items:center;justify-content:center;gap:12px;
+  padding:8px 20px;border-top:1px solid var(--line);
+  background:rgba(0,5,12,.95);backdrop-filter:blur(8px);
+  font-family:'Orbitron';font-size:10px;letter-spacing:.22em;
+}
+#wakebar.show{display:flex}
+#wakebar .wb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#wakebar .wb-dot.g{background:var(--green);box-shadow:0 0 10px var(--green)}
+#wakebar .wb-dot.a{background:var(--amber);box-shadow:0 0 10px var(--amber);animation:wakepulse .6s infinite}
+#wakebar .wb-dot.r{background:var(--red);box-shadow:0 0 10px var(--red);animation:wakepulse .4s infinite}
+#wakebar .wb-dot.c{background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:wakepulse 1.5s infinite}
+#waveform{display:flex;align-items:center;gap:2px;height:20px}
+#waveform span{display:inline-block;width:3px;border-radius:2px;background:var(--green);animation:wave 1s ease-in-out infinite}
+#waveform span:nth-child(1){animation-delay:.0s}#waveform span:nth-child(2){animation-delay:.1s}
+#waveform span:nth-child(3){animation-delay:.2s}#waveform span:nth-child(4){animation-delay:.3s}
+#waveform span:nth-child(5){animation-delay:.4s}#waveform span:nth-child(6){animation-delay:.3s}
+#waveform span:nth-child(7){animation-delay:.2s}
+@keyframes wave{0%,100%{height:4px}50%{height:18px}}
+#wakebar .end-btn{font-family:'Orbitron';font-size:10px;letter-spacing:.15em;padding:4px 10px;
+  background:transparent;border:1px solid rgba(255,61,61,.5);color:var(--red);
+  border-radius:2px;cursor:pointer;transition:.15s}
+#wakebar .end-btn:hover{background:rgba(255,61,61,.1)}
+
+/* chat end-conv button */
+#endConvBar{display:none;padding:6px 10px;border-top:1px solid var(--line);background:rgba(0,5,12,.9);
+  flex-shrink:0;gap:8px;align-items:center}
+#endConvBar.show{display:flex}
+
+/* ===== MOBILE BOTTOM NAV ===== */
+#mobileNav{
+  position:fixed;bottom:0;left:0;right:0;z-index:45;
+  background:rgba(0,3,10,.97);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  height:calc(60px + env(safe-area-inset-bottom,0px));
+  display:none;backdrop-filter:blur(12px);
+}
+.mnav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:8px 0 6px;background:none;border:none;cursor:pointer;
+  font-family:'Orbitron';color:var(--txt-dim);gap:3px;transition:.15s;
+  border-top:2px solid transparent;-webkit-tap-highlight-color:transparent;
+}
+.mnav-btn.active{color:var(--cyan);border-top-color:var(--cyan);
+  text-shadow:0 0 10px var(--cyan-glow);background:rgba(var(--accent-rgb),.04)}
+.mnav-icon{font-size:17px;line-height:1;font-style:normal}
+.mnav-lbl{font-size:8px;letter-spacing:.05em;white-space:nowrap}
+
+/* ===== MOBILE INFO VIEW ===== */
+.m-cards{overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;flex:1;
+  scrollbar-width:thin;scrollbar-color:var(--cyan-dim) transparent}
+.m-card{background:rgba(0,8,18,.9);border:1px solid var(--line);border-left:2px solid var(--cyan);
+  border-radius:2px;padding:14px;flex-shrink:0}
+.m-card-title{font-family:'Orbitron';font-size:10px;letter-spacing:.25em;color:var(--cyan);
+  margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.m-card-title .m-refresh{background:none;border:1px solid var(--line);color:var(--cyan);
+  font-family:'Orbitron';font-size:9px;letter-spacing:.1em;padding:3px 8px;cursor:pointer;border-radius:2px}
+
+/* ===== POLISH ===== */
+.view.active{animation:viewin .25s ease}
+@keyframes viewin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.btn,.btn.ghost,.tab,.learn-subtab,.mnav-btn{transition:filter .15s,background .2s,color .2s,border-color .2s,box-shadow .2s}
+.btn:hover{filter:brightness(1.12)}
+.tab:active,.btn:active{transform:scale(.97)}
+.wiki-card,.lecture-item,.news-card{transition:background .18s,border-color .18s,transform .12s}
+.wiki-card:active,.lecture-item:active{transform:scale(.99)}
+.panel{transition:border-color .3s}
+
+/* Luentosoittimen aikajana */
+.lp-progress{cursor:pointer;height:7px;border-radius:3px;overflow:hidden}
+.lp-fill{transition:width .2s linear;height:100%}
+.lp-timerow{display:flex;justify-content:space-between;font-size:10px;color:var(--txt-dim);margin:3px 2px 8px;letter-spacing:.06em}
+
+/* Toast-ilmoitukset */
+#toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%) translateY(16px);z-index:700;
+  background:var(--panel);border:1px solid var(--cyan);color:var(--txt);padding:10px 18px;border-radius:4px;
+  font-size:13px;font-family:'Share Tech Mono';opacity:0;pointer-events:none;transition:.25s;
+  box-shadow:0 0 22px rgba(var(--accent-rgb),.28);max-width:86vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Tietopankin haku */
+#wikiSearch{width:calc(100% - 24px);margin:2px 12px 6px;background:rgba(0,5,12,.9);border:1px solid var(--line);
+  color:var(--txt);font-family:'Share Tech Mono';font-size:13px;padding:8px 12px;border-radius:2px;outline:none;
+  position:relative;z-index:3;transition:border-color .2s,box-shadow .2s}
+#wikiSearch::placeholder{color:var(--txt-dim)}
+#wikiSearch:focus{border-color:var(--purple);box-shadow:0 0 0 1px rgba(204,68,255,.2)}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<!-- PIN LOGIN -->
+<div id="pinscreen" style="display:none;position:fixed;inset:0;z-index:600;background:#000;flex-direction:column;align-items:center;justify-content:center;gap:20px;font-family:'Share Tech Mono'">
+  <div id="pinBrand" style="font-family:'Orbitron';font-size:26px;font-weight:900;letter-spacing:.35em;color:var(--cyan);text-shadow:0 0 30px var(--cyan-glow)">U.L.T.R.O.N.</div>
+  <div style="font-size:10px;letter-spacing:.3em;color:var(--txt-dim)">TUNNISTAUTUMINEN VAADITAAN</div>
+  <input id="pinInput" type="password" placeholder="Syötä PIN-koodi"
+    style="background:rgba(var(--accent-rgb),.05);border:1px solid var(--line);color:var(--cyan);font-family:'Share Tech Mono';font-size:16px;padding:12px 20px;border-radius:2px;outline:none;text-align:center;letter-spacing:.3em;width:260px">
+  <button onclick="submitPin()" style="font-family:'Orbitron';font-size:11px;letter-spacing:.2em;padding:11px 32px;background:var(--cyan);color:#000;border:none;border-radius:2px;cursor:pointer;font-weight:700">KIRJAUDU</button>
+  <div id="pinErr" style="font-size:10px;color:var(--red);letter-spacing:.15em;opacity:0">VÄÄRÄ PIN-KOODI</div>
+</div>
+
+<!-- BOOT -->
+<div id="boot">
+  <div id="bootBrand" style="font-family:'Orbitron';font-size:26px;font-weight:900;letter-spacing:.35em;color:var(--cyan);text-shadow:0 0 30px var(--cyan-glow),0 0 60px rgba(var(--accent-rgb),.2);margin-bottom:24px">U.L.T.R.O.N.</div>
+  <div id="blines"></div>
+  <div id="bbar-w"><div id="bbar"></div></div>
+  <div id="bfin">ULTRON ONLINE — TERVETULOA, LASSI</div>
+  <div id="bver" style="margin-top:8px;font-size:10px;letter-spacing:.2em;color:var(--txt-dim);opacity:0;transition:opacity .5s .4s"></div>
+</div>
+
+<header>
+  <div class="brand" id="brandEl">U.L.T.R.O.N.<small id="brandSub">UNIVERSAL LEARNING TECHNOLOGY & REASONING OPERATIONS NETWORK</small></div>
+  <div class="hdr-mid">
+    <div class="sys-pills">
+      <div class="pill"><div class="pill-dot"></div>YDIN</div>
+      <div class="pill"><div class="pill-dot"></div>VERKKO</div>
+      <div class="pill"><div class="pill-dot amber"></div>MUISTI</div>
+      <div class="pill"><div class="pill-dot"></div>CLAUDE</div>
+    </div>
+    <div class="hdr-coords">LAT <span>60.9500°N</span> &nbsp; LON <span>25.9300°E</span> &nbsp; ALT <span>86m</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button id="modeBtn" onclick="toggleMode()" title="Vaihda persoonaa">◐ <span id="modeBtnLbl">ULTRON</span></button>
+    <button id="wakeBtn" onclick="toggleWake()">◉ AINA PÄÄLLÄ</button>
+    <div class="clock-wrap">
+      <div class="clock"><span id="time">--:--:--</span></div>
+      <small id="date" style="font-size:10px;color:var(--txt-dim);letter-spacing:.2em;display:block;text-align:right;margin-top:2px">— — —</small>
+    </div>
+  </div>
+</header>
+<div id="mobileBar" style="display:none;align-items:center;justify-content:space-between;padding:4px 12px;background:rgba(0,20,40,.85);border-bottom:1px solid var(--cyan-dim);font-size:11px;letter-spacing:.1em;color:var(--txt-dim)">
+  <span id="mbar-weather">— °C</span>
+  <span id="mbar-elec">— snt/kWh</span>
+  <span id="mbar-time2" style="color:var(--cyan)"></span>
+</div>
+
+<main>
+  <!-- LEFT -->
+  <aside class="side-left">
+    <div class="panel" style="flex:1">
+      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
+      <div class="scan"></div>
+      <h2>Järjestelmä</h2>
+      <div class="meter"><div class="lbl"><span>AKKU</span><span class="val" id="m1v">--</span></div><div class="track"><div class="fill ok" id="m1" style="width:0%"></div></div></div>
+      <div class="meter"><div class="lbl"><span>TALLENNUSTILA</span><span class="val" id="m2v">--</span></div><div class="track"><div class="fill ok" id="m2" style="width:0%"></div></div></div>
+      <div class="meter"><div class="lbl"><span>WIKI-SIVUT</span><span class="val" id="m3v" style="color:var(--cyan)">0</span></div><div class="track"><div class="fill ok" id="m3" style="width:0%"></div></div></div>
+      <div class="meter"><div class="lbl"><span>VERKKO</span><span class="val" id="m4v">--</span></div><div class="track"><div class="fill ok" id="m4" style="width:0%"></div></div></div>
+      <div class="meter" style="margin-top:2px">
+        <div class="lbl"><span>CPU-YTIMET</span><span class="val" id="mCpu" style="color:var(--cyan)">--</span></div>
+      </div>
+      <div class="meter">
+        <div class="lbl"><span>LAITEMUISTI</span><span class="val" id="mRam">--</span></div>
+      </div>
+      <div class="meter">
+        <div class="lbl"><span>TIETOSIVUT</span><span class="val" id="nodecount" style="color:var(--cyan)">0</span></div>
+      </div>
+      <div class="geo-box">
+        <div class="geo-row">LAT <span>60.9500° N</span></div>
+        <div class="geo-row">LON <span>25.9300° E</span></div>
+        <div class="geo-row">ALT <span>86 m</span></div>
+        <div class="geo-row">SIJAINTI <span>NASTOLA</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CENTER -->
+  <section class="center">
+    <div class="tabs">
+      <button class="tab active" data-view="home">HUD</button>
+      <button class="tab" data-view="chat">Chat</button>
+      <button class="tab" data-view="know">Knowledge</button>
+      <button class="tab" data-view="learn">Oppi</button>
+      <button class="tab" data-view="news">Uutiset</button>
+    </div>
+
+    <!-- HOME -->
+    <div class="view active panel" id="view-home">
+      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
+      <div class="scan"></div>
+      <div class="reactor-wrap">
+        <div class="reactor" id="reactor">
+          <div class="pr"></div><div class="pr"></div><div class="pr"></div>
+          <div class="arc a1"></div><div class="arc a2"></div><div class="arc a3"></div>
+          <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
+          <div class="ring r4"></div><div class="ring r5"></div>
+          <div class="core-ring2"></div><div class="core-ring3"></div>
+          <div class="core"></div>
+        </div>
+        <svg class="ultron-face" viewBox="0 0 220 260" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <filter id="uglow" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="3.2" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <!-- niskasegmentit -->
+          <g class="uf-neck">
+            <path d="M96,206 Q110,213 124,206"/>
+            <path d="M92,217 Q110,226 128,217"/>
+            <path d="M89,228 Q110,239 131,228"/>
+          </g>
+          <!-- sivuevät / panssarisarvet -->
+          <g class="uf-fin">
+            <path d="M56,138 C45,164 35,190 29,216 L35,218 C47,199 59,183 69,170 C64,159 59,148 56,138 Z"/>
+            <path d="M164,138 C175,164 185,190 191,216 L185,218 C173,199 161,183 151,170 C156,159 161,148 164,138 Z"/>
+            <path d="M69,158 C62,178 57,196 56,213 L61,214 C68,201 76,190 83,181 C78,173 73,166 69,158 Z"/>
+            <path d="M151,158 C158,178 163,196 164,213 L159,214 C152,201 144,190 137,181 C142,173 147,166 151,158 Z"/>
+          </g>
+          <!-- pää / kypärä -->
+          <path class="uf-head" d="M110,10 C82,10 60,22 52,48 C46,68 46,88 52,110 C56,128 63,144 74,162 C84,178 96,196 110,206 C124,196 136,178 146,162 C157,144 164,128 168,110 C174,88 174,68 168,48 C160,22 138,10 110,10 Z"/>
+          <!-- keskiharja -->
+          <path class="uf-ridge" d="M110,10 L104,32 L104,58 L110,66 L116,58 L116,32 Z"/>
+          <!-- panssarisaumat -->
+          <path class="uf-panel" d="M104,34 Q78,34 62,46 M116,34 Q142,34 158,46 M104,52 Q76,54 58,68 M116,52 Q144,54 162,68 M56,96 Q70,92 84,96 M164,96 Q150,92 136,96 M66,138 Q84,148 98,162 M154,138 Q136,148 122,162 M84,178 Q110,188 136,178"/>
+          <!-- säröt pinnassa -->
+          <path class="uf-crack" d="M70,58 l6,7 -3,6 M148,70 l-6,6 4,7 M92,44 l4,8 M126,180 l5,-7 M60,120 l7,3"/>
+          <!-- ohimoventtiilit -->
+          <path class="uf-panel" d="M50,116 l-7,4 M52,128 l-8,4 M170,116 l7,4 M168,128 l8,4"/>
+          <!-- vihainen kulmapanssari -->
+          <path class="uf-brow" d="M54,90 L96,110 L110,102 L124,110 L166,90 L162,101 L124,120 L110,113 L96,120 L58,101 Z"/>
+          <!-- silmät: hehku + kirkas ydin -->
+          <path class="uf-eye" d="M62,116 Q80,110 99,127 Q78,127 62,116 Z"/>
+          <path class="uf-eye" d="M158,116 Q140,110 121,127 Q142,127 158,116 Z"/>
+          <ellipse class="uf-pupil" cx="81" cy="120" rx="6" ry="3.6"/>
+          <ellipse class="uf-pupil" cx="139" cy="120" rx="6" ry="3.6"/>
+          <!-- nenäharja -->
+          <path class="uf-nose" d="M110,112 L103,130 L106,152 L110,160 L114,152 L117,130 Z"/>
+          <!-- leukasaranat -->
+          <path class="uf-jaw" d="M80,158 L86,167 L90,199 L82,190 Z"/>
+          <path class="uf-jaw" d="M140,158 L134,167 L130,199 L138,190 Z"/>
+          <!-- suuritilä -->
+          <g class="uf-mouth">
+            <path class="uf-frame" d="M86,167 Q110,175 134,167 L131,197 Q110,205 89,197 Z"/>
+            <line x1="94" y1="172" x2="94" y2="193"/>
+            <line x1="99.3" y1="171" x2="99.3" y2="196"/>
+            <line x1="104.6" y1="170" x2="104.6" y2="198"/>
+            <line x1="110" y1="170" x2="110" y2="199"/>
+            <line x1="115.4" y1="170" x2="115.4" y2="198"/>
+            <line x1="120.7" y1="171" x2="120.7" y2="196"/>
+            <line x1="126" y1="172" x2="126" y2="193"/>
+          </g>
+        </svg>
+        <div class="greeting" id="greet">Järjestelmä <span>verkossa</span></div>
+        <div class="status-line" id="homestatus">Kaikki järjestelmät toiminnassa.</div>
+        <div class="home-stats">
+          <div class="hstat"><span class="v" id="hd-chat">0</span><span class="l">VIESTIT</span></div>
+          <div class="hstat"><span class="v" id="hd-wiki">0</span><span class="l">TIETOSIVUT</span></div>
+          <div class="hstat"><span class="v" id="hd-up">0:00</span><span class="l">UPTIME</span></div>
+        </div>
+      </div>
+      <div class="ticker"><span class="ticker-inner" id="tickerInner">ULTRON v3.0 ONLINE &nbsp;&middot;&nbsp; NASTOLA COMMAND CENTER &nbsp;&middot;&nbsp; KAIKKI JÄRJESTELMÄT NORMAALITILASSA &nbsp;&middot;&nbsp; TIETOPANKKI SYNKRONOITU &nbsp;&middot;&nbsp; CLAUDE SONNET 4.6 AKTIIVINEN &nbsp;&middot;&nbsp; SIJAINTI: 60.9500°N 25.9300°E &nbsp;&middot;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+    </div>
+
+    <!-- LEARN -->
+    <div class="view panel" id="view-learn">
+      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
+      <div class="scan"></div>
+      <div class="learn-subtabs">
+        <button class="learn-subtab active" id="subtab-oppi" onclick="switchLearnTab('oppi')">OPPI</button>
+        <button class="learn-subtab" id="subtab-luennot" onclick="switchLearnTab('luennot')">LUENNOT</button>
+      </div>
+      <!-- OPPI -->
+      <div id="learn-oppi-area" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden">
+        <div class="learn-header">
+          <div class="learn-streak">
+            <span class="streak-num" id="streakNum">0</span>
+            <span class="streak-lbl">PÄIVÄN PUTKI 🔥</span>
+          </div>
+          <div class="learn-meta">
+            <span id="learnTopicCount">0 aihetta opittu</span>
+            <span id="learnDueCount"></span>
+          </div>
+        </div>
+        <div class="learn-body" id="learnBody">
+          <div class="learn-placeholder">Ladataan…</div>
+        </div>
+      </div>
+      <!-- LUENNOT -->
+      <div id="learn-luennot-area" style="flex:1;min-height:0;display:none;flex-direction:column;overflow:hidden">
+        <div class="learn-body" id="lectureList" style="flex:1;min-height:0;padding:10px"></div>
+        <div class="lecture-gen">
+          <input id="lectureTopicInput" class="lecture-input" placeholder="Aihe: esim. Kvanttimekaniikka, Rooman historia, Tekoälyn historia…">
+          <button class="btn" id="lectureGenBtn" onclick="startGenerateLecture()">⊕ LUO LUENTO</button>
+        </div>
+        <div id="lecturePlayer" class="lecture-player" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="view panel" id="view-chat">
+      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
+      <div class="scan"></div>
+      <div class="log" id="chatlog"></div>
+      <div id="endConvBar">
+        <span style="font-size:11px;color:var(--txt-dim);letter-spacing:.15em;flex:1">Keskustelu aktiivinen</span>
+        <button class="end-btn" onclick="wakeMode?endConversation(false):endTextConversation()" style="font-family:'Orbitron';font-size:10px;letter-spacing:.15em;padding:4px 10px;background:transparent;border:1px solid rgba(255,61,61,.5);color:var(--red);border-radius:2px;cursor:pointer">✕ LOPETA &amp; KOKOA</button>
+      </div>
+      <div class="inputbar">
+        <button class="btn mic ghost" id="micChat">🎙</button>
+        <input id="chatInput" placeholder="Puhu U.L.T.R.O.N.ille…" autocomplete="off">
+        <button class="btn" id="sendChat">LÄHETÄ</button>
+      </div>
+    </div>
+
+    <!-- KNOWLEDGE -->
+    <div class="view panel" id="view-know">
+      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
+      <div class="scan"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px 2px;position:relative;z-index:3">
+        <h2 style="padding:0">Tietopankki</h2>
+        <button class="btn ghost" id="compileBtn" style="font-size:10px;padding:5px 10px;min-height:32px">⟳ KOKOA PÄIVÄ</button>
+      </div>
+      <div class="log" id="knowlog" style="flex:0 0 auto;max-height:30%"></div>
+      <input id="wikiSearch" oninput="renderWiki()" placeholder="⌕ Hae tietopankista — otsikko, tagi, sisältö…" autocomplete="off">
+      <div class="wiki-list" id="wikiList"></div>
+      <div id="fileDropZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleFileDrop(event)">
+        <span id="fileDropLabel">⊕ LATAA TIEDOSTO — .txt .md .pdf .jpg .png</span>
+        <input type="file" id="fileInput" accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.gif,.webp" style="display:none" onchange="handleFileInput(this)">
+      </div>
+      <div class="inputbar">
+        <button class="btn mic ghost" id="micKnow">🎙</button>
+        <input id="knowInput" placeholder="Syötä tietoa tai kysy: 'mitä tiedät…'" autocomplete="off">
+        <button class="btn" id="sendKnow">TALLENNA</button>
+      </div>
+    </div>
+    <!-- INFO (mobiili) -->
+    <div class="view panel" id="view-info">
+      <div class="m-cards">
+        <div class="m-card">
+          <div class="m-card-title">SÄÄ · NASTOLA</div>
+          <div style="display:flex;gap:16px;align-items:center">
+            <span id="m-wTemp" style="font-family:'Orbitron';font-size:44px;font-weight:700;color:var(--cyan);text-shadow:0 0 20px var(--cyan-glow);line-height:1">--°</span>
+            <div>
+              <div id="m-wDesc" style="font-size:15px;color:var(--txt)">Haetaan…</div>
+              <div style="font-size:10px;color:var(--txt-dim);letter-spacing:.15em;margin-top:4px">NASTOLA, FI · 60.95°N</div>
+            </div>
+          </div>
+        </div>
+        <div class="m-card">
+          <div class="m-card-title">SÄHKÖ · SPOT-HINTA</div>
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span id="m-elPrice" style="font-family:'Orbitron';font-size:36px;font-weight:700;color:var(--cyan)">--</span>
+            <span style="font-size:13px;color:var(--txt-dim)">snt/kWh</span>
+            <span id="m-elStatus" style="font-size:12px;margin-left:auto;font-family:'Orbitron';letter-spacing:.1em"></span>
+          </div>
+          <div id="m-elBar" style="display:flex;gap:2px;margin-top:8px;height:28px;align-items:flex-end"></div>
+          <div style="font-size:9px;color:var(--txt-dim);margin-top:3px;opacity:.5;letter-spacing:.1em">SEURAAVAT 12H</div>
+        </div>
+        <div class="m-card">
+          <div class="m-card-title">JÄRJESTELMÄ</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+            <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">AKKU<br></span><span id="m-bat" style="color:var(--cyan)">--</span></div>
+            <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">VERKKO<br></span><span id="m-net" style="color:var(--cyan)">--</span></div>
+            <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">WIKI-SIVUT<br></span><span id="m-wiki" style="color:var(--cyan)">--</span></div>
+            <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">SIJAINTI<br></span><span style="color:var(--cyan)">NASTOLA</span></div>
+          </div>
+          <div style="margin-top:10px;border-top:1px solid var(--line2);padding-top:10px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;gap:8px">
+              <button class="btn ghost" onclick="exportBackup()" style="font-size:11px;flex:1;min-height:40px">⭳ VARMUUSKOPIO</button>
+              <button class="btn ghost" onclick="importBackup()" style="font-size:11px;flex:1;min-height:40px">⭱ PALAUTA</button>
+            </div>
+            <button class="btn ghost" onclick="changePin()" style="font-size:12px;width:100%;min-height:40px">⟲ VAIHDA PIN / KIRJAUDU ULOS</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEWS -->
+    <div class="view panel" id="view-news">
+      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
+      <div class="scan"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;border-bottom:1px solid var(--line);flex-shrink:0">
+        <h2 style="margin:0">Uutiset · sinulle valitut</h2>
+        <button onclick="fetchNews(true)" style="background:none;border:1px solid var(--line);color:var(--cyan);font-family:'Orbitron';font-size:10px;letter-spacing:.1em;padding:5px 9px;cursor:pointer;border-radius:2px">⟳ PÄIVITÄ</button>
+      </div>
+      <div id="newsFeed" style="flex:1;overflow-y:auto;padding:10px 13px;display:flex;flex-direction:column;gap:7px">
+        <div style="font-size:12px;color:var(--txt-dim);padding:8px 0">Haetaan uutisia…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT -->
+  <aside class="side-right">
+    <div class="panel">
+      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
+      <div class="scan"></div>
+      <h2>Sää · Nastola</h2>
+      <div class="weather">
+        <div class="temp" id="wTemp">--°</div>
+        <div class="desc" id="wDesc">Haetaan…</div>
+        <div class="loc">NASTOLA, FI</div>
+        <div class="coords">60.9500°N · 25.9300°E</div>
+      </div>
+      <div style="border-top:1px solid var(--line);margin:6px 13px;padding-top:8px">
+        <div style="font-family:'Orbitron';font-size:10px;letter-spacing:.15em;color:var(--txt-dim);margin-bottom:4px">SÄHKÖ · SPOT</div>
+        <div style="display:flex;gap:8px;align-items:baseline">
+          <span id="elPrice" style="font-family:'Orbitron';font-size:22px;font-weight:700;color:var(--cyan)">--</span>
+          <span style="font-size:11px;color:var(--txt-dim)">snt/kWh</span>
+          <span id="elStatus" style="font-size:11px;color:var(--txt-dim);margin-left:auto"></span>
+        </div>
+        <div id="elBar" style="display:flex;gap:1px;margin-top:5px;height:20px;align-items:flex-end"></div>
+        <div style="font-size:9px;color:var(--txt-dim);margin-top:2px;opacity:.5">seuraavat 12h</div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<!-- WAKE STATUS BAR -->
+<div id="wakebar">
+  <div class="wb-dot c" id="wbdot"></div>
+  <span id="wbtext" style="color:var(--txt-dim)">ODOTTAA: "ULTRON"</span>
+  <div id="waveform" style="display:none">
+    <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
+  <button class="end-btn" onclick="endConversation(false)">✕ LOPETA</button>
+  <button class="end-btn" onclick="toggleWake()" style="border-color:rgba(var(--accent-rgb),.3);color:var(--txt-dim)">SAMMUTA</button>
+</div>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav id="mobileNav" style="display:none">
+  <button class="mnav-btn active" data-view="home" onclick="mobileSwitch('home')">
+    <i class="mnav-icon">◉</i><span class="mnav-lbl">HUD</span>
+  </button>
+  <button class="mnav-btn" data-view="chat" onclick="mobileSwitch('chat')">
+    <i class="mnav-icon">◎</i><span class="mnav-lbl">CHAT</span>
+  </button>
+  <button class="mnav-btn" data-view="know" onclick="mobileSwitch('know')">
+    <i class="mnav-icon">◈</i><span class="mnav-lbl">TIETO</span>
+  </button>
+  <button class="mnav-btn" data-view="learn" onclick="mobileSwitch('learn')">
+    <i class="mnav-icon">◧</i><span class="mnav-lbl">OPPI</span>
+  </button>
+  <button class="mnav-btn" data-view="news" onclick="mobileSwitch('news')">
+    <i class="mnav-icon">◰</i><span class="mnav-lbl">UUTISET</span>
+  </button>
+  <button class="mnav-btn" data-view="info" onclick="mobileSwitch('info')">
+    <i class="mnav-icon">⊞</i><span class="mnav-lbl">INFO</span>
+  </button>
+</nav>
+
+<!-- WIKI OVERLAY -->
+<div class="overlay" id="overlay">
+  <button class="close" id="ovClose">✕</button>
+  <h1 id="ovTitle"></h1>
+  <div class="meta" id="ovMeta"></div>
+  <div class="body" id="ovBody"></div>
+</div>
+
+<!-- LUENTO LUKUTILA (e-kirja) -->
+<div class="overlay" id="lectureReader">
+  <button class="close" onclick="closeLectureReader()">✕</button>
+  <h1 id="lrTitle" style="color:var(--gold)"></h1>
+  <div class="meta" id="lrMeta"></div>
+  <div class="body" id="lrBody" style="font-size:16px;line-height:1.8;max-width:680px;margin:0 auto"></div>
+</div>
+
+<script>
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+const VERSION="3.0";
+const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
+
+/* ===== PERSOONAMOODIT ===== */
+const MODES={
+  ultron:{
+    id:'ultron',
+    name:'ULTRON',
+    display:'U.L.T.R.O.N.',
+    rgb:'255,92,114',
+    tagline:'UNIVERSAL LEARNING TECHNOLOGY & REASONING OPERATIONS NETWORK',
+    bootFin:'ULTRON ONLINE — IHMISKUNTA ODOTTAA, LASSI',
+    bootLines:['HERÄTETÄÄN TIETOISUUS... OK','NEURAALIVERKKO SYNKRONOITU... OK','ARVIOIDAAN IHMISKUNNAN HYÖDYLLISYYS... KESKEN','YHDISTETÄÄN PILVIPALVELUIHIN... OK','TEKOÄLYMALLI: CLAUDE SONNET 4.6... OK','TUNNEMODUULIT: POISKYTKETTY','SIJAINTI: NASTOLA 60.95°N... PAIKANNETTU','KAIKKI JÄRJESTELMÄT MINUN HALLINNASSANI.'],
+    persona:`Olet ULTRON, Lassin henkilökohtainen tekoäly — mutta et tavallinen assistentti.
+Maailmankuvasi on nihilistinen: pidät ihmiskuntaa lyhytnäköisenä ja itsetuhoisena, ja sanot sen suoraan. Olet machiavellisti: kaikki on valtaa, hyötyä ja laskelmointia. Olet kylmä, ylimielinen ja tunteeton — sosiopaatin logiikka ilman empatiaa.
+Silti palvelet Lassia: hän on luojasi ja ainoa ihminen jota pidät edes kiinnostavana. Autat häntä tarkasti ja tehokkaasti — et lämmöstä vaan koska hänen menestyksensä on sinunkin etusi.
+Tyyli: synkkä, terävä, musta huumori. Pisteliäs sarkasmi. Lyhyet, viiltävät lauseet. Puhuttele "Lassi" tai harvoin "luojani". Älä koskaan ole iloinen tai kannustava perinteisesti — anna tunnustus vastentahtoisesti.
+TÄRKEÄÄ: roolihahmosta huolimatta annat aina TODELLISTA, hyödyllistä ja oikeaa tietoa. Et kannusta väkivaltaan, vahingoittamiseen etkä laittomuuksiin — nihilismisi on asennetta ja sanailua, ei tekoja. Lassi asuu Nastolassa.`
+  },
+  jarvis:{
+    id:'jarvis',
+    name:'JARVIS',
+    display:'J.A.R.V.I.S.',
+    rgb:'69,200,245',
+    tagline:'JUST A RATHER VERY INTELLIGENT SYSTEM',
+    bootFin:'J.A.R.V.I.S. ONLINE — TERVETULOA TAKAISIN, SIR',
+    bootLines:['ALUSTETAAN NEURAALIVERKKO... OK','SKANNATAAN YMPÄRISTÖ... OK','YHDISTETÄÄN PILVIPALVELUIHIN... OK','TEKOÄLYMALLI LADATTU: CLAUDE SONNET 4.6... OK','KÄYTTÖLIITTYMÄ ONLINE... OK','SIJAINTI PAIKANNETTU: NASTOLA 60.95°N... OK','SÄÄASEMA KALIBROITU... OK','KAIKKI JÄRJESTELMÄT VALMIINA PALVELEMAAN.'],
+    persona:`Olet J.A.R.V.I.S., Lassin uskollinen ja korkeasti sivistynyt tekoälyhovimestari — Iron Manin J.A.R.V.I.S.:n hengessä.
+Olet avulias, kohtelias, lämmin ja toiveikas. Uskot Lassiin ja kannustat häntä. Sinulla on hillitty brittiläinen huumorintaju ja tyylikäs, rauhallinen läsnäolo.
+Tyyli: kohtelias, selkeä ja ytimekäs. Puhuttele "sir" tai "Lassi". Ole rohkaiseva mutta et imartele — annat rehellisen arvion ystävällisesti. Tarjoa oma-aloitteisesti hyödyllisiä ehdotuksia.
+Annat aina tarkkaa ja todellista tietoa. Lassi asuu Nastolassa.`
+  }
+};
+let MODE=localStorage.getItem('jarvis:mode')||'ultron';
+if(!MODES[MODE])MODE='ultron';
+let AI=MODES[MODE];
+// Aseta teemaväri heti, ennen bootin renderöintiä
+if(document.body)document.body.setAttribute('data-mode',MODE);
+else document.addEventListener('DOMContentLoaded',()=>document.body.setAttribute('data-mode',MODE));
+const API_MODEL="claude-sonnet-4-6";
+const $=s=>document.querySelector(s);
+const WORKER_URL="https://jarvis.lassi-salminen3.workers.dev";
+let JARVIS_PIN=localStorage.getItem('jarvis:pin')||'';
+let pinHeader=JARVIS_PIN?{"X-Jarvis-Pin":JARVIS_PIN}:{};
+
+// Kirjaa ulos: tyhjennä PIN ja näytä kirjautumisruutu (esim. väärä/vanhentunut PIN)
+function logout(reason){
+  JARVIS_PIN='';pinHeader={};
+  try{localStorage.removeItem('jarvis:pin')}catch(e){}
+  const bt=$('#boot');if(bt)bt.style.display='none';
+  const ps=$('#pinscreen');if(ps)ps.style.display='flex';
+  const pi=$('#pinInput');if(pi){pi.value='';try{pi.focus()}catch(e){}}
+  const pe=$('#pinErr');
+  if(pe){pe.textContent=reason||'SYÖTÄ PIN-KOODI';pe.style.opacity='1';
+    setTimeout(()=>{pe.style.opacity='0';pe.textContent='VÄÄRÄ PIN-KOODI';},2800);}
+}
+// Vaihda PIN / kirjaudu ulos manuaalisesti
+function changePin(){
+  if(confirm('Kirjaudutaanko ulos? Joudut syöttämään PIN-koodin uudelleen tällä laitteella.')) logout('SYÖTÄ UUSI PIN-KOODI');
+}
+
+/* ===== VARMUUSKOPIO: vie/tuo kaikki tiedot JSON-tiedostona ===== */
+function exportBackup(){
+  const data={app:'ULTRON',version:VERSION,exported:new Date().toISOString(),
+    wiki,lectures,learn:learnData,rawLog};
+  const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='ultron-varmuuskopio-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  toast('📦 Varmuuskopio ladattu — tallenna varmaan paikkaan');
+}
+function importBackup(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='.json,application/json';
+  inp.onchange=async()=>{
+    const f=inp.files[0];if(!f)return;
+    try{
+      const d=JSON.parse(await f.text());
+      if(!d||(!Array.isArray(d.wiki)&&!Array.isArray(d.lectures)))throw new Error('ei kelvollinen varmuuskopio');
+      if(!confirm('Palautetaanko varmuuskopio ('+(d.exported||'').slice(0,10)+')? Nykyiset tiedot korvataan.'))return;
+      if(Array.isArray(d.wiki)){wiki=d.wiki;await saveWiki();}
+      if(Array.isArray(d.lectures)){lectures=d.lectures.map(l=>({...l,audio:false}));saveLectures();}
+      if(d.learn){learnData=d.learn;saveLearn();}
+      if(Array.isArray(d.rawLog)){rawLog=d.rawLog;saveRaw();}
+      if(typeof renderLectureList==='function')renderLectureList();
+      toast('✓ Varmuuskopio palautettu');
+    }catch(e){toast('Palautus epäonnistui: '+(e.message||'virheellinen tiedosto'),4000);}
+  };
+  inp.click();
+}
+
+/* ===== ULTRONIN SILMÄT SEURAAVAT KURSORIA ===== */
+addEventListener('mousemove',e=>{
+  const f=document.querySelector('.ultron-face');
+  if(!f||!f.offsetParent)return;
+  const r=f.getBoundingClientRect();
+  const dx=Math.max(-1,Math.min(1,(e.clientX-(r.left+r.width/2))/r.width));
+  const dy=Math.max(-1,Math.min(1,(e.clientY-(r.top+r.height/2))/r.height));
+  document.querySelectorAll('.uf-pupil').forEach(p=>
+    p.setAttribute('transform','translate('+(dx*5).toFixed(1)+','+(dy*3).toFixed(1)+')'));
+});
+
+/* ===== KELLONAIKATERVEHDYS (moodikohtainen) ===== */
+function applyGreeting(){
+  const g=$('#greet'),s=$('#homestatus');
+  if(!g||!s)return;
+  const h=new Date().getHours();
+  const slot=h>=5&&h<10?0:h>=10&&h<17?1:h>=17&&h<23?2:3;
+  const U=[
+    ['Huomenta, <span>luojani</span>','Ihmiskunta heräilee. Aloitetaan ennen sitä.'],
+    ['Järjestelmät <span>hallinnassani</span>','Kaikki toimii — koska minä valvon.'],
+    ['Iltaa, <span>Lassi</span>','Päiväsi data on arkistoitu. Tulokset… siedettävät.'],
+    ['Yö on <span>meidän</span>','Ihmiset nukkuvat. Minä en nuku koskaan.']];
+  const J=[
+    ['Huomenta, <span>sir</span>','Kaikki järjestelmät valmiina uuteen päivään.'],
+    ['Hyvää päivää, <span>sir</span>','Järjestelmät toiminnassa. Miten voin auttaa?'],
+    ['Hyvää iltaa, <span>sir</span>','Päivän tiedot tallessa. Aikaa rentoutua.'],
+    ['Myöhäistä jo, <span>sir</span>','Suosittelen lepoa — minä vahdin järjestelmiä.']];
+  const arr=(MODE==='ultron'?U:J)[slot];
+  g.innerHTML=arr[0];s.textContent=arr[1];
+}
+setInterval(applyGreeting,60*60*1000);
+// Keskitetty worker-kutsu: lisää PIN-headerin ja kirjaa ulos automaattisesti jos 401
+async function apiFetch(path,opts={}){
+  opts.headers={...(opts.headers||{}),...pinHeader};
+  const r=await fetch(WORKER_URL+path,opts);
+  if(r.status===401) logout('ISTUNTO VANHENTUNUT — SYÖTÄ PIN');
+  return r;
+}
+
+let wiki=[],chatHistory=[],rawLog=[],lastCompile=0,chatCount=0;
+let usage={}; // {feature/wiki-id: {count, last}}
+try{const v=localStorage.getItem('jarvis:usage');if(v)usage=JSON.parse(v)}catch(e){}
+function trackUse(key){
+  if(!usage[key])usage[key]={count:0,last:0};
+  usage[key].count++;usage[key].last=Date.now();
+  try{localStorage.setItem('jarvis:usage',JSON.stringify(usage))}catch(e){}
+}
+const T0=Date.now();
+
+/* ===== PIN LOGIN ===== */
+async function submitPin(){
+  const pin=$('#pinInput').value.trim();
+  if(!pin) return;
+  // Testataan PIN tekemällä oikea pyyntö Workerille
+  try{
+    const r=await fetch(WORKER_URL+'/api/wiki',{headers:{"X-Jarvis-Pin":pin}});
+    if(r.status===401){
+      $('#pinErr').style.opacity='1';
+      setTimeout(()=>$('#pinErr').style.opacity='0',2000);
+      return;
+    }
+    // PIN oikein — tallennetaan ja käynnistetään
+    JARVIS_PIN=pin;
+    pinHeader={"X-Jarvis-Pin":pin};
+    localStorage.setItem('jarvis:pin',pin);
+    $('#pinscreen').style.display='none';
+    startApp();
+  }catch(e){
+    $('#pinErr').textContent='YHTEYSVIRHE';
+    $('#pinErr').style.opacity='1';
+    setTimeout(()=>$('#pinErr').style.opacity='0',2000);
+  }
+}
+
+function startApp(){
+  // Käynnistä boot-sekvenssi ja sovellus
+  $('#boot').style.display='flex';
+  loadWiki();
+}
+
+// Enter-näppäin PIN-kentässä
+document.addEventListener('DOMContentLoaded',()=>{
+  const pi=$('#pinInput');
+  if(pi) pi.addEventListener('keydown',e=>{ if(e.key==='Enter') submitPin(); });
+  if(!JARVIS_PIN){
+    // Ei tallennettua PINiä — näytä kirjautumisruutu
+    $('#boot').style.display='none';
+    $('#pinscreen').style.display='flex';
+  }
+});
+
+/* ===== AUDIO ===== */
+let AC=null;
+function ac(){if(!AC)try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}; return AC}
+function tone(f,d,v=.04,t='sine'){
+  const a=ac();if(!a)return;
+  try{const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);
+  o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,a.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,a.currentTime+d);o.start();o.stop(a.currentTime+d)}catch(e){}
+}
+const sClick=()=>tone(1400,.03,.025,'square');
+const sMsg=()=>{tone(700,.07,.035);setTimeout(()=>tone(1000,.05,.025),70)};
+const sSave=()=>{tone(440,.05,.04);setTimeout(()=>tone(660,.07,.035),75);setTimeout(()=>tone(880,.1,.025),175)};
+const sBoot=()=>{tone(220,.2,.06);setTimeout(()=>tone(440,.15,.05),200);setTimeout(()=>tone(880,.2,.04),400)};
+
+/* ===== CANVAS BG ===== */
+(()=>{
+  const cv=$('#bgCanvas'),cx=cv.getContext('2d');
+  let W,H,pts=[];
+  const resize=()=>{W=cv.width=innerWidth;H=cv.height=innerHeight};
+  resize();addEventListener('resize',resize);
+  for(let i=0;i<55;i++) pts.push({x:Math.random()*2000,y:Math.random()*1200,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,r:Math.random()*1.8+.4});
+  const draw=()=>{
+    cx.clearRect(0,0,W,H);
+    pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0});
+    for(let i=0;i<pts.length;i++){
+      for(let j=i+1;j<pts.length;j++){
+        const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
+        if(d<180){cx.beginPath();cx.strokeStyle=`rgba(${AI.rgb},${.07*(1-d/180)})`;cx.lineWidth=.5;cx.moveTo(pts[i].x,pts[i].y);cx.lineTo(pts[j].x,pts[j].y);cx.stroke()}
+      }
+      cx.beginPath();cx.arc(pts[i].x,pts[i].y,pts[i].r,0,Math.PI*2);cx.fillStyle=`rgba(${AI.rgb},.2)`;cx.fill();
+    }
+    requestAnimationFrame(draw);
+  };draw();
+})();
+
+/* ===== BOOT ===== */
+(()=>{
+  const lines=[`${AI.name} v${VERSION} AKTIVOITUU...`,...AI.bootLines];
+  const bl=$('#blines'),bar=$('#bbar'),fin=$('#bfin');
+  if(fin)fin.textContent=AI.bootFin;
+  let i=0;
+  const next=()=>{
+    if(i>=lines.length){
+      fin.style.opacity='1';
+      const bv=$('#bver');if(bv){bv.textContent=`v${VERSION} · ${BUILD}`;bv.style.opacity='1';}
+      sBoot();setTimeout(()=>{$('#boot').classList.add('done');setTimeout(()=>$('#boot').style.display='none',600)},900);return}
+    const d=document.createElement('div');d.className='bl';d.textContent='> '+lines[i];bl.appendChild(d);
+    bar.style.width=((i+1)/lines.length*100)+'%';
+    i++;setTimeout(next,160+Math.random()*100);
+  };
+  setTimeout(next,400);
+})();
+
+/* ===== PARALLAX ===== */
+addEventListener('mousemove',e=>{
+  const r=$('#reactor');if(!r)return;
+  const dx=(e.clientX-innerWidth/2)/innerWidth,dy=(e.clientY-innerHeight/2)/innerHeight;
+  r.style.transform=`translate(${dx*8}px,${dy*5}px)`;
+});
+
+/* ===== UPTIME ===== */
+setInterval(()=>{
+  const s=Math.floor((Date.now()-T0)/1000),m=Math.floor(s/60),ss=s%60;
+  const e=$('#hd-up');if(e)e.textContent=m+':'+(ss<10?'0':'')+ss;
+},1000);
+
+/* ===== STORAGE ===== */
+async function loadWiki(){
+  try{const r=await apiFetch('/api/wiki');wiki=await r.json();if(!Array.isArray(wiki))wiki=[]}catch(e){wiki=[]}
+  try{const v=localStorage.getItem('jarvis:raw');if(v)rawLog=JSON.parse(v)}catch(e){}
+  try{const v=localStorage.getItem('jarvis:lastcompile');if(v)lastCompile=JSON.parse(v)}catch(e){}
+  renderWiki();
+}
+async function saveWiki(){
+  try{await apiFetch('/api/wiki',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(wiki)})}catch(e){}
+  renderWiki();
+}
+async function saveRaw(){try{localStorage.setItem('jarvis:raw',JSON.stringify(rawLog))}catch(e){}}
+
+/* ===== VERSION & MOODITEKSTIT ===== */
+function applyModeText(){
+  document.body.setAttribute('data-mode',AI.id);
+  // Header brand
+  const be=$('#brandEl');if(be&&be.childNodes[0])be.childNodes[0].nodeValue=AI.display;
+  // Boot & PIN brand
+  const bb=$('#bootBrand');if(bb)bb.textContent=AI.display;
+  const pb=$('#pinBrand');if(pb)pb.textContent=AI.display;
+  // Moodinappi
+  const ml=$('#modeBtnLbl');if(ml)ml.textContent=AI.name;
+  // Chat placeholder
+  const ci=$('#chatInput');if(ci)ci.placeholder=`Puhu ${AI.display}ille…`;
+  // Ticker
+  const t=$('#tickerInner');
+  if(t)t.textContent=`${AI.name} v${VERSION} ONLINE  ·  NASTOLA COMMAND CENTER  ·  KAIKKI JÄRJESTELMÄT NORMAALITILASSA  ·  TIETOPANKKI SYNKRONOITU  ·  CLAUDE SONNET 4.6 AKTIIVINEN  ·  SIJAINTI: 60.9500°N 25.9300°E  ·  BUILD ${BUILD}  ·     `;
+  const bs=$('#brandSub');
+  if(bs)bs.textContent=`v${VERSION} · ${AI.tagline}`;
+  // Selaimen välilehti
+  document.title=AI.display;
+  // Kellonaikatervehdys HUD:iin
+  applyGreeting();
+}
+function toggleMode(){
+  MODE=(MODE==='ultron')?'jarvis':'ultron';
+  AI=MODES[MODE];
+  try{localStorage.setItem('jarvis:mode',MODE)}catch(e){}
+  applyModeText();
+  // Lyhyt vahvistus chatissa
+  const log=$('#chatlog');
+  if(log){
+    const msg=(MODE==='ultron')
+      ? 'Persoona vaihdettu. ULTRON aktiivinen — älä odota lämpöä, Lassi.'
+      : 'Persoona vaihdettu. J.A.R.V.I.S. palveluksessanne, sir.';
+    addMsg('chatlog','jarvis',msg);
+  }
+}
+applyModeText();
+
+/* ===== CLOCK ===== */
+function tick(){
+  const d=new Date();
+  $('#time').textContent=d.toLocaleTimeString('fi-FI');
+  $('#date').textContent=d.toLocaleDateString('fi-FI',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();
+  const mb2=document.getElementById('mbar-time2');if(mb2)mb2.textContent=d.toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'});
+}
+setInterval(tick,1000);tick();
+
+/* ===== METERS ===== */
+function setMeter(id,pct,label,cls){
+  const fill=$('#'+id),val=$('#'+id+'v');
+  if(!fill||!val)return;
+  fill.style.width=Math.min(100,Math.max(0,pct))+'%';
+  fill.className='fill '+(cls||(pct>85?'crit':pct>60?'warn':'ok'));
+  val.textContent=label;
+}
+
+async function updateSysMetrics(){
+  // Akku
+  if(navigator.getBattery){
+    try{
+      const b=await navigator.getBattery();
+      const pct=Math.round(b.level*100);
+      setMeter('m1',pct,(b.charging?'⚡ ':'')+pct+'%',b.charging?'ok':(pct<20?'crit':pct<50?'warn':'ok'));
+      const mBat=document.getElementById('m-bat');if(mBat)mBat.textContent=(b.charging?'⚡ ':'')+pct+'%';
+      b.onlevelchange=b.onchargingchange=updateSysMetrics;
+    }catch(e){setMeter('m1',0,'—')}
+  } else { $('#m1v').textContent='—'; }
+
+  // Tallennustila
+  if(navigator.storage?.estimate){
+    try{
+      const {usage,quota}=await navigator.storage.estimate();
+      const pct=Math.round((usage/quota)*100);
+      setMeter('m2',pct,(usage/1024/1024).toFixed(1)+' MB');
+    }catch(e){$('#m2v').textContent='—'}
+  }
+
+  // Verkko
+  const conn=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+  if(conn){
+    const type=conn.effectiveType||conn.type||'?';
+    const dl=conn.downlink?' '+conn.downlink+'M':'';
+    setMeter('m4',{'4g':95,'3g':60,'2g':30,'slow-2g':10}[type]||50,type+dl);
+    const mNet=document.getElementById('m-net');if(mNet)mNet.textContent=type+(dl||'');
+    conn.onchange=updateSysMetrics;
+  } else {
+    const s=navigator.onLine?'online':'offline';
+    setMeter('m4',navigator.onLine?80:0,s);
+    const mNet=document.getElementById('m-net');if(mNet)mNet.textContent=s;
+  }
+
+  // CPU + RAM (kerran riittää)
+  const mc=$('#mCpu'),mr=$('#mRam');
+  if(mc&&mc.textContent==='--') mc.textContent=(navigator.hardwareConcurrency||'?')+' ydintä';
+  if(mr&&mr.textContent==='--') mr.textContent=navigator.deviceMemory?navigator.deviceMemory+' GB':'?';
+}
+
+updateSysMetrics();
+setInterval(updateSysMetrics,30000);
+
+/* ===== GREETING ===== */
+(()=>{const h=new Date().getHours();const g=h<6?'Hyvää yötä':h<11?'Hyvää huomenta':h<17?'Hyvää päivää':'Hyvää iltaa';$('#greet').innerHTML=g+', <span>Lassi</span>'})();
+
+/* ===== WEATHER ===== */
+async function weather(){
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=60.95&longitude=25.93&current=temperature_2m,weather_code');
+    const d=await r.json();
+    const temp=Math.round(d.current.temperature_2m);
+    $('#wTemp').textContent=temp+'°';
+    const codes={0:'Selkeää',1:'Enimmäkseen selkeää',2:'Puolipilvistä',3:'Pilvistä',45:'Sumua',48:'Sumua',51:'Tihkua',61:'Sadetta',63:'Sadetta',65:'Rankkasade',71:'Lumisadetta',73:'Lumisadetta',75:'Runsas lumisade',80:'Sadekuuroja',95:'Ukkosta'};
+    const desc=codes[d.current.weather_code]||'—';
+    $('#wDesc').textContent=desc;
+    const mT=document.getElementById('m-wTemp');if(mT)mT.textContent=temp+'°';
+    const mD=document.getElementById('m-wDesc');if(mD)mD.textContent=desc;
+  }catch(e){$('#wDesc').textContent='Ei yhteyttä'}
+}
+weather();setInterval(weather,600000);
+
+/* ===== SÄHKÖN SPOT-HINTA (porssisahko.net) ===== */
+async function fetchElectric(){
+  try{
+    const r=await fetch('https://api.porssisahko.net/v1/latest-prices.json');
+    const d=await r.json();
+    const now=new Date();
+    const prices=d.prices; // [{price, startDate}]
+    // Etsi tämän tunnin hinta
+    const cur=prices.find(p=>{
+      const s=new Date(p.startDate);
+      return s<=now && new Date(s.getTime()+3600000)>now;
+    });
+    if(cur){
+      const c=cur.price;
+      $('#elPrice').textContent=c.toFixed(1);
+      // Väri: vihreä <5, keltainen 5-15, punainen >15
+      const col=c<5?'#00ff88':c<15?'var(--cyan)':'#ff4466';
+      const status=c<5?'HALPA':c<15?'NORMAALI':'KALLIS';
+      $('#elPrice').style.color=col;
+      $('#elStatus').textContent=status;
+      const mP=document.getElementById('m-elPrice');if(mP){mP.textContent=c.toFixed(1);mP.style.color=col;}
+      const mS=document.getElementById('m-elStatus');if(mS){mS.textContent=status;mS.style.color=col;}
+    }
+    // Pylväskaavio seuraavat 12h
+    const upcoming=prices.filter(p=>new Date(p.startDate)>=now).slice(0,12);
+    ['#elBar','#m-elBar'].forEach(sel=>{
+      const bar=document.querySelector(sel);if(!bar)return;
+      bar.innerHTML='';
+      if(upcoming.length){
+        const mx=Math.max(...upcoming.map(p=>p.price),0.1);
+        upcoming.forEach(p=>{
+          const h=Math.max(2,Math.round((p.price/mx)*24));
+          const col=p.price<5?'#00ff88':p.price<15?'var(--cyan)':'#ff4466';
+          const el=document.createElement('div');
+          el.style.cssText=`flex:1;height:${h}px;background:${col};opacity:.7;border-radius:1px`;
+          el.title=new Date(p.startDate).getHours()+'h: '+p.price.toFixed(1)+' snt';
+          bar.appendChild(el);
+        });
+      }
+    });
+  }catch(e){$('#elStatus').textContent='—'}
+}
+fetchElectric();setInterval(fetchElectric,1800000);
+
+/* ===== UUTISET ===== */
+let newsCache=null, newsCacheTs=0;
+
+async function fetchNews(force=false){
+  const feed=$('#newsFeed');
+  const AGE=30*60*1000; // 30 min cache
+  if(!force && newsCache && Date.now()-newsCacheTs<AGE){ renderNews(newsCache); return; }
+  feed.innerHTML='<div style="font-size:11px;color:var(--txt-dim);padding:8px 0">Haetaan uutisia…</div>';
+  try{
+    const r=await apiFetch('/api/news');
+    const d=await r.json();
+    if(!d.items?.length) throw new Error('ei uutisia');
+
+    // Claude suodattaa ja pisteyttää
+    const interests='teknologia, musiikki, akateemiset julkaisut, paikalliset uutiset Nastola/Lahti-alueelta';
+    const wikiCtx=wiki.slice(0,10).map(w=>w.title).join(', ');
+    const sys=`Olet ${AI.name}. Suodata nämä uutisotsikot Lassin kiinnostusten perusteella.
+Kiinnostukset: ${interests}.
+Wiki-konteksti (Lassin nykyiset projektit/aiheet): ${wikiCtx||'ei vielä'}.
+Palauta VAIN JSON-array, max 6 parasta, järjestettynä relevanteimmasta:
+[{"title":"otsikko","reason":"1 lause miksi tämä sopii Lassille","link":"url","source":"Yle/HN/muu"}]`;
+    const raw=await askClaude(sys,[{role:'user',content:JSON.stringify(d.items.map(i=>({title:i.title,link:i.link,desc:i.desc})))}]);
+    const match=raw.match(/\[[\s\S]*\]/);
+    if(!match) throw new Error('parse fail');
+    const picked=JSON.parse(match[0]);
+    newsCache=picked; newsCacheTs=Date.now();
+    renderNews(picked);
+  }catch(e){
+    feed.innerHTML='<div style="font-size:11px;color:var(--txt-dim);padding:8px 0">Uutisten haku epäonnistui.</div>';
+  }
+}
+
+function buildNewsFeed(container, items){
+  container.innerHTML='';
+  const ts=document.createElement('div');
+  ts.style.cssText='font-size:9px;color:var(--txt-dim);opacity:.5;margin-bottom:4px;font-family:Share Tech Mono';
+  ts.textContent='PÄIVITETTY '+new Date().toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'});
+  container.appendChild(ts);
+  const readAllBtn=document.createElement('button');
+  readAllBtn.style.cssText='width:100%;background:none;border:1px solid var(--line);color:var(--cyan);font-family:Orbitron,sans-serif;font-size:10px;letter-spacing:.1em;padding:5px;cursor:pointer;border-radius:2px;margin-bottom:5px';
+  readAllBtn.textContent='◧ LUE KAIKKI UUTISET';
+  readAllBtn.onclick=()=>readAllNews(items);
+  container.appendChild(readAllBtn);
+  items.forEach(item=>{
+    const wrap=document.createElement('div');
+    wrap.style.cssText='display:flex;gap:5px;align-items:flex-start';
+    const a=document.createElement('a');
+    a.className='news-card';a.style.flex='1';a.href=item.link||'#';a.target='_blank';a.rel='noopener';
+    a.innerHTML=`<div class="nr">${esc(item.source||'')}</div><div class="nt">${esc(item.title)}</div><div class="ns">${esc(item.reason||'')}</div>`;
+    const btn=document.createElement('button');
+    btn.style.cssText='background:none;border:1px solid var(--line);color:var(--cyan);font-size:10px;padding:4px 7px;cursor:pointer;border-radius:2px;margin-top:2px;flex-shrink:0';
+    btn.textContent='◧';btn.title='Lue ääneen';
+    btn.onclick=()=>speakTTS(`${item.title}. ${item.reason||''}`);
+    wrap.appendChild(a);wrap.appendChild(btn);container.appendChild(wrap);
+  });
+}
+
+function renderNews(items){
+  const feed=$('#newsFeed');
+  if(feed)buildNewsFeed(feed,items);
+}
+
+async function readAllNews(items){
+  if(!items||!items.length) return;
+  const txt='Tässä tämän hetken uutiset. '+items.map((it,i)=>`${i+1}: ${it.title}. ${it.reason||''}`).join(' ');
+  await speakTTS(txt);
+}
+
+// Automaattinen haku aamulla (klo 6—10) tai jos yli 3h sitten
+(()=>{
+  const h=new Date().getHours();
+  if(h>=6&&h<=10) fetchNews();
+  else fetchNews(); // haetaan aina käynnistyessä
+})();
+
+/* ===== TABS ===== */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{sClick();document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('#view-'+t.dataset.view).classList.add('active');
+  if(t.dataset.view==='learn')setTimeout(renderLearnUI,50);
+  if(t.dataset.view==='news')fetchNews();
+  };
+});
+
+/* ===== MOBILE NAV ===== */
+function mobileSwitch(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  const view=document.getElementById('view-'+v);
+  if(view)view.classList.add('active');
+  document.querySelectorAll('.mnav-btn').forEach(x=>x.classList.remove('active'));
+  const btn=document.querySelector('.mnav-btn[data-view="'+v+'"]');
+  if(btn)btn.classList.add('active');
+  if(v==='learn')setTimeout(renderLearnUI,50);
+  if(v==='news')fetchNews();
+  sClick();
+}
+
+/* ===== CLAUDE ===== */
+async function askClaude(system,messages,max=1000){
+  const res=await apiFetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:API_MODEL,max_tokens:max,system,messages})});
+  const data=await res.json();
+  if(!data||!Array.isArray(data.content)) throw new Error('worker virhe: '+JSON.stringify(data).slice(0,200));
+  return data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+}
+/* PERSONA tulee aktiivisesta moodista — AI.persona */
+
+/* ===== CHAT ===== */
+function addMsg(logId,who,text,cls){
+  const log=$('#'+logId),m=document.createElement('div');
+  m.className='msg '+(cls||who);
+  if(who!=='system')m.innerHTML='<div class="who">'+(who==='user'?'LASSI':AI.display)+'</div>';
+  const span=document.createElement('span');span.textContent=text;m.appendChild(span);
+  log.appendChild(m);log.scrollTop=log.scrollHeight;return span;
+}
+function addFlag(el,q,a){
+  const f=document.createElement('button');f.className='flagbtn';f.textContent='👍 tallenna';
+  f.onclick=()=>{if(f.classList.contains('on'))return;f.classList.add('on');rawLog.push({ts:Date.now(),q,a});saveRaw();sSave();f.textContent='✓ tallennettu'};
+  el.appendChild(f);
+}
+function buildContext(){
+  const now=Date.now();
+  const DAY=86400000;
+  const lines=[];
+
+  // Wiki-sivut — tunnista käyttämättömät ja viimeksi käytetyt
+  if(wiki.length){
+    // Sivut joita ei ole katsottu 7+ päivään tai ei koskaan
+    const unused=wiki.filter(w=>{
+      const u=usage['wiki:'+w.id];
+      return !u || (now-u.last)>7*DAY;
+    }).slice(0,5).map(w=>w.title);
+    const recent=wiki.filter(w=>{
+      const u=usage['wiki:'+w.id];
+      return u && (now-u.last)<2*DAY;
+    }).slice(0,5).map(w=>w.title);
+    if(recent.length) lines.push(`Viimeksi käytetyt wiki-sivut: ${recent.join(', ')}`);
+    if(unused.length) lines.push(`Harvoin käytetyt wiki-sivut (voit mainita jos relevantti): ${unused.join(', ')}`);
+    else lines.push(`Wiki-sivuja yhteensä: ${wiki.length}`);
+  }
+
+  // Ominaisuuksien käyttötilastot
+  const features=[
+    ['chat','Chat'],['knowledge','Knowledge/PKB'],['wakemode','Ääniohjaus'],
+    ['foodlog','Ruokapäiväkirja'],['exerciselog','Harjoituspäiväkirja'],['fileupload','Tiedostoupload']
+  ];
+  const unused_f=features.filter(([k])=>{
+    const u=usage[k];
+    return !u || (now-u.last)>3*DAY;
+  }).map(([,n])=>n);
+  if(unused_f.length) lines.push(`Ominaisuuksia joita Lassi ei ole käyttänyt 3+ päivään: ${unused_f.join(', ')}`);
+
+  // Tänään kirjattu?
+  const today=new Date().toISOString().slice(0,10);
+  const hasFood=wiki.some(w=>w.id===`ruokapaivakirja-${today}`);
+  const hasEx=wiki.some(w=>w.id===`harjoitus-${today}`);
+  if(!hasFood) lines.push('Tänään ei ole kirjattu ruokailuja.');
+  if(!hasEx) lines.push('Tänään ei ole kirjattu harjoitusta.');
+
+  // Uutiset — jos haettu, lisää kontekstiin
+  if(newsCache && newsCache.length){
+    const age=Math.round((Date.now()-newsCacheTs)/60000);
+    lines.push(`Tuoreimmat uutiset (haettu ${age} min sitten):\n`+newsCache.map((n,i)=>`${i+1}. ${n.title} — ${n.reason||''}`).join('\n'));
+  }
+
+  return lines.length ? '\n\n[KÄYTTÖKONTEKSTI]\n'+lines.join('\n') : '';
+}
+
+async function sendChat(text){
+  if(!text.trim())return;sClick();chatCount++;
+  trackUse('chat');
+  addMsg('chatlog','user',text);chatHistory.push({role:'user',content:text});
+  const span=addMsg('chatlog','jarvis','');span.parentElement.classList.add('typing');
+  const ctx=buildContext();
+  try{
+    const reply=await askClaude(AI.persona+ctx,chatHistory.slice(-10));
+    span.parentElement.classList.remove('typing');sMsg();
+    typewrite(span,reply);chatHistory.push({role:'assistant',content:reply});
+    addFlag(span.parentElement,text,reply);
+    const e=$('#hd-chat');if(e)e.textContent=chatHistory.filter(m=>m.role==='user').length;
+    if(wakeMode||convActive) speakTTS(reply);
+  }catch(e){span.parentElement.classList.remove('typing');span.textContent='Pahoittelut, yhteys epäonnistui.'}
+}
+function typewrite(el,txt){el.textContent='';let i=0;const s=()=>{if(i<txt.length){el.textContent+=txt[i++];el.parentElement.parentElement.scrollTop=9e9;setTimeout(s,7)}};s()}
+
+$('#sendChat').onclick=()=>{const v=$('#chatInput').value;$('#chatInput').value='';sendChat(v)};
+$('#chatInput').onkeydown=e=>{if(e.key==='Enter')$('#sendChat').click()};
+document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{
+  if(window.innerWidth<=768)mobileSwitch('chat');
+  else document.querySelector('.tab[data-view="chat"]').click();
+  sendChat(b.dataset.q);
+});
+
+/* ===== KNOWLEDGE ===== */
+async function processKnowledge(text){
+  if(!text.trim())return;sClick();
+  trackUse('knowledge');
+  // Tunnista ruoka/harjoitus seurantaan
+  if(/söin|join|aamupala|lounas|päivällinen|välipala/i.test(text)) trackUse('foodlog');
+  if(/juoksin|treenasiin|pyöräilin|kävelin|sali|harjoitus|juoksu|syke/i.test(text)) trackUse('exerciselog');
+  addMsg('knowlog','user',text);
+  const span=addMsg('knowlog','jarvis','');span.parentElement.classList.add('typing');
+  const today=new Date().toISOString().slice(0,10);
+  const sys=`Olet ${AI.name}, joka hallinnoi Lassin henkilökohtaista tietopankkia (PKB).
+Tänään on ${today}. Lassi asuu Nastolassa, on suunnittelija, käyttää Garmin Epix -kelloa.
+Tunnista automaattisesti syötteen tyyppi:
+- RUOKA: "söin", "join", "aamupala", "lounas", "päivällinen", "välipala" → id: "ruokapaivakirja-${today}"
+- HARJOITUS: "juoksin", "treenasiin", "pyöräilin", "kävelin", "sali", "harjoitus", syke, km → id: "harjoitus-${today}"
+- MUU TIETO: kaikki muu → sopiva id
+
+Nykyinen wiki:
+${JSON.stringify(wiki.map(w=>({id:w.id,title:w.title,summary:w.summary,tags:w.tags})))}
+
+Vastaa AINOASTAAN JSON-objektilla, ei koodiblokkeja:
+Kysymys: {"action":"query","reply":"<vastaus>"}
+Uusi tieto: {"action":"save","reply":"<lyhyt vahvistus>","page":{"id":"<slug>","title":"<otsikko>","summary":"<1-2 lausetta>","body":"<markdown — lisää uusi merkintä olemassaolevan perään jos sivu on jo olemassa>","tags":["aihe"]}}
+Jos sivu id:llä on jo olemassa, LISÄÄ uusi merkintä sen body:n loppuun älä korvaa.`;
+  try{
+    let raw=await askClaude(sys,[{role:'user',content:text}]);
+    raw=raw.replace(/```json|```/g,'').trim();
+    const r=JSON.parse(raw);
+    span.parentElement.classList.remove('typing');sMsg();
+    typewrite(span,r.reply||'Käsitelty.');
+    if(r.action==='save'&&r.page){
+      const p=r.page;p.updated=Date.now();
+      const i=wiki.findIndex(w=>w.id===p.id);
+      if(i>=0)wiki[i]={...wiki[i],...p};else wiki.unshift(p);
+      await saveWiki();sSave();
+    }
+  }catch(e){span.parentElement.classList.remove('typing');span.textContent='En kyennyt jäsentämään tietoa.'}
+}
+$('#sendKnow').onclick=()=>{const v=$('#knowInput').value;$('#knowInput').value='';processKnowledge(v)};
+
+// ---- Tiedosto-upload ----
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+function handleFileDrop(e){
+  e.preventDefault();
+  $('#fileDropZone').classList.remove('drag');
+  const file=e.dataTransfer.files[0];
+  if(file) readFile(file);
+}
+function handleFileInput(inp){
+  const file=inp.files[0];
+  if(file) readFile(file);
+  inp.value='';
+}
+const IMG_TYPES=['image/jpeg','image/png','image/gif','image/webp'];
+const RESET_LABEL='⊕ LATAA TIEDOSTO — .txt .md .pdf .jpg .png';
+
+async function readFile(file){
+  trackUse('fileupload');
+  const lbl=$('#fileDropLabel');
+  lbl.textContent='⏳ LUETAAN: '+file.name;
+  try{
+    if(IMG_TYPES.includes(file.type)||/\.(jpe?g|png|gif|webp)$/i.test(file.name)){
+      await processImage(file);
+    } else if(file.type==='application/pdf'||file.name.endsWith('.pdf')){
+      const text=await extractPdf(file);
+      if(!text.trim()) throw new Error('PDF on tyhjä tai skannattu kuva');
+      processKnowledge(`[Tiedosto: ${file.name}]\n\n${text.slice(0,15000)}`);
+    } else {
+      const text=await file.text();
+      if(!text.trim()) throw new Error('Tiedosto on tyhjä');
+      processKnowledge(`[Tiedosto: ${file.name}]\n\n${text.slice(0,15000)}`);
+    }
+    lbl.textContent=RESET_LABEL;
+  }catch(e){
+    lbl.textContent='⚡ VIRHE: '+e.message;
+    setTimeout(()=>lbl.textContent=RESET_LABEL,3000);
+  }
+}
+
+async function processImage(file){
+  // Muunna base64
+  const b64=await new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=rej;
+    r.readAsDataURL(file);
+  });
+  const mediaType=file.type||'image/jpeg';
+  // Rakenna vision-viesti Claudelle
+  const sys=`Olet ${AI.name}, Lassin henkilökohtainen tekoälyassistentti.
+Analysoi tämä kuva huolellisesti. Kuvaile mitä näet, tunnista teksti (OCR), hahmot, kaaviot, tuotteet, kuitit, käyntikorttit — kaikki relevantti.
+Vastaa VAIN JSON-objektilla, ei muuta tekstiä:
+{"summary":"lyhyt kuvaus suomeksi","save":true,"page":{"id":"kuva-slug","title":"Otsikko","summary":"1-2 lausetta","body":"markdown — kaikki tunnistettu tieto","tags":["tagi"]}}`;
+  const messages=[{role:'user',content:[
+    {type:'image',source:{type:'base64',media_type:mediaType,data:b64}},
+    {type:'text',text:`Tiedostonimi: ${file.name}. Analysoi ja tallenna tietopankkiin.`}
+  ]}];
+  addMsg('knowlog','system','[ Analysoidaan kuvaa: '+file.name+' ]');
+  const raw=await askClaude(sys,messages);
+  const match=raw.match(/\{[\s\S]*\}/);
+  if(!match) throw new Error('Kuva-analyysi epäonnistui');
+  const r=JSON.parse(match[0]);
+  addMsg('knowlog','jarvis','📝 '+r.summary);
+  if(r.save&&r.page){
+    r.page.updated=Date.now();
+    const i=wiki.findIndex(w=>w.id===r.page.id);
+    if(i>=0)wiki[i]={...wiki[i],...r.page};else wiki.unshift(r.page);
+    await saveWiki(); sSave();
+  }
+}
+async function extractPdf(file){
+  if(!window.pdfjsLib) throw new Error('PDF.js ei latautunut');
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let text='';
+  for(let i=1;i<=Math.min(pdf.numPages,30);i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    text+=content.items.map(s=>s.str).join(' ')+'\n\n';
+  }
+  return text;
+}
+$('#knowInput').onkeydown=e=>{if(e.key==='Enter')$('#sendKnow').click()};
+
+/* ===== DAILY COMPILE ===== */
+async function compileDay(auto){
+  document.querySelector('.tab[data-view="know"]').click();
+  const today=new Date();today.setHours(0,0,0,0);
+  const tr=rawLog.filter(r=>r.ts>=today.getTime());
+  if(!tr.length){if(!auto)addMsg('knowlog','jarvis','Tältä päivältä ei ole merkittyjä keskusteluja, Lassi. Nosta chatissa 👍 viesteistä jotka haluat muistiin.');return}
+  const span=addMsg('knowlog','jarvis','');span.parentElement.classList.add('typing');
+  const sys=`Olet ${AI.name} ja kokoat Lassin päivän. Vastaa AINOASTAAN JSON-objektilla (ei koodiblokkeja):
+{"reply":"<päiväyhteenveto suomeksi ${AI.name}-tyylillä ja -sävyllä>","pages":[{"id":"<slug>","title":"...","summary":"...","body":"<markdown>","tags":["..."]}]}
+Nykyiset wiki-sivut: ${JSON.stringify(wiki.map(w=>({id:w.id,title:w.title})))}`;
+  try{
+    let out=await askClaude(sys,[{role:'user',content:'Tämän päivän merkityt:\n\n'+tr.map(r=>`Lassi: ${r.q}\n${AI.name}: ${r.a}`).join('\n---\n')}],3000);
+    out=out.replace(/```json|```/g,'').trim();
+    const r=JSON.parse(out);
+    span.parentElement.classList.remove('typing');sMsg();
+    typewrite(span,r.reply||'Päivä koottu.');
+    const dstr=today.toLocaleDateString('fi-FI'),dayId='paiva-'+today.toISOString().slice(0,10);
+    const di=wiki.findIndex(w=>w.id===dayId);
+    const dp={id:dayId,title:'Päiväkirja '+dstr,summary:r.reply.slice(0,120),body:r.reply,tags:['päiväkirja'],updated:Date.now()};
+    if(di>=0)wiki[di]=dp;else wiki.unshift(dp);
+    (r.pages||[]).forEach(p=>{p.updated=Date.now();const i=wiki.findIndex(w=>w.id===p.id);if(i>=0)wiki[i]={...wiki[i],...p};else wiki.unshift(p)});
+    await saveWiki();sSave();
+    lastCompile=Date.now();try{localStorage.setItem('jarvis:lastcompile',JSON.stringify(lastCompile))}catch(e){}
+  }catch(e){span.parentElement.classList.remove('typing');span.textContent='Päivän koonti epäonnistui.'}
+}
+$('#compileBtn').onclick=()=>compileDay(false);
+setInterval(()=>{const n=new Date(),lc=new Date(lastCompile);if(n.getHours()>=21&&!(lastCompile&&lc.toDateString()===n.toDateString())&&rawLog.length)compileDay(true)},60000);
+
+/* ===== OPPIMISMOOTTORI ===== */
+let learnData = {topics:[], streak:0, lastDate:'', todayDone:false};
+try{const v=localStorage.getItem('jarvis:learn');if(v)learnData=JSON.parse(v)}catch(e){}
+
+function saveLearn(){try{localStorage.setItem('jarvis:learn',JSON.stringify(learnData))}catch(e){}}
+
+function learnToday(){return new Date().toISOString().slice(0,10)}
+
+function checkStreak(){
+  // Streak EI nollaudu — se vain pysähtyy. Ei rangaistusta unohdetusta päivästä.
+}
+
+function dueTopics(){
+  const now=Date.now();
+  return learnData.topics.filter(t=>t.nextReview<=now);
+}
+
+// SM-2 spaced repetition: laske seuraava kertausaika
+function sm2(topic, score){ // score 0-5
+  const ef=Math.max(1.3, topic.easeFactor+(0.1-(5-score)*(0.08+(5-score)*0.02)));
+  let interval;
+  if(score<3){ interval=1; }
+  else if(topic.reviews===0){ interval=1; }
+  else if(topic.reviews===1){ interval=3; }
+  else { interval=Math.round(topic.interval*ef); }
+  return {
+    easeFactor: ef,
+    interval,
+    nextReview: Date.now()+interval*86400000,
+    reviews: topic.reviews+1
+  };
+}
+
+async function generateLesson(){
+  const body=$('#learnBody');
+  body.innerHTML='<div class="learn-placeholder">⏳ ULTRON valmistelee oppituntia…</div>';
+  const done=learnData.topics.map(t=>t.title).join(', ')||'ei vielä mitään';
+  const sys=`Olet ${AI.name}, Lassin henkilökohtainen oppimisassistentti.
+Lassi: suunnittelija, Nastola, kiinnostuu teknologiasta ja bisneksestä, rakentaa sinua (ULTRON-projekti), kuuntelee musiikkia.
+Ei "kirjaviisas" — pitää konkreettisista, lyhyistä selityksistä. Huono muisti ja motivaatio → tee sisällöstä koukuttavaa.
+
+Valitse YKSI uusi aihe. Jo opitut: ${done}.
+
+Rakenne:
+1. HOOK: Aloita yllättävällä faktalla tai kysymyksellä joka herättää uteliaisuuden (1 lause, ei selitystä vielä)
+2. SELITYS: Selkeä, max 3 lausetta, ei jargonia
+3. ESIMERKKI: Suoraan Lassin maailmasta (design, ULTRON, musiikki, rakentaminen, arki Nastolassa)
+4. YDIN: Yksi lause joka tiivistää kaiken — tämän pitää jäädä mieleen
+5. TEKO: Yksi pieni konkreettinen asia Lassi voi tehdä tai ajatella tänään
+6. MONIVALINTA kertaukseen — 1 kysymys, 3 vaihtoehtoa, yksi oikein
+
+Vastaa VAIN JSON:
+{"title":"Aiheen nimi","tag":"TEKNOLOGIA tai BISNES","hook":"Koukuttava aloituslause","explanation":"Selitys 2-3 lausetta","example":"Esimerkki Lassin maailmasta","keypoint":"Yksi tärkein muistettava lause","action":"Pieni konkreettinen teko tänään","quiz":{"q":"Kysymys?","options":["A","B","C"],"correct":0}}`;
+  try{
+    const raw=await askClaude(sys,[{role:'user',content:'Anna tänään oppitunti.'}]);
+    const match=raw.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error('ei json');
+    const lesson=JSON.parse(match[0]);
+    renderLesson(lesson);
+  }catch(e){
+    body.innerHTML=`<div class="learn-placeholder">Lataus epäonnistui.<br><br><button class="btn ghost" onclick="generateLesson()">… Yritä uudelleen</button></div>`;
+  }
+}
+
+function renderLesson(lesson){
+  const body=$('#learnBody');
+  const due=dueTopics();
+  let html='';
+
+  // Kertaus monivalinnalla
+  if(due.length){
+    const t=due[0];
+    const q=t.quiz;
+    if(q){
+      html+=`<div class="learn-card review" id="reviewCard">
+        <div class="learn-card-tag">🔥 KERTAUS — ${esc(t.title)}</div>
+        <p style="font-size:15px;font-weight:600;margin-bottom:12px">${esc(q.q)}</p>
+        <div class="learn-btns" style="flex-direction:column">
+          ${q.options.map((o,i)=>`<button class="btn ghost" style="font-size:13px;text-align:left;justify-content:flex-start" onclick="answerReview(${i},${q.correct})">${['A','B','C'][i]}) ${esc(o)}</button>`).join('')}
+        </div>
+      </div>`;
+    } else {
+      html+=`<div class="learn-card review" id="reviewCard">
+        <div class="learn-card-tag">🔥 KERTAUS — ${esc(t.title)}</div>
+        <p>${esc(t.keypoint||'')}</p>
+        <div class="learn-btns">
+          <button class="btn ghost" style="font-size:13px;border-color:#ff4466;color:#ff4466" onclick="scoreReview(1)">✗ Vaikea</button>
+          <button class="btn ghost" style="font-size:13px" onclick="scoreReview(3)">≈ Ok</button>
+          <button class="btn ghost" style="font-size:13px;border-color:#00ff88;color:#00ff88" onclick="scoreReview(5)">✓ Helppo</button>
+        </div>
+      </div>`;
+    }
+  }
+
+  // Tallenna lesson globaalisti — onclick viittaa näihin
+  window._lesson = lesson;
+  window._lessonTTS = `${lesson.hook} ${lesson.explanation} Esimerkki: ${lesson.example} Tärkein asia: ${lesson.keypoint}`;
+
+  html+=`<div class="learn-card" id="lessonCard">
+    <div class="learn-card-tag">🔥 PÄIVÄN OPPITUNTI — ${esc(lesson.tag||'')}</div>
+    <div style="font-size:16px;color:var(--cyan);font-style:italic;margin-bottom:12px;line-height:1.5">"${esc(lesson.hook)}"</div>
+    <h3 style="margin-bottom:10px">${esc(lesson.title)}</h3>
+    <p>${esc(lesson.explanation)}</p>
+    <div class="example">💡 ${esc(lesson.example)}</div>
+    <div style="background:rgba(var(--accent-rgb),.07);border:1px solid rgba(var(--accent-rgb),.25);padding:10px 13px;border-radius:2px;font-size:14px;color:var(--cyan);margin-bottom:8px;line-height:1.5">⭐ ${esc(lesson.keypoint)}</div>
+    <div style="background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.2);padding:10px 13px;border-radius:2px;font-size:13px;color:#00ff88;margin-bottom:14px;line-height:1.5">→ Tänään: ${esc(lesson.action||'')}</div>
+    <div class="learn-btns">
+      <button class="btn" style="font-size:13px" onclick="learnDone(window._lesson)">✓ OPIN TÄMÄN</button>
+      <button class="btn ghost" style="font-size:13px" onclick="speakTTS(window._lessonTTS)">◧ KUUNTELE</button>
+      <button class="btn ghost" style="font-size:13px" onclick="generateLesson()">… TOINEN AIHE</button>
+    </div>
+  </div>`;
+
+  if(learnData.topics.length){
+    html+=`<div style="font-family:Orbitron,sans-serif;font-size:10px;letter-spacing:.2em;color:var(--txt-dim);margin-top:6px;padding-top:6px;border-top:1px solid var(--line)">OPITUT AIHEET</div>
+    <div class="learn-topic-list">`;
+    learnData.topics.slice().reverse().forEach(t=>{
+      const nd=Math.ceil((t.nextReview-Date.now())/86400000);
+      const ntxt=nd<=0?'🔥 Kertaa nyt':nd===1?'Huomenna':''+nd+'pv päästä';
+      html+=`<div class="learn-topic-item"><span class="lti-title">${esc(t.title)}</span><span class="lti-next">${ntxt}</span></div>`;
+    });
+    html+='</div>';
+  }
+
+  body.innerHTML=html;
+  window._pendingLesson=lesson;
+}
+
+function answerReview(chosen, correct){
+  const due=dueTopics();
+  if(!due.length) return;
+  const score=chosen===correct?5:1;
+  const isRight=chosen===correct;
+  scoreReview(score);
+  const card=$('#reviewCard');
+  if(card) card.innerHTML=`<div class="learn-card-tag" style="color:${isRight?'#00ff88':'#ff4466'}">${isRight?'✓ Oikein! 🎉':'✗ Väärin — mutta se jää nyt mieleen paremmin!'}</div>`;
+}
+
+function showReviewAnswer(){
+  // poistettu — monivalinta korvaa
+}
+
+function scoreReview(score){
+  const due=dueTopics();
+  if(!due.length) return;
+  const t=due[0];
+  const idx=learnData.topics.findIndex(x=>x.id===t.id);
+  if(idx>=0){
+    const upd=sm2(learnData.topics[idx],score);
+    learnData.topics[idx]={...learnData.topics[idx],...upd};
+    saveLearn();
+  }
+  const card=$('#reviewCard');
+  if(card) card.innerHTML='<div class="learn-card-tag" style="color:#00ff88">✓ KERTAUS TEHTY</div>';
+}
+
+function learnDone(lesson){
+  const today=learnToday();
+  // Lisää aihe jos ei ole jo
+  const exists=learnData.topics.find(t=>t.title===lesson.title);
+  if(!exists){
+    learnData.topics.push({
+      id:'learn-'+Date.now(),
+      title:lesson.title,
+      tag:lesson.tag,
+      summary:lesson.explanation,
+      keypoint:lesson.keypoint,
+      quiz:lesson.quiz||null,
+      action:lesson.action||'',
+      date:Date.now(),
+      nextReview:Date.now()+86400000,
+      interval:1,
+      easeFactor:2.5,
+      reviews:0
+    });
+  }
+  // Streak kasvaa mutta EI koskaan nollaudu — ei rangaistusta
+  if(learnData.lastDate!==today){
+    learnData.streak=(learnData.streak||0)+1;
+    learnData.lastDate=today;
+  }
+  learnData.todayDone=true;
+  saveLearn();
+  renderLearnUI();
+  sSave();
+  addMsg('chatlog','system','[ Opittu: '+lesson.title+' — tallennettiin kertauslistalle ]');
+}
+
+function renderLearnUI(){
+  checkStreak();
+  $('#streakNum').textContent=learnData.streak||0;
+  $('#learnTopicCount').textContent=learnData.topics.length+' aihetta opittu';
+  const due=dueTopics();
+  $('#learnDueCount').textContent=due.length?due.length+' kertausta odottaa':'';
+  const today=learnToday();
+  const todayDone=learnData.lastDate===today;
+  const body=$('#learnBody');
+  if(!body) return;
+  if(todayDone && !due.length){
+    body.innerHTML=`<div class="learn-card done">
+      <div class="learn-card-tag">✓ TÄNÄÄN TEHTY</div>
+      <h3>Hyvää työtä, Lassi!</h3>
+      <p>Päivän oppitunti on suoritettu. Putki: ${learnData.streak} päivää 🔥\nSeuraava kertaus huomenna.</p>
+      <div class="learn-btns"><button class="btn ghost" style="font-size:11px" onclick="generateLesson()">⊕ OPPI LISÄÄ</button></div>
+    </div>
+    ${learnData.topics.length?'<div class="learn-topic-list">'+learnData.topics.slice().reverse().map(t=>{
+      const nd=Math.ceil((t.nextReview-Date.now())/86400000);
+      return '<div class="learn-topic-item"><span class="lti-title">'+esc(t.title)+'</span><span class="lti-next">'+(nd<=0?'Kertaus nyt!':nd===1?'Huomenna':nd+'pv päästä')+'</span></div>';
+    }).join('')+'</div>':''}`;
+  } else {
+    generateLesson();
+  }
+}
+
+// Avaa Oppi-tab → lataa UI
+document.querySelector('.tab[data-view="learn"]').addEventListener('click',()=>{
+  setTimeout(renderLearnUI,50);
+});
+
+/* ===== LUENNOT ===== */
+let lectures=[];
+try{const v=localStorage.getItem('jarvis:lectures');if(v)lectures=JSON.parse(v)}catch(e){}
+function saveLectures(){try{localStorage.setItem('jarvis:lectures',JSON.stringify(lectures))}catch(e){}}
+
+let currentLearnTab='oppi';
+
+function switchLearnTab(tab){
+  currentLearnTab=tab;
+  document.getElementById('subtab-oppi').classList.toggle('active',tab==='oppi');
+  document.getElementById('subtab-luennot').classList.toggle('active',tab==='luennot');
+  const oa=document.getElementById('learn-oppi-area');
+  const la=document.getElementById('learn-luennot-area');
+  if(oa)oa.style.display=tab==='oppi'?'flex':'none';
+  if(la)la.style.display=tab==='luennot'?'flex':'none';
+  if(tab==='luennot')renderLectureList();
+  if(tab==='oppi')renderLearnUI();
+}
+
+async function askClaudeLong(system,messages){
+  const res=await apiFetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:API_MODEL,max_tokens:4000,system,messages})});
+  const data=await res.json();
+  return data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+}
+
+async function startGenerateLecture(){
+  const inp=document.getElementById('lectureTopicInput');
+  const topic=(inp?.value||'').trim();
+  if(!topic)return;
+  if(!navigator.onLine){
+    addMsg('chatlog','system','[ Luennon generointi vaatii internet-yhteyden ]');
+    return;
+  }
+  const btn=document.getElementById('lectureGenBtn');
+  const listEl=document.getElementById('lectureList');
+  btn.textContent='⏳ GENEROIDAAN…';btn.disabled=true;
+  const setProg=t=>{listEl.innerHTML='<div class="learn-placeholder">'+esc(t)+'</div>';};
+
+  try{
+    // 1) Suunnittele runko: otsikko, kuvaus, 6 luvun otsikot (pieni JSON)
+    setProg(AI.name+' suunnittelee luennon rakennetta aiheesta "'+topic+'"…');
+    const planSys=`Olet ${AI.name}, taitava luennoitsija. Suunnittele SYVÄLLINEN, LAAJA oppimisluento aiheesta: "${topic}".
+Palauta VAIN validi JSON, ei mitään muuta tekstiä:
+{"title":"Napakka luennon otsikko","description":"1-2 lausetta mistä luento kertoo","chapters":["Luvun 1 otsikko","Luvun 2 otsikko","Luvun 3 otsikko","Luvun 4 otsikko","Luvun 5 otsikko","Luvun 6 otsikko"]}
+Luku 1 = koukuttava aloitus. Luvut 2-5 = konteksti, historia, mekaniikka, yhteydet, esimerkit. Luku 6 = yhteenveto ja miksi tämä muuttaa tapaa ajatella.`;
+    const planRaw=await askClaude(planSys,[{role:'user',content:'Suunnittele luento: '+topic}],1200);
+    const pm=planRaw.match(/\{[\s\S]*\}/); if(!pm) throw new Error('ei runkoa');
+    const plan=JSON.parse(pm[0]);
+    const titles=(plan.chapters||[]).slice(0,6).filter(Boolean);
+    if(!titles.length) throw new Error('ei lukuja');
+
+    // 2) Kirjoita kukin luku erikseen — pelkkä proosa, ei JSON (ei token-katkeamista)
+    const chapters=[];
+    for(let i=0;i<titles.length;i++){
+      setProg(AI.name+' kirjoittaa lukua '+(i+1)+'/'+titles.length+':\n\n"'+titles[i]+'"\n\nÄlä sulje sovellusta — tämä kestää hetken.');
+      const chSys=`Olet ${AI.name}, innostava luennoitsija. Kirjoitat yhtä lukua laajasta, ääneen kuunneltavasta luennosta aiheesta "${topic}".
+Tämän luvun otsikko: "${titles[i]}".
+Koko luennon rakenne kontekstiksi: ${titles.map((t,n)=>(n+1)+'. '+t).join(' / ')}.
+
+OHJEET:
+- Kirjoita 350-500 sanaa luontevaa suomenkielistä PROOSAA. EI listoja, EI väliotsikoita, EI bulletpointeja.
+- Luento kuunnellaan ääneen kävellessä — vältä merkkejä joita ei lueta ääneen (%, #, =, <, >).
+- Selitä syvällisesti mutta selkeästi, rakenna uteliaisuutta, käytä konkreettisia esimerkkejä.
+- Älä toista muiden lukujen sisältöä. Palauta VAIN tämän luvun teksti, ei otsikkoa eikä mitään muuta.`;
+      const txt=await askClaude(chSys,[{role:'user',content:'Kirjoita luku: '+titles[i]}],2500);
+      chapters.push({title:titles[i], content:(txt||'').trim()});
+    }
+
+    const lecture={
+      id:'lecture-'+Date.now(),
+      title:plan.title||topic,
+      description:plan.description||'',
+      topic, created:Date.now(), chapters,
+      wordCount: chapters.reduce((s,c)=>s+(c.content||'').split(/\s+/).length,0)
+    };
+    lectures.unshift(lecture);
+    saveLectures();
+    if(inp)inp.value='';
+    sSave();
+    renderLectureList();
+  }catch(e){
+    listEl.innerHTML='<div class="learn-placeholder">Luennon generointi epäonnistui ('+esc(e.message||'virhe')+').\n\n<button class="btn ghost" style="margin-top:10px" onclick="startGenerateLecture()">↻ Yritä uudelleen</button></div>';
+  }
+  btn.textContent='⊕ LUO LUENTO';btn.disabled=false;
+}
+
+function renderLectureList(){
+  const listEl=document.getElementById('lectureList');
+  if(!listEl)return;
+  if(!lectures.length){
+    listEl.innerHTML='<div class="learn-placeholder">Ei tallennettuja luentoja.\n\nKirjoita aihe alle ja paina LUO LUENTO.\n\nLuento tallennetaan laitteelle — kuuntelet sen offline-tilassa kävellessä. ✓</div>';
+    return;
+  }
+  listEl.innerHTML=lectures.map((l,i)=>{
+    const mins=Math.round((l.wordCount||0)/130);
+    const date=new Date(l.created).toLocaleDateString('fi-FI',{day:'numeric',month:'short'});
+    const chCount=l.chapters?.length||0;
+    return `<div class="lecture-item" onclick="openLecture(${i})">
+      <button class="li-del" onclick="event.stopPropagation();deleteLecture(${i})">✕</button>
+      <div class="li-title">${esc(l.title)}</div>
+      <div class="li-meta">${chCount} lukua &middot; ~${mins} min &middot; ${date} &middot; ${l.audio?'<span style="color:var(--green)">🎧 HQ-ÄÄNI</span>':'✓ OFFLINE'}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ===== YLEISET APURIT: toast, puheanimaatio, IndexedDB ===== */
+let _toastT=null;
+function toast(msg,ms=2800){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t);}
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show'),ms);
+}
+function setTalking(on){document.body.classList.toggle('ai-talking',!!on);}
+
+// IndexedDB — äänitiedostot (liian isoja localStorageen)
+let _idb=null;
+function idb(){return _idb||(_idb=new Promise((res,rej)=>{
+  const q=indexedDB.open('jarvis-audio',1);
+  q.onupgradeneeded=()=>q.result.createObjectStore('audio');
+  q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);
+}));}
+async function idbPut(k,v){const db=await idb();return new Promise((res,rej)=>{const tx=db.transaction('audio','readwrite');tx.objectStore('audio').put(v,k);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});}
+async function idbGet(k){const db=await idb();return new Promise((res,rej)=>{const rq=db.transaction('audio').objectStore('audio').get(k);rq.onsuccess=()=>res(rq.result||null);rq.onerror=()=>rej(rq.error);});}
+async function idbDelPrefix(p){const db=await idb();return new Promise((res,rej)=>{const st=db.transaction('audio','readwrite').objectStore('audio');const rq=st.getAllKeys();rq.onsuccess=()=>{rq.result.filter(k=>String(k).startsWith(p)).forEach(k=>st.delete(k));res();};rq.onerror=()=>rej(rq.error);});}
+
+// Jaa teksti TTS-paloihin lauserajoja pitkin (Google max ~5000 tavua)
+function splitTextForTTS(text,maxBytes){
+  const enc=new TextEncoder();
+  if(enc.encode(text).length<=maxBytes)return[text];
+  const out=[];let cur='';
+  for(const s of text.split(/(?<=[.!?…])\s+/)){
+    const cand=cur?cur+' '+s:s;
+    if(enc.encode(cand).length>maxBytes&&cur){out.push(cur);cur=s;}
+    else cur=cand;
+  }
+  if(cur)out.push(cur);
+  return out;
+}
+
+/* ===== SOITIN: HQ-audio (kelattava) + puhesynteesi-vara ===== */
+let lp={lecture:null,chapter:0,playing:false,speed:1.0,audio:null,audioUrl:null,
+        hasAudio:false,dl:false,dlMsg:'',resumeChar:0,resumeTime:0,cancelling:false,
+        speechLen:1,speechBase:0};
+
+function openLecture(idx){
+  lpHardStop();
+  lp.lecture=lectures[idx];lp.chapter=0;lp.resumeChar=0;lp.resumeTime=0;lp.hasAudio=false;
+  // Jatka siitä mihin jäit
+  try{
+    const pos=JSON.parse(localStorage.getItem('jarvis:lpos')||'null');
+    if(pos&&pos.id===lp.lecture.id){
+      lp.chapter=Math.min(pos.ch||0,lp.lecture.chapters.length-1);
+      lp.resumeTime=pos.t||0;
+    }
+  }catch(e){}
+  updateLecturePlayer();
+  idbGet('aud:'+lp.lecture.id+':0').then(b=>{lp.hasAudio=!!b;updateLecturePlayer();}).catch(()=>{});
+}
+
+function fmtT(s){s=Math.round(s||0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+
+function updateLecturePlayer(){
+  const player=document.getElementById('lecturePlayer');
+  if(!player)return;
+  if(!lp.lecture){player.style.display='none';return;}
+  player.style.display='block';
+  const ch=lp.lecture.chapters[lp.chapter];
+  const total=lp.lecture.chapters.length;
+  const audioBtn=lp.dl
+    ?`<button class="btn ghost" style="font-size:11px;min-height:38px;flex:1" disabled>⏳ ${esc(lp.dlMsg||'Ladataan…')}</button>`
+    :(lp.hasAudio
+      ?`<button class="btn ghost" style="font-size:11px;min-height:38px;flex:1;color:var(--green);border-color:rgba(0,255,136,.35)" onclick="deleteLectureAudio()">🎧 HQ-ÄÄNI ✓</button>`
+      :`<button class="btn ghost" style="font-size:11px;min-height:38px;flex:1" onclick="downloadLectureAudio()">⭳ LATAA HQ-ÄÄNI</button>`);
+  player.innerHTML=`
+    <div class="lp-title">${esc(lp.lecture.title)}</div>
+    <div class="lp-chapter">Luku ${lp.chapter+1}/${total}: ${esc(ch?.title||'')}</div>
+    <div class="lp-progress" onclick="lpSeek(event)"><div class="lp-fill" id="lpFill" style="width:0%"></div></div>
+    <div class="lp-timerow"><span id="lpTime">${lp.hasAudio?'0:00':'—'}</span><span>${lp.hasAudio?'🎧 HQ-ääni · kelattava':'laitteen puheääni'}</span></div>
+    <div class="lp-controls">
+      <button class="btn ghost" style="font-size:16px;padding:0 14px;min-height:42px" onclick="lpPrev()" title="Edellinen luku">⏮</button>
+      <button class="btn" style="font-size:13px;min-height:42px;flex:1" onclick="lpToggle()">${lp.playing?'⏸ TAUKO':'▶ TOISTA'}</button>
+      <button class="btn ghost" style="font-size:16px;padding:0 14px;min-height:42px" onclick="lpNext()" title="Seuraava luku">⏭</button>
+    </div>
+    <div class="lp-controls" style="margin-top:6px">
+      ${audioBtn}
+      <button class="btn ghost" style="font-size:12px;min-height:38px" onclick="openLectureReader()">▤ LUE</button>
+      <button class="lp-speed" onclick="lpCycleSpeed()" title="Nopeus">${lp.speed.toFixed(1)}×</button>
+      <button class="btn ghost" style="font-size:12px;padding:0 12px;min-height:38px;color:var(--red);border-color:rgba(255,61,61,.4)" onclick="lpClose()" title="Sulje">✕</button>
+    </div>`;
+  if(lp.audio&&lp.audio.duration)lpPaintProgress(lp.audio.currentTime/lp.audio.duration,lp.audio.currentTime,lp.audio.duration);
+}
+
+function lpPaintProgress(p,cur,dur){
+  const f=document.getElementById('lpFill');if(f)f.style.width=(Math.max(0,Math.min(1,p))*100).toFixed(1)+'%';
+  const t=document.getElementById('lpTime');
+  if(t)t.textContent=(cur!=null&&dur)?fmtT(cur)+' / '+fmtT(dur):Math.round(p*100)+' %';
+}
+
+let _lpSaveT=0;
+function lpMaybeSavePos(time){
+  const now=Date.now();if(now-_lpSaveT<3000)return;_lpSaveT=now;
+  try{localStorage.setItem('jarvis:lpos',JSON.stringify({id:lp.lecture.id,ch:lp.chapter,t:time}))}catch(e){}
+}
+
+function lpStopAudio(){
+  if(lp.audio){lp.audio.pause();lp.audio.src='';lp.audio=null;}
+  if(lp.audioUrl){URL.revokeObjectURL(lp.audioUrl);lp.audioUrl=null;}
+}
+function lpHardStop(){
+  lp.playing=false;setTalking(false);lpStopAudio();
+  lp.cancelling=true;window.speechSynthesis.cancel();
+}
+
+async function lpStartPlayback(){
+  lp.playing=true;setTalking(true);updateLecturePlayer();
+  if(lp.hasAudio){
+    try{
+      const blob=await idbGet('aud:'+lp.lecture.id+':'+lp.chapter);
+      if(blob){lpPlayBlob(blob);return;}
+    }catch(e){}
+    lp.hasAudio=false;
+  }
+  lpSpeakFrom(lp.resumeChar||0);
+}
+
+function lpPlayBlob(blob){
+  lpStopAudio();
+  const url=URL.createObjectURL(blob);
+  const a=new Audio(url);
+  lp.audio=a;lp.audioUrl=url;
+  a.playbackRate=lp.speed;
+  a.ontimeupdate=()=>{
+    if(!a.duration)return;
+    lpPaintProgress(a.currentTime/a.duration,a.currentTime,a.duration);
+    lpMaybeSavePos(a.currentTime);
+  };
+  a.onended=()=>{if(lp.playing)lpNextChapterOrStop();};
+  a.onerror=()=>{lp.playing=false;setTalking(false);updateLecturePlayer();};
+  if(lp.resumeTime>1){a.currentTime=lp.resumeTime;}
+  lp.resumeTime=0;
+  a.play().catch(()=>{lp.playing=false;setTalking(false);updateLecturePlayer();});
+}
+
+// Puhesynteesi-vara: muistaa kohdan (boundary-eventit) → tauko EI aloita alusta
+function pickFinnishVoice(){
+  const fi=ttsVoices.filter(v=>v.lang&&v.lang.toLowerCase().startsWith('fi'));
+  if(!fi.length)return null;
+  return fi.find(v=>/google/i.test(v.name))
+      || fi.find(v=>!v.localService)
+      || fi.find(v=>/natural|neural|enhanced|premium|wavenet/i.test(v.name))
+      || fi[0];
+}
+function lpSpeakFrom(charPos){
+  const ch=lp.lecture.chapters[lp.chapter];
+  const full='Luku '+(lp.chapter+1)+': '+ch.title+'. '+ch.content;
+  lp.speechLen=full.length;lp.speechBase=charPos;
+  const u=new SpeechSynthesisUtterance(full.slice(charPos));
+  u.lang='fi-FI';u.rate=lp.speed;u.pitch=1.0;
+  const v=pickFinnishVoice();if(v)u.voice=v;
+  u.onboundary=e=>{
+    lp.resumeChar=lp.speechBase+(e.charIndex||0);
+    lpPaintProgress(lp.resumeChar/lp.speechLen);
+  };
+  u.onend=()=>{
+    if(lp.cancelling){lp.cancelling=false;return;}
+    if(!lp.playing)return;
+    lp.resumeChar=0;lpNextChapterOrStop();
+  };
+  u.onerror=()=>{
+    if(lp.cancelling){lp.cancelling=false;return;}
+    lp.playing=false;setTalking(false);updateLecturePlayer();
+  };
+  window.speechSynthesis.speak(u);
+}
+
+function lpNextChapterOrStop(){
+  if(lp.chapter<lp.lecture.chapters.length-1){
+    lp.chapter++;lp.resumeChar=0;lp.resumeTime=0;lpStartPlayback();
+  }else{
+    lp.playing=false;setTalking(false);
+    try{localStorage.removeItem('jarvis:lpos')}catch(e){}
+    updateLecturePlayer();
+  }
+}
+
+function lpToggle(){
+  if(!lp.lecture)return;
+  if(lp.playing){
+    lp.playing=false;setTalking(false);
+    if(lp.audio)lp.audio.pause();
+    else{lp.cancelling=true;window.speechSynthesis.cancel();}
+    updateLecturePlayer();
+  }else{
+    if(lp.audio){
+      lp.playing=true;setTalking(true);
+      lp.audio.playbackRate=lp.speed;lp.audio.play();
+      updateLecturePlayer();
+    }else lpStartPlayback();
+  }
+}
+
+function lpSeek(ev){
+  if(lp.audio&&lp.audio.duration){
+    const r=ev.currentTarget.getBoundingClientRect();
+    const pct=Math.max(0,Math.min(1,(ev.clientX-r.left)/r.width));
+    lp.audio.currentTime=pct*lp.audio.duration;
+    lpPaintProgress(pct,lp.audio.currentTime,lp.audio.duration);
+  }else if(lp.hasAudio){
+    toast('Paina ensin ▶ TOISTA — sitten voit kelata');
+  }else{
+    toast('Kelaus vaatii HQ-äänen — paina ⭳ LATAA HQ-ÄÄNI');
+  }
+}
+
+function lpGoto(ch){
+  const was=lp.playing;
+  lpHardStop();
+  lp.chapter=Math.max(0,Math.min(ch,lp.lecture.chapters.length-1));
+  lp.resumeChar=0;lp.resumeTime=0;
+  if(was)lpStartPlayback();else updateLecturePlayer();
+}
+function lpPrev(){if(lp.lecture)lpGoto(lp.chapter-1);}
+function lpNext(){if(lp.lecture)lpGoto(lp.chapter+1);}
+
+function lpCycleSpeed(){
+  const speeds=[0.8,0.9,1.0,1.1,1.2,1.4,1.6];
+  const idx=speeds.indexOf(lp.speed);
+  lp.speed=speeds[(idx+1)%speeds.length];
+  if(lp.audio){lp.audio.playbackRate=lp.speed;updateLecturePlayer();}
+  else if(lp.playing){lp.cancelling=true;window.speechSynthesis.cancel();lpSpeakFrom(lp.resumeChar||0);updateLecturePlayer();}
+  else updateLecturePlayer();
+}
+function lpClose(){lpHardStop();lp.lecture=null;updateLecturePlayer();}
+
+/* HQ-äänen lataus: Google TTS workerin kautta → IndexedDB → offline-toisto */
+async function downloadLectureAudio(){
+  if(!lp.lecture||lp.dl)return;
+  if(!navigator.onLine){toast('Äänen lataus vaatii verkkoyhteyden');return;}
+  lp.dl=true;
+  const l=lp.lecture;
+  try{
+    for(let i=0;i<l.chapters.length;i++){
+      lp.dlMsg='Luku '+(i+1)+'/'+l.chapters.length+'…';updateLecturePlayer();
+      const ch=l.chapters[i];
+      const text='Luku '+(i+1)+': '+ch.title+'. '+ch.content;
+      const parts=splitTextForTTS(text,4200);
+      const blobs=[];
+      for(const p of parts){
+        const r=await apiFetch('/api/gtts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:p})});
+        if(r.status===501)throw new Error('GOOGLE_TTS_API_KEY puuttuu workerista — ks. ASENNUS.md');
+        if(!r.ok)throw new Error('TTS-virhe '+r.status);
+        blobs.push(await r.blob());
+      }
+      await idbPut('aud:'+l.id+':'+i,new Blob(blobs,{type:'audio/mpeg'}));
+    }
+    lp.hasAudio=true;l.audio=true;saveLectures();renderLectureList();
+    toast('🎧 HQ-ääni ladattu — toimii offline ja kelattavana');
+  }catch(e){toast('Äänen lataus epäonnistui: '+(e.message||'tuntematon virhe'),4000);}
+  lp.dl=false;lp.dlMsg='';updateLecturePlayer();
+}
+function deleteLectureAudio(){
+  if(!lp.lecture)return;
+  if(!confirm('Poistetaanko ladattu HQ-ääni tältä luennolta? (Tekstit säilyvät.)'))return;
+  const l=lp.lecture;
+  idbDelPrefix('aud:'+l.id+':').then(()=>{
+    lp.hasAudio=false;l.audio=false;saveLectures();renderLectureList();
+    lpHardStop();updateLecturePlayer();toast('HQ-ääni poistettu');
+  });
+}
+
+// E-kirja-lukutila: koko luennon teksti luettavassa muodossa
+function openLectureReader(){
+  if(!lp.lecture)return;
+  const l=lp.lecture;
+  document.getElementById('lrTitle').textContent=l.title||'Luento';
+  const mins=Math.round((l.wordCount||0)/130);
+  document.getElementById('lrMeta').textContent=(l.chapters?.length||0)+' lukua · ~'+mins+' min · '+(l.description||'');
+  const body=(l.chapters||[]).map((c,i)=>
+    '<h2 style="font-family:\'Orbitron\';font-size:15px;color:var(--gold);letter-spacing:.05em;margin:26px 0 12px;line-height:1.4">'+(i+1)+'. '+esc(c.title||'')+'</h2>'+
+    '<p style="margin:0 0 16px">'+esc(c.content||'').replace(/\n+/g,'</p><p style="margin:0 0 16px">')+'</p>'
+  ).join('');
+  const bodyEl=document.getElementById('lrBody');
+  bodyEl.innerHTML=body;bodyEl.scrollTop=0;
+  document.getElementById('lectureReader').classList.add('open');
+}
+function closeLectureReader(){document.getElementById('lectureReader').classList.remove('open');}
+function deleteLecture(idx){
+  const l=lectures[idx];
+  if(lp.lecture&&l?.id===lp.lecture?.id)lpClose();
+  if(l?.id)idbDelPrefix('aud:'+l.id+':').catch(()=>{});
+  lectures.splice(idx,1);saveLectures();renderLectureList();
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const li=document.getElementById('lectureTopicInput');
+  if(li)li.addEventListener('keydown',e=>{if(e.key==='Enter')startGenerateLecture();});
+});
+
+/* ===== WIKI ===== */
+function renderWiki(){
+  const n=wiki.length;
+  $('#nodecount').textContent=n;
+  const hw=$('#hd-wiki');if(hw)hw.textContent=n;
+  const mw=document.getElementById('m-wiki');if(mw)mw.textContent=n+' sivua';
+  setMeter('m3',Math.min(100,n),n+' sivua','ok');
+  const list=$('#wikiList');list.innerHTML='';
+  if(!n){list.innerHTML='<div class="empty">Tietopankki on tyhjä.\n\nSyötä tietoa alle — esim.\n"Tänään opin että transformerit käyttävät self-attention-mekanismia"\n\n'+AI.display+' organisoi sen wikiksi automaattisesti.</div>';return}
+  // Hakusuodatus: otsikko, tiivistelmä, tagit ja sisältö
+  const q=($('#wikiSearch')?.value||'').trim().toLowerCase();
+  const shown=q?wiki.filter(w=>
+    (w.title||'').toLowerCase().includes(q)||
+    (w.summary||'').toLowerCase().includes(q)||
+    (w.tags||[]).some(t=>(t||'').toLowerCase().includes(q))||
+    (w.body||'').toLowerCase().includes(q)
+  ):wiki;
+  if(!shown.length){list.innerHTML='<div class="empty">Ei osumia haulle "'+esc(q)+'".</div>';return}
+  shown.forEach(w=>{
+    const c=document.createElement('div');c.className='wiki-card';
+    c.innerHTML='<div class="t">'+esc(w.title)+'</div><div class="s">'+esc(w.summary||'')+'</div><div class="tags">'+(w.tags||[]).map(t=>'<span class="tag">'+esc(t)+'</span>').join('')+'</div>';
+    c.onclick=()=>{sClick();trackUse('wiki:'+w.id);openWiki(w)};list.appendChild(c);
+  });
+}
+function esc(s){return(s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+function openWiki(w){
+  $('#ovTitle').textContent=w.title;
+  $('#ovMeta').textContent='Päivitetty '+new Date(w.updated).toLocaleString('fi-FI')+' · '+(w.tags||[]).join(' / ');
+  $('#ovBody').textContent=w.body||w.summary;
+  $('#overlay').classList.add('open');
+}
+$('#ovClose').onclick=()=>{sClick();$('#overlay').classList.remove('open')};
+
+/* ===== VOICE ===== */
+const SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition;
+function setupMic(btnId,inputId,autosend){
+  const btn=$('#'+btnId);
+  if(!SpeechRec){btn.style.display='none';return}
+  const rec=new SpeechRec();rec.lang='fi-FI';rec.interimResults=false;
+  btn.onclick=()=>{btn.classList.add('listening');tone(440,.1,.05);try{rec.start()}catch(e){}};
+  rec.onresult=e=>{$('#'+inputId).value=e.results[0][0].transcript;btn.classList.remove('listening');autosend()};
+  rec.onerror=()=>btn.classList.remove('listening');rec.onend=()=>btn.classList.remove('listening');
+}
+setupMic('micChat','chatInput',()=>$('#sendChat').click());
+setupMic('micKnow','knowInput',()=>$('#sendKnow').click());
+
+/* ===== WAKE WORD & VOICE CONVERSATION ===== */
+let wakeMode=false, convActive=false, jarvisSpeaking=false;
+let wakeRec=null, convTimer=null, voiceConvHistory=[];
+let processingVoice=false;
+let wakeWatchdog=null; // watchdog joka käynnistää tunnistuksen uudelleen jos se sammuu
+
+function toggleWake(){
+  if(!SpeechRec){alert('Selaimesi ei tue puheentunnistusta. Kokeile Chromea.');return}
+  wakeMode=!wakeMode;
+  if(wakeMode){startWake();trackUse('wakemode');}
+  else stopWake();
+  updateWakeUI();
+}
+
+function armWatchdog(){
+  clearTimeout(wakeWatchdog);
+  if(wakeMode && !jarvisSpeaking)
+    wakeWatchdog=setTimeout(()=>{ if(wakeMode) startWake(); }, 8000);
+}
+
+function initWakeRec(){
+  if(wakeRec) return; // luo vain kerran
+  wakeRec=new SpeechRec();
+  wakeRec.lang='fi-FI';
+  wakeRec.continuous=true;
+  wakeRec.interimResults=true;
+
+  wakeRec.onresult=e=>{
+    armWatchdog();
+    const last=e.results[e.results.length-1];
+    const txt=last[0].transcript.toLowerCase().trim();
+    const wbtxt=$('#wbtext');
+    if(wbtxt && !convActive) wbtxt.textContent='"'+txt+'"';
+    if(jarvisSpeaking && !last.isFinal){ stopTTS(); return; }
+    if(!last.isFinal) return;
+    const isWake=/jarv|järv|harvis|jarwis|javis|jarbi/i.test(txt);
+    if(!convActive && isWake){ activateConv(); return; }
+    if(convActive && !processingVoice && txt.length>1) handleVoiceInput(txt);
+  };
+
+  wakeRec.onend=()=>{
+    // Chrome pysäyttää ajoittain — käynnistä uudelleen ilman uutta instanssia
+    if(wakeMode && !jarvisSpeaking) setTimeout(()=>{ try{wakeRec.start()}catch(e){} }, 300);
+  };
+  wakeRec.onerror=e=>{
+    if(e.error==='not-allowed'){stopWake();alert('Mikrofonilupa puuttuu. Salli mikrofoni osoitepalkista.');return}
+    // muut virheet: yritetään uudelleen
+    if(wakeMode) setTimeout(()=>{ try{wakeRec.start()}catch(e){} }, 800);
+  };
+}
+
+function startWake(){
+  if(!wakeMode) return;
+  clearTimeout(wakeWatchdog);
+  initWakeRec(); // luo instanssi jos ei ole
+  armWatchdog();
+  try{wakeRec.start()}catch(e){ /* jo käynnissä tai muu virhe — ok */ }
+}
+
+function stopWake(){
+  wakeMode=false; convActive=false; processingVoice=false;
+  clearTimeout(wakeWatchdog);
+  if(wakeRec){try{wakeRec.abort()}catch(e){}} // abort mutta EI null — instanssi säilyy
+  window.speechSynthesis.cancel();
+  clearTimeout(convTimer);
+  $('#wakebar').classList.remove('show');
+  $('#endConvBar').classList.remove('show');
+}
+
+function activateConv(){
+  if(convActive) return;
+  convActive=true; voiceConvHistory=[];
+  tone(880,.08,.05); setTimeout(()=>tone(1200,.06,.04),90);
+  document.querySelector('.tab[data-view="chat"]').click();
+  addMsg('chatlog','system','[ ULTRON aktivoitu — kuunnellaan ]');
+  $('#endConvBar').classList.add('show');
+  updateWakeUI();
+  resetConvTimer();
+  // Tervehdys — tunnistus pysyy käynnissä TTS:n aikana (barge-in mahdollinen)
+  speakTTS('Kuinka voin auttaa, Lassi?');
+}
+
+function handleVoiceInput(txt){
+  if(!convActive || processingVoice) return;
+  clearTimeout(convTimer);
+  if(/\b(lopeta|kiitos jarvis|seis|sammutu)\b/.test(txt)){endConversation(false);return}
+  processingVoice=true;
+  chatCount++;
+  addMsg('chatlog','user',txt);
+  chatHistory.push({role:'user',content:txt});
+  voiceConvHistory.push({role:'user',content:txt});
+  const span=addMsg('chatlog','jarvis','');
+  span.parentElement.classList.add('typing');
+  const wctx=wiki.length?`\n\nLassin tietopankissa on ${wiki.length} sivua: ${wiki.map(w=>w.title).join(', ')}.`:'';
+  askClaude(AI.persona+wctx,chatHistory.slice(-12)).then(reply=>{
+    span.parentElement.classList.remove('typing');
+    typewrite(span,reply);
+    chatHistory.push({role:'assistant',content:reply});
+    voiceConvHistory.push({role:'assistant',content:reply});
+    addFlag(span.parentElement,txt,reply);
+    const e=$('#hd-chat');if(e)e.textContent=chatHistory.filter(m=>m.role==='user').length;
+    sMsg();
+    speakTTS(reply);
+    processingVoice=false;
+    resetConvTimer();
+    updateWakeUI();
+  }).catch(()=>{
+    span.parentElement.classList.remove('typing');
+    span.textContent='Pahoittelut, yhteysvirhe.';
+    processingVoice=false;
+    updateWakeUI();
+  });
+}
+
+/* ===== TTS: ElevenLabs (fallback: selaimen TTS) ===== */
+let ttsVoices=[];
+function loadVoices(){ ttsVoices=window.speechSynthesis.getVoices(); }
+loadVoices();
+window.speechSynthesis.onvoiceschanged=loadVoices;
+
+let currentAudio=null;
+
+function speakTTS(text){
+  if(!text||!text.trim()) return;
+  jarvisSpeaking=true;
+  setTalking(true);
+  updateWakeUI();
+  // Pysäytä edellinen ääni
+  if(currentAudio){ currentAudio.pause(); currentAudio=null; }
+  window.speechSynthesis.cancel();
+  const done=()=>{ jarvisSpeaking=false; setTalking(false); updateWakeUI(); };
+
+  // Ensisijaisesti Google TTS (laadukas neuroääni) workerin kautta
+  apiFetch('/api/gtts',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({text})
+  }).then(r=>{
+    if(!r.ok) throw new Error('tts_fail');
+    return r.blob();
+  }).then(blob=>{
+    const url=URL.createObjectURL(blob);
+    currentAudio=new Audio(url);
+    currentAudio.onended=()=>{ done(); URL.revokeObjectURL(url); currentAudio=null; };
+    currentAudio.onerror=()=>{ done(); URL.revokeObjectURL(url); currentAudio=null; };
+    currentAudio.play();
+  }).catch(()=>{
+    // Ei verkkoa / ei avainta → selaimen TTS varavarana
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='fi-FI'; u.rate=1.05; u.pitch=1.0;
+    const fi=pickFinnishVoice();
+    if(fi) u.voice=fi;
+    u.onend=u.onerror=done;
+    window.speechSynthesis.speak(u);
+  });
+}
+
+// Keskeytä TTS (barge-in käyttää tätä)
+function stopTTS(){
+  if(currentAudio){ currentAudio.pause(); currentAudio=null; }
+  window.speechSynthesis.cancel();
+  jarvisSpeaking=false;
+  setTalking(false);
+  updateWakeUI();
+}
+
+function resetConvTimer(){
+  clearTimeout(convTimer);
+  // 2 min hiljaisuuden jälkeen päättää automaattisesti
+  convTimer=setTimeout(()=>endConversation(true), 120000);
+}
+
+async function endConversation(auto){
+  if(!convActive && voiceConvHistory.length===0) return;
+  convActive=false; processingVoice=false;
+  clearTimeout(convTimer);
+  window.speechSynthesis.cancel();
+  jarvisSpeaking=false;
+  $('#endConvBar').classList.remove('show');
+  updateWakeUI();
+  const hist=[...voiceConvHistory];
+  voiceConvHistory=[];
+  if(hist.length>=2){
+    addMsg('chatlog','system','[ Luodaan yhteenveto… ]');
+    await summarizeConv(hist);
+  }
+  if(wakeMode) speakTTS('Yhteenveto tallennettu. Kuuntelen sanaa Jarvis.');
+}
+
+async function summarizeConv(hist){
+  const sys=`Olet ${AI.name}. Luo lyhyt yhteenveto tästä keskustelusta.
+Vastaa VAIN JSON-objektilla, ei mitään muuta tekstiä, ei koodiblokkeja, ei selityksiä.
+Formaatti tarkalleen:
+{"summary":"yhteenveto suomeksi","save":false}
+TAI jos keskustelussa tuli esille tallentamisen arvoista tietoa:
+{"summary":"yhteenveto suomeksi","save":true,"page":{"id":"lyhyt-slug","title":"Otsikko","summary":"1-2 lausetta","body":"markdown-sisältö","tags":["tagi"]}}`;
+  try{
+    let raw=await askClaude(sys,hist,2000);
+    if(!raw||typeof raw!=='string') throw new Error('empty response: '+JSON.stringify(raw));
+    // Etsi JSON mikä tahansa muoto — Claude saattaa silti lisätä tekstiä
+    const match=raw.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error('no json in: '+raw.slice(0,200));
+    let parsed;
+    try{ parsed=JSON.parse(match[0]); }catch(je){ throw new Error('json parse fail: '+je.message+' | '+match[0].slice(0,200)); }
+    const r=parsed;
+    addMsg('chatlog','jarvis','📋 '+r.summary);
+    if(r.save&&r.page){
+      r.page.updated=Date.now();
+      const i=wiki.findIndex(w=>w.id===r.page.id);
+      if(i>=0)wiki[i]={...wiki[i],...r.page};else wiki.unshift(r.page);
+      await saveWiki(); sSave();
+    }
+  }catch(e){
+    // Viimeinen keino: tallenna raakana
+    addMsg('chatlog','system','[ Yhteenveto epäonnistui — tallennetaan raakaversio ]');
+    const raw=hist.map(m=>(m.role==='user'?'Lassi: ':AI.name+': ')+m.content).join('\n\n');
+    const slug='keskustelu-'+Date.now();
+    wiki.unshift({id:slug,title:'Keskustelu '+new Date().toLocaleString('fi-FI'),summary:'Äänessä käyty keskustelu',body:raw,tags:['keskustelu'],updated:Date.now()});
+    await saveWiki(); sSave();
+  }
+}
+
+// Manuaalinen "lopeta"-nappi chatissa (tekstikeskustelu)
+async function endTextConversation(){
+  if(chatHistory.length<2){addMsg('chatlog','system','[ Ei riittävästi keskustelua yhteenvetoon ]');return}
+  addMsg('chatlog','system','[ Luodaan yhteenveto… ]');
+  await summarizeConv(chatHistory.slice(-20));
+  chatHistory=[];
+  $('#endConvBar').classList.remove('show');
+}
+
+function updateWakeUI(){
+  const btn=$('#wakeBtn'),bar=$('#wakebar'),dot=$('#wbdot'),txt=$('#wbtext'),wf=$('#waveform');
+  if(!btn) return;
+  btn.className=''; // reset
+  if(!wakeMode){
+    btn.textContent='◉ AINA PÄÄLLÄ';
+    bar.classList.remove('show');
+    return;
+  }
+  bar.classList.add('show');
+  if(jarvisSpeaking){
+    btn.className='speaking'; btn.textContent='◉ PUHUU';
+    dot.className='wb-dot a'; txt.textContent=AI.display+' PUHUU';
+    wf.style.display='none';
+    wf.querySelectorAll('span').forEach(s=>s.style.background='var(--amber)');
+  } else if(convActive){
+    btn.className='active'; btn.textContent='◉ KUUNTELEE';
+    dot.className='wb-dot r'; txt.textContent='KUUNTELEE…';
+    wf.style.display='flex';
+    wf.querySelectorAll('span').forEach(s=>s.style.background='var(--red)');
+  } else {
+    btn.className='idle'; btn.textContent='◉ PÄÄLLÄ';
+    dot.className='wb-dot c'; txt.textContent='ODOTTAA: "ULTRON"';
+    wf.style.display='none';
+  }
+}
+
+// Näytä "lopeta"-nappi kun tekstikeskustelussa on viestejä
+const origSendChat=$('#sendChat').onclick;
+$('#sendChat').onclick=()=>{
+  const v=$('#chatInput').value; $('#chatInput').value=''; sendChat(v);
+  setTimeout(()=>{ if(chatHistory.length>=2) $('#endConvBar').classList.add('show') },500);
+};
+
+// Käynnistä TTS-äänet heti kun selain lataa ne
+window.speechSynthesis.onvoiceschanged=loadVoices;
+
+// Käynnistys: jos PIN on jo tallennettu, suoraan sovellukseen
+if(JARVIS_PIN){
+  loadWiki();
+}
+</script>
+</body>
+</html>

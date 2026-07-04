@@ -1,0 +1,5 @@
+# Cloudflare Worker — asennetaan Cloudflareen, EI GitHubiin (ks. CLAUDE.md)
+worker.js
+
+# Claude Code -sessiokohtaiset asetukset
+.claude/settings.local.json
