@@ -108,6 +108,7 @@ def main():
         return pick(
             g.get_stats(cdate),
             "totalSteps", "restingHeartRate", "totalKilocalories",
+            "activeKilocalories", "bmrKilocalories", "consumedKilocalories",
             "bodyBatteryMostRecentValue", "averageStressLevel", "sleepingSeconds",
         )
 
@@ -151,18 +152,23 @@ def main():
 
     def dsw():
         """Garminin paivan treeniehdotus (Daily Suggested Workout).
-        Endpointti ei ole dokumentoitu - kokeillaan tunnettuja polkuja."""
+        Endpointtia ei ole dokumentoitu - kokeillaan tunnettuja polkuja ja
+        kirjataan lokiin mita kukin palauttaa, jotta toimiva loytyy."""
         api = getattr(g, "connectapi", None) or g.garth.connectapi
         candidates = [
             f"/workout-service/dsw/{cdate}",
             f"/workout-service/schedule?date={cdate}",
             f"/calendar-service/year/{today.year}/month/{today.month - 1}/day/{today.day}/start/1",
         ]
+        result = None
         for path in candidates:
             try:
                 d = api(path)
-            except Exception:
+            except Exception as e:
+                print(f"dsw-diag: {path} -> virhe: {str(e)[:120]}", file=sys.stderr)
                 continue
+            summary = json.dumps(d, ensure_ascii=False)[:200] if d else "(tyhja)"
+            print(f"dsw-diag: {path} -> {summary}", file=sys.stderr)
             if not d:
                 continue
             if isinstance(d, dict) and "calendarItems" in d:
@@ -172,11 +178,12 @@ def main():
                     if "workout" in str(i.get("itemType", "")).lower()
                 ]
                 items = [i for i in items if i]
-                if items:
-                    return items
+                if items and result is None:
+                    result = items
                 continue
-            return d
-        return None
+            if result is None:
+                result = d
+        return result
 
     safe("stats", stats)
     safe("sleep", sleep)

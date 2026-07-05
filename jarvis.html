@@ -1488,6 +1488,8 @@ function renderGarmin(){
     add('LEPOSYKE',st.restingHeartRate!=null?st.restingHeartRate+' bpm':null);
     add('HRV',hrv.lastNightAvg!=null?hrv.lastNightAvg+' ms':null);
     add('ASKELEET',st.totalSteps);
+    add('POLTETUT',st.totalKilocalories!=null?Math.round(st.totalKilocalories)+' kcal':null);
+    add('SYÖDYT',st.consumedKilocalories!=null?Math.round(st.consumedKilocalories)+' kcal':null);
     const dsw=garminDswName();
     if(dsw)r.push('<div style="margin-top:5px;color:var(--txt)">▶ '+esc(String(dsw))+'</div>');
     else if(tr.feedbackShort)r.push('<div style="margin-top:5px;color:var(--txt)">'+esc(String(tr.feedbackShort).replace(/_/g,' ').toLowerCase())+'</div>');
@@ -1699,6 +1701,8 @@ function buildContext(text){
       +', leposyke '+(st.restingHeartRate!=null?st.restingHeartRate:'?')
       +', HRV '+(hrv.lastNightAvg!=null?hrv.lastNightAvg+' ms'+(hrv.status?' ('+hrv.status+')':''):'?')
       +', askeleet '+(st.totalSteps!=null?st.totalSteps:'?')
+      +(st.totalKilocalories!=null?', poltetut kalorit '+Math.round(st.totalKilocalories)+' kcal':'')
+      +(st.consumedKilocalories!=null?', syödyt kalorit '+Math.round(st.consumedKilocalories)+' kcal':'')
       +(dsw?'. Garminin päivän treeniehdotus: '+dsw:'')
       +'. Käytä tätä dataa kun Lassi kysyy treenaamisesta, palautumisesta tai jaksamisesta — anna konkreettinen suositus.');
   }
