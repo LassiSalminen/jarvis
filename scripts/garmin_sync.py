@@ -13,11 +13,32 @@ import datetime
 import json
 import os
 import sys
+import time
+import urllib.error
 import urllib.request
 
 from garminconnect import Garmin
 
 WORKER_URL = "https://jarvis.lassi-salminen3.workers.dev"
+# Cloudflare voi blokata Pythonin oletus-User-Agentin (403) - esiinnytaan selaimena
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) JarvisSync/1.0"
+
+PIN = os.environ["JARVIS_PIN"]
+
+
+def worker_req(path, data=None, method="GET"):
+    """Pyynto Workerille. Palauttaa (status, body-teksti) - ei koskaan heita."""
+    headers = {"User-Agent": UA, "X-Jarvis-Pin": PIN}
+    if data is not None:
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(WORKER_URL + path, data=data, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req) as r:
+            return r.status, r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode("utf-8", "replace")[:300]
+    except Exception as e:
+        return 0, str(e)
 
 
 def pick(d, *keys):
@@ -28,15 +49,48 @@ def pick(d, *keys):
     return out or None
 
 
+def do_login(email, password):
+    """Kirjaudu Garminiin. Ensisijaisesti KV:hen talletetulla istunnolla
+    (valttaa Garminin pilvi-IP-rate-limitin), muuten tunnuksilla + uudelleenyritykset."""
+    status, tok = worker_req("/api/garmintoken")
+    if status == 200 and tok and len(tok) > 100:
+        try:
+            g = Garmin()
+            g.login(tok)  # base64-tokenblob edellisesta onnistuneesta ajosta
+            print("Kirjauduttu talletetulla istunnolla.")
+            return g, False
+        except Exception as e:
+            print(f"varoitus: talletettu istunto ei kelvannut ({e}), kirjaudutaan uudestaan", file=sys.stderr)
+
+    last = None
+    for attempt in range(3):
+        if attempt:
+            time.sleep(75)  # Garmin rate-limittaa (429) - odota ennen uutta yritysta
+        try:
+            g = Garmin(email, password)
+            g.login()
+            print("Kirjauduttu tunnuksilla.")
+            return g, True
+        except Exception as e:
+            last = e
+            print(f"varoitus: kirjautuminen epaonnistui (yritys {attempt + 1}/3): {e}", file=sys.stderr)
+    raise SystemExit(f"Kirjautuminen Garminiin epaonnistui: {last}")
+
+
 def main():
     email = os.environ["GARMIN_EMAIL"]
     password = os.environ["GARMIN_PASSWORD"]
-    pin = os.environ["JARVIS_PIN"]
     today = datetime.date.today()
     cdate = today.isoformat()
 
-    g = Garmin(email, password)
-    g.login()
+    g, fresh_login = do_login(email, password)
+    if fresh_login:
+        # Talleta istunto KV:hen -> seuraavat ajot eivat tarvitse kirjautumista
+        try:
+            status, body = worker_req("/api/garmintoken", g.garth.dumps().encode(), "PUT")
+            print("Istunto talletettu KV:hen:", status)
+        except Exception as e:
+            print(f"varoitus: istunnon talletus epaonnistui: {e}", file=sys.stderr)
 
     out = {
         "date": cdate,
@@ -136,14 +190,10 @@ def main():
         out["dsw"] = None
         payload = json.dumps(out, ensure_ascii=False)
 
-    req = urllib.request.Request(
-        WORKER_URL + "/api/garmin",
-        data=payload.encode("utf-8"),
-        method="PUT",
-        headers={"Content-Type": "application/json", "X-Jarvis-Pin": pin},
-    )
-    with urllib.request.urlopen(req) as resp:
-        print("KV vastasi:", resp.status, resp.read()[:200].decode())
+    status, body = worker_req("/api/garmin", payload.encode("utf-8"), "PUT")
+    print("KV vastasi:", status, body[:200])
+    if status != 200:
+        raise SystemExit(f"Datan lahetys Workerille epaonnistui: HTTP {status} - {body[:300]}")
 
     print("Synkattu:", {k: ("ok" if out[k] else "-") if k not in ("date", "updated") else out[k] for k in out})
 
