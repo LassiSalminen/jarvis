@@ -268,107 +268,10 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='104'%3E%3Cpath d='M30 2 L58 18 L58 50 L30 66 L2 50 L2 18Z' fill='none' stroke='%2300e5ff' stroke-width='.8'/%3E%3Cpath d='M30 70 L58 86 L58 118 L30 134 L2 118 L2 86Z' fill='none' stroke='%2300e5ff' stroke-width='.8'/%3E%3C/svg%3E");
   background-size:60px 104px}
 
-.reactor{width:240px;height:240px;position:relative;cursor:crosshair;flex-shrink:0}
-
-/* Orbin lisäkerrokset — kiertävät satelliitit ja iiris-hohde */
-.orbits{position:absolute;inset:0;pointer-events:none}
-.ob{position:absolute;border-radius:50%;animation:spin linear infinite}
-.ob::after{content:"";position:absolute;top:-3px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;
-  background:var(--cyan);box-shadow:0 0 8px var(--cyan-glow),0 0 18px var(--cyan-glow)}
-.ob.o1{inset:4px;animation-duration:7s}
-.ob.o2{inset:26px;animation-duration:13s;animation-direction:reverse}
-.ob.o2::after{width:4px;height:4px;opacity:.85}
-.ob.o3{inset:47px;animation-duration:21s}
-.ob.o3::after{width:3px;height:3px;opacity:.6}
-.iris{position:absolute;inset:60px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;
-  background:conic-gradient(from 0deg,transparent 0deg,rgba(var(--accent-rgb),.3) 40deg,transparent 85deg,
-    transparent 175deg,rgba(var(--accent-rgb),.2) 225deg,transparent 275deg);
-  animation:spin 6s linear infinite}
-
-/* Orbi "puhuu" kun ääni soi — ydin sykkii puheen tahtiin */
-body.ai-talking .core{animation:crtalk .38s ease-in-out infinite alternate}
-body.ai-talking .core-ring2{animation:crtalk .3s ease-in-out infinite alternate}
-@keyframes crtalk{
-  from{transform:scale(.96);box-shadow:0 0 30px var(--cyan-glow),0 0 60px var(--cyan-glow)}
-  to{transform:scale(1.12);box-shadow:0 0 70px var(--cyan-glow),0 0 140px var(--cyan-glow),0 0 220px rgba(var(--accent-rgb),.5)}
-}
-
-/* ULTRON-orbi — sama runko, oma luonne: HAL-mainen tumma pupilli, vihainen välke, terävämmät renkaat */
-body[data-mode="ultron"] .core{
-  background:radial-gradient(circle,#0d0104 0%,#0d0104 12%,#ff8496 20%,#ff2440 34%,#6e0517 62%,rgba(22,0,6,.85) 85%,rgba(8,0,2,.5) 100%);
-  animation:crpulse 4.2s ease-in-out infinite,uflicker 9s steps(1,end) infinite}
-body[data-mode="ultron"] .ring.r2{border-style:solid;border-width:1px;opacity:.7}
-body[data-mode="ultron"] .ring.r5{border-style:dashed;animation-duration:5s}
-body[data-mode="ultron"] .arc.a1{animation-duration:1.3s}
-body[data-mode="ultron"] .iris{animation-duration:3.5s}
-body[data-mode="ultron"] .ob.o1{animation-duration:4.5s}
-@keyframes uflicker{
-  0%,90.5%,100%{filter:none}
-  91%{filter:brightness(1.7) saturate(1.4)}
-  92%{filter:brightness(.55)}
-  93.5%{filter:brightness(1.5)}
-  95%{filter:none}
-}
-
-/* pulse rings */
-.pr{position:absolute;border-radius:50%;border:1px solid var(--cyan);opacity:0;animation:prout 4s ease-out infinite}
-.pr:nth-child(1){inset:100px;animation-delay:0s}
-.pr:nth-child(2){inset:100px;animation-delay:1.3s}
-.pr:nth-child(3){inset:100px;animation-delay:2.6s}
-@keyframes prout{0%{inset:100px;opacity:.6}100%{inset:-30px;opacity:0}}
-
-/* rings */
-.ring{position:absolute;border-radius:50%;border:1px solid var(--cyan)}
-.ring.r1{inset:0;border-width:1px;opacity:.2}
-.ring.r1::before{content:"";position:absolute;inset:-1px;border-radius:50%;
-  background:conic-gradient(from 0deg,
-    transparent 0deg,rgba(var(--accent-rgb),.8) 1.5deg,transparent 3deg,
-    transparent 30deg,rgba(var(--accent-rgb),.8) 31.5deg,transparent 33deg,
-    transparent 60deg,rgba(var(--accent-rgb),.8) 61.5deg,transparent 63deg,
-    transparent 90deg,rgba(var(--accent-rgb),.8) 91.5deg,transparent 93deg,
-    transparent 120deg,rgba(var(--accent-rgb),.8) 121.5deg,transparent 123deg,
-    transparent 150deg,rgba(var(--accent-rgb),.8) 151.5deg,transparent 153deg,
-    transparent 180deg,rgba(var(--accent-rgb),.8) 181.5deg,transparent 183deg,
-    transparent 210deg,rgba(var(--accent-rgb),.8) 211.5deg,transparent 213deg,
-    transparent 240deg,rgba(var(--accent-rgb),.8) 241.5deg,transparent 243deg,
-    transparent 270deg,rgba(var(--accent-rgb),.8) 271.5deg,transparent 273deg,
-    transparent 300deg,rgba(var(--accent-rgb),.8) 301.5deg,transparent 303deg,
-    transparent 330deg,rgba(var(--accent-rgb),.8) 331.5deg,transparent 333deg);
-  opacity:.3;animation:spin 30s linear infinite}
-.ring.r2{inset:22px;border-style:dashed;border-width:2px;opacity:.55;animation:spin 16s linear infinite}
-.ring.r3{inset:38px;border-width:1px;opacity:.2;animation:spin 10s linear infinite reverse}
-.ring.r4{inset:12px;border-width:1px;opacity:.1;animation:spin 22s linear infinite reverse}
-.ring.r5{inset:52px;border-width:1px;opacity:.35;animation:spin 8s linear infinite;border-style:dotted}
-
-/* data segments on r2 */
-.ring.r2::before{content:"";position:absolute;inset:-2px;border-radius:50%;
-  background:conic-gradient(from 45deg,rgba(var(--accent-rgb),.5) 0deg,rgba(var(--accent-rgb),.5) 20deg,transparent 22deg,transparent 45deg,rgba(var(--accent-rgb),.4) 46deg,rgba(var(--accent-rgb),.4) 60deg,transparent 62deg,transparent 90deg,rgba(var(--accent-rgb),.5) 92deg,rgba(var(--accent-rgb),.5) 110deg,transparent 112deg,transparent 180deg,rgba(var(--accent-rgb),.3) 182deg,rgba(var(--accent-rgb),.3) 200deg,transparent 202deg,transparent 270deg,rgba(var(--accent-rgb),.4) 272deg,rgba(var(--accent-rgb),.4) 290deg,transparent 292deg);
-  animation:spin 16s linear infinite}
-
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* core */
-.core-ring2{position:absolute;inset:65px;border-radius:50%;border:2px solid rgba(var(--accent-rgb),.7);animation:crpulse 3s ease-in-out infinite .3s}
-.core-ring3{position:absolute;inset:72px;border-radius:50%;border:1px solid rgba(var(--accent-rgb),.4);animation:crpulse 3s ease-in-out infinite .6s}
-.core{position:absolute;inset:78px;border-radius:50%;
-  background:radial-gradient(circle,#fff 0%,#ffd0d8 15%,var(--cyan) 40%,rgba(100,0,20,.8) 70%,rgba(30,0,10,.5) 100%);
-  box-shadow:0 0 40px var(--cyan-glow),0 0 80px var(--cyan-glow),0 0 130px rgba(var(--accent-rgb),.35),inset 0 0 20px rgba(255,200,200,.4);
-  animation:crpulse 3s ease-in-out infinite}
-@keyframes crpulse{
-  0%,100%{transform:scale(1);box-shadow:0 0 40px var(--cyan-glow),0 0 80px var(--cyan-glow),0 0 130px rgba(var(--accent-rgb),.35),inset 0 0 20px rgba(255,200,200,.4)}
-  50%{transform:scale(1.1);box-shadow:0 0 60px var(--cyan-glow),0 0 120px var(--cyan-glow),0 0 200px rgba(var(--accent-rgb),.5),inset 0 0 30px rgba(255,220,220,.5)}
-}
-
-/* arc lightning */
-.arc{position:absolute;border-radius:50%;border:1px solid transparent;opacity:0}
-.arc.a1{inset:55px;border-top-color:rgba(var(--accent-rgb),.7);animation:arcspin1 2s linear infinite}
-.arc.a2{inset:48px;border-right-color:rgba(var(--accent-rgb),.5);animation:arcspin2 3s linear infinite}
-.arc.a3{inset:42px;border-bottom-color:rgba(var(--accent-rgb),.4);animation:arcspin3 1.5s linear infinite reverse}
-/* J.A.R.V.I.S. — arc reactor -ytimen hehku syaaniksi (renkaat seuraavat --accent-rgb:tä) */
-body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff 15%,var(--cyan) 40%,rgba(0,60,90,.8) 70%,rgba(0,20,35,.5) 100%)}
-@keyframes arcspin1{0%{transform:rotate(0deg);opacity:.8}50%{opacity:.3}100%{transform:rotate(360deg);opacity:.8}}
-@keyframes arcspin2{0%{transform:rotate(120deg);opacity:.6}50%{opacity:.1}100%{transform:rotate(480deg);opacity:.6}}
-@keyframes arcspin3{0%{transform:rotate(240deg);opacity:.5}50%{opacity:.15}100%{transform:rotate(-120deg);opacity:.5}}
+/* Elokuvamainen tietoisuusorbi — piirretään canvasilla (ks. ORB-osio JS:ssä):
+   JARVIS = sulava hehkuva pistepallo, ULTRON = rikkonainen kulmikas noodiverkko */
+.reactor{width:280px;height:280px;position:relative;cursor:crosshair;flex-shrink:0}
+.reactor canvas{width:100%;height:100%;display:block}
 
 .greeting{font-family:'Orbitron';font-size:16px;letter-spacing:.2em;color:var(--txt);text-align:center;position:relative;z-index:3}
 .greeting span{color:var(--cyan);text-shadow:0 0 14px var(--cyan-glow)}
@@ -787,14 +690,7 @@ body[data-mode="jarvis"] .core{background:radial-gradient(circle,#fff 0%,#d0f6ff
       <div class="scan"></div>
       <div class="reactor-wrap">
         <div class="reactor" id="reactor">
-          <div class="pr"></div><div class="pr"></div><div class="pr"></div>
-          <div class="arc a1"></div><div class="arc a2"></div><div class="arc a3"></div>
-          <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
-          <div class="ring r4"></div><div class="ring r5"></div>
-          <div class="orbits"><span class="ob o1"></span><span class="ob o2"></span><span class="ob o3"></span></div>
-          <div class="core-ring2"></div><div class="core-ring3"></div>
-          <div class="core"></div>
-          <div class="iris"></div>
+          <canvas id="orbCanvas" width="280" height="280"></canvas>
         </div>
         <div class="greeting" id="greet">Järjestelmä <span>verkossa</span></div>
         <div class="status-line" id="homestatus">Kaikki järjestelmät toiminnassa.</div>
@@ -1243,6 +1139,104 @@ const sBoot=()=>{tone(220,.2,.06);setTimeout(()=>tone(440,.15,.05),200);setTimeo
     }
     requestAnimationFrame(draw);
   };draw();
+})();
+
+/* ===== ORB — tietoisuuspallo (Age of Ultron -henkinen) =====
+   JARVIS: sulava, hehkuva pistepallo spiraalivirtauksella.
+   ULTRON: rikkonainen, kulmikas noodiverkko joka glitchaa. */
+(()=>{
+  const cv=document.getElementById('orbCanvas');if(!cv)return;
+  const cx2=cv.getContext('2d');
+  const W=cv.width,H=cv.height,CX=W/2,CY=H/2,R=96;
+  // Fibonacci-pallo: tasainen pistejakauma
+  const N=170,GA=Math.PI*(3-Math.sqrt(5)),pts=[];
+  for(let i=0;i<N;i++){
+    const y=1-(i/(N-1))*2,r=Math.sqrt(1-y*y),th=GA*i;
+    pts.push({x:Math.cos(th)*r,y,z:Math.sin(th)*r,j:0,spike:Math.random()<.12?1+Math.random()*.16:1});
+  }
+  // Ultronin verkko: naapuriparit lasketaan kerran (pallo on jäykkä)
+  const pairs=[];
+  for(let i=0;i<N;i++)for(let k=i+1;k<N;k++){
+    const dx=pts[i].x-pts[k].x,dy=pts[i].y-pts[k].y,dz=pts[i].z-pts[k].z;
+    if(dx*dx+dy*dy+dz*dz<.10)pairs.push([i,k]);
+  }
+  let rot=0,wob=0,flicker=0;
+  const P=new Array(N);
+  function draw(){
+    const ultron=(MODE==='ultron');
+    const talking=document.body.classList.contains('ai-talking');
+    const rgb=AI.rgb;
+    rot+=talking?.022:(ultron?.0055:.0035);
+    wob+=.007;
+    const tilt=-.32+Math.sin(wob)*.06;
+    cx2.clearRect(0,0,W,H);
+    const cr=Math.cos(rot),sr=Math.sin(rot),ct=Math.cos(tilt),st=Math.sin(tilt);
+    for(let i=0;i<N;i++){
+      const p=pts[i],sp=ultron?p.spike:1;
+      let x=(p.x*cr+p.z*sr)*sp,z=(-p.x*sr+p.z*cr)*sp,y=p.y*sp;
+      const y2=y*ct-z*st,z2=y*st+z*ct;
+      let gx=0,gy=0;
+      if(ultron){
+        if(p.j===0&&Math.random()<.003)p.j=7;
+        if(p.j>0){gx=(Math.random()-.5)*p.j;gy=(Math.random()-.5)*p.j;p.j*=.82;if(p.j<.4)p.j=0}
+      }
+      P[i]={sx:CX+x*R+gx,sy:CY+y2*R+gy,z:z2};
+    }
+    // Ytimen hehku
+    const breathe=.85+Math.sin(wob*2.2)*.15+(talking?.35:0);
+    const g=cx2.createRadialGradient(CX,CY,0,CX,CY,R*1.15);
+    if(ultron){
+      g.addColorStop(0,'rgba(255,120,140,'+(.5*breathe)+')');
+      g.addColorStop(.25,'rgba('+rgb+','+(.28*breathe)+')');
+      g.addColorStop(.6,'rgba(120,8,28,'+(.14*breathe)+')');
+      g.addColorStop(1,'rgba(0,0,0,0)');
+    }else{
+      g.addColorStop(0,'rgba(235,255,255,'+(.75*breathe)+')');
+      g.addColorStop(.2,'rgba('+rgb+','+(.45*breathe)+')');
+      g.addColorStop(.55,'rgba('+rgb+','+(.12*breathe)+')');
+      g.addColorStop(1,'rgba(0,0,0,0)');
+    }
+    cx2.fillStyle=g;cx2.fillRect(0,0,W,H);
+    if(ultron){
+      // Verkon särmät
+      if(flicker>0)flicker--;
+      else if(Math.random()<.006)flicker=3;
+      const dim=flicker>0?.35:1;
+      cx2.lineWidth=.8;
+      for(const [i,k] of pairs){
+        const a=P[i],b=P[k];
+        const depth=(a.z+b.z)/2;             // -1 takana … +1 edessä
+        const al=(.08+(depth+1)*.26)*dim;
+        cx2.strokeStyle='rgba('+rgb+','+al+')';
+        cx2.beginPath();cx2.moveTo(a.sx,a.sy);cx2.lineTo(b.sx,b.sy);cx2.stroke();
+      }
+      // Noodit
+      for(const q of P){
+        const al=(.25+(q.z+1)*.35)*dim,s=1+(q.z+1)*1.1;
+        cx2.fillStyle='rgba(255,'+(140+Math.round(q.z*60))+',150,'+al+')';
+        cx2.fillRect(q.sx-s/2,q.sy-s/2,s,s);   // kulmikkaat pisteet
+      }
+    }else{
+      // Spiraalivirta: viiva fibonacci-järjestyksessä → pyörteinen pinta
+      cx2.lineWidth=1;
+      for(let i=0;i<N-1;i++){
+        const a=P[i],b=P[i+1];
+        const depth=(a.z+b.z)/2;
+        cx2.strokeStyle='rgba('+rgb+','+(.05+(depth+1)*.16)+')';
+        cx2.beginPath();cx2.moveTo(a.sx,a.sy);cx2.lineTo(b.sx,b.sy);cx2.stroke();
+      }
+      // Pisteet: pyöreät, syvyyden mukaan
+      for(const q of P){
+        const al=.2+(q.z+1)*.4,s=.7+(q.z+1)*1.25;
+        cx2.fillStyle='rgba(255,255,255,'+al*.55+')';
+        cx2.beginPath();cx2.arc(q.sx,q.sy,s,0,Math.PI*2);cx2.fill();
+        cx2.fillStyle='rgba('+rgb+','+al+')';
+        cx2.beginPath();cx2.arc(q.sx,q.sy,s*.6,0,Math.PI*2);cx2.fill();
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
 })();
 
 /* ===== BOOT ===== */
