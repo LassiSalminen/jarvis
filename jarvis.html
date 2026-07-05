@@ -799,6 +799,10 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
           <div style="font-size:9px;color:var(--txt-dim);margin-top:3px;opacity:.5;letter-spacing:.1em">SEURAAVAT 12H</div>
         </div>
         <div class="m-card">
+          <div class="m-card-title">KEHO · GARMIN</div>
+          <div id="m-garminBox" style="font-size:13px;display:flex;flex-direction:column;gap:4px;color:var(--txt-dim)">Ladataan…</div>
+        </div>
+        <div class="m-card">
           <div class="m-card-title">JÄRJESTELMÄ</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
             <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">AKKU<br></span><span id="m-bat" style="color:var(--cyan)">--</span></div>
@@ -871,6 +875,10 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
         </div>
         <div id="elBar" style="display:flex;gap:1px;margin-top:5px;height:20px;align-items:flex-end"></div>
         <div style="font-size:9px;color:var(--txt-dim);margin-top:2px;opacity:.5">seuraavat 12h</div>
+      </div>
+      <div style="border-top:1px solid var(--line);margin:6px 13px;padding-top:8px;padding-bottom:10px">
+        <div style="font-family:'Orbitron';font-size:10px;letter-spacing:.15em;color:var(--txt-dim);margin-bottom:5px">KEHO · GARMIN</div>
+        <div id="garminBox" style="font-size:11px;display:flex;flex-direction:column;gap:3px;color:var(--txt-dim)">Ladataan…</div>
       </div>
     </div>
   </aside>
@@ -1093,6 +1101,7 @@ function startApp(){
   loadWiki();
   loadPortfolio();
   loadLectures();
+  loadGarmin();
 }
 
 // Enter-näppäin PIN-kentässä
@@ -1446,6 +1455,49 @@ async function fetchElectric(){
 }
 fetchElectric();setInterval(fetchElectric,1800000);
 
+/* ===== GARMIN-KELLODATA ===== */
+let garminData=null;
+async function loadGarmin(){
+  try{
+    const r=await apiFetch('/api/garmin');
+    const d=await r.json();
+    if(d&&d.date)garminData=d;
+  }catch(e){}
+  renderGarmin();
+}
+// Kaiva treeniehdotuksen nimi DSW-vastauksesta (muoto vaihtelee endpointin mukaan)
+function garminDswName(){
+  const d=garminData&&garminData.dsw;
+  if(!d)return null;
+  const c=Array.isArray(d)?d[0]:d;
+  if(!c||typeof c!=='object')return null;
+  return c.title||c.workoutName||c.name||(c.workout&&(c.workout.workoutName||c.workout.title))||null;
+}
+function renderGarmin(){
+  const g=garminData;
+  let html;
+  if(!g){
+    html='Ei kellodataa vielä — synkkaus ajaa aamuisin klo 6.';
+  }else{
+    const tr=g.trainingReadiness||{},bb=g.bodyBattery||{},sl=g.sleep||{},st=g.stats||{},hrv=g.hrv||{};
+    const r=[];
+    const add=(l,v)=>{if(v!=null&&v!=='')r.push('<div style="display:flex;justify-content:space-between;gap:8px"><span style="color:var(--txt-dim)">'+l+'</span><span style="color:var(--cyan);font-family:\'Share Tech Mono\'">'+v+'</span></div>')};
+    add('VALMIUS',tr.score!=null?tr.score+'/100':null);
+    add('BODY BATTERY',bb.current!=null?bb.current:st.bodyBatteryMostRecentValue);
+    add('UNI',sl.hours!=null?sl.hours+' h'+(sl.score!=null?' · '+sl.score:''):null);
+    add('LEPOSYKE',st.restingHeartRate!=null?st.restingHeartRate+' bpm':null);
+    add('HRV',hrv.lastNightAvg!=null?hrv.lastNightAvg+' ms':null);
+    add('ASKELEET',st.totalSteps);
+    const dsw=garminDswName();
+    if(dsw)r.push('<div style="margin-top:5px;color:var(--txt)">▶ '+esc(String(dsw))+'</div>');
+    else if(tr.feedbackShort)r.push('<div style="margin-top:5px;color:var(--txt)">'+esc(String(tr.feedbackShort).replace(/_/g,' ').toLowerCase())+'</div>');
+    r.push('<div style="margin-top:3px;font-size:9px;opacity:.5">'+esc(g.date||'')+'</div>');
+    html=r.join('')||'Ei kellodataa.';
+  }
+  const el=document.getElementById('garminBox');if(el)el.innerHTML=html;
+  const em=document.getElementById('m-garminBox');if(em)em.innerHTML=html;
+}
+
 /* ===== UUTISET ===== */
 let newsCache=null, newsCacheTs=0;
 
@@ -1635,6 +1687,21 @@ function buildContext(text){
   const hasEx=wiki.some(w=>w.id===`harjoitus-${today}`);
   if(!hasFood) lines.push('Tänään ei ole kirjattu ruokailuja.');
   if(!hasEx) lines.push('Tänään ei ole kirjattu harjoitusta.');
+
+  // Garmin-kellodata — treenivalmius, palautuminen ym.
+  if(garminData){
+    const tr=garminData.trainingReadiness||{},sl=garminData.sleep||{},st=garminData.stats||{},bb=garminData.bodyBattery||{},hrv=garminData.hrv||{};
+    const dsw=garminDswName();
+    lines.push('Garmin-kellodata ('+garminData.date+'): treenivalmius '+(tr.score!=null?tr.score+'/100'+(tr.level?' ('+tr.level+')':''):'?')
+      +(tr.recoveryTime!=null?', palautumisaikaa jäljellä '+tr.recoveryTime+' h':'')
+      +', Body Battery '+(bb.current!=null?bb.current:(st.bodyBatteryMostRecentValue!=null?st.bodyBatteryMostRecentValue:'?'))
+      +', uni '+(sl.hours!=null?sl.hours+' h (pisteet '+(sl.score!=null?sl.score:'?')+')':'?')
+      +', leposyke '+(st.restingHeartRate!=null?st.restingHeartRate:'?')
+      +', HRV '+(hrv.lastNightAvg!=null?hrv.lastNightAvg+' ms'+(hrv.status?' ('+hrv.status+')':''):'?')
+      +', askeleet '+(st.totalSteps!=null?st.totalSteps:'?')
+      +(dsw?'. Garminin päivän treeniehdotus: '+dsw:'')
+      +'. Käytä tätä dataa kun Lassi kysyy treenaamisesta, palautumisesta tai jaksamisesta — anna konkreettinen suositus.');
+  }
 
   // Uutiset — jos haettu, lisää kontekstiin
   if(newsCache && newsCache.length){
@@ -3023,6 +3090,7 @@ if(JARVIS_PIN){
   loadWiki();
   loadPortfolio();
   loadLectures();
+  loadGarmin();
 }
 </script>
 </body>

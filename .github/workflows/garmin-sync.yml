@@ -1,0 +1,23 @@
+# Hakee Garmin-kellodatan joka aamu ja tyontaa sen Workerin KV-muistiin.
+# Voi ajaa myos kasin: Actions -> Garmin sync -> Run workflow.
+name: Garmin sync
+
+on:
+  schedule:
+    - cron: '0 3 * * *'   # 03:00 UTC = klo 6 Suomen kesaaikaa (talvella klo 5)
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install garminconnect
+      - run: python scripts/garmin_sync.py
+        env:
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          JARVIS_PIN: ${{ secrets.JARVIS_PIN }}
