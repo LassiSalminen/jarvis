@@ -1150,99 +1150,89 @@ const sBoot=()=>{tone(220,.2,.06);setTimeout(()=>tone(440,.15,.05),200);setTimeo
   };draw();
 })();
 
-/* ===== ORB — tietoisuuspallo (Age of Ultron -henkinen) =====
-   JARVIS: sulava, hehkuva pistepallo spiraalivirtauksella.
-   ULTRON: rikkonainen, kulmikas noodiverkko joka glitchaa. */
+/* ===== ORB — tietoisuuspyörre (Age of Ultron -tyyliin) =====
+   Hehkuva hiukkasmyrsky: partikkelit kiertävät turbulenttina kiekkona ja
+   piirtävät tulisia vanoja. JARVIS = meripihka/kulta (kuten elokuvassa),
+   ULTRON = veri/karmiini, kaoottisempi ja glitchaava. */
 (()=>{
   const cv=document.getElementById('orbCanvas');if(!cv)return;
-  const cx2=cv.getContext('2d');
-  const W=cv.width,H=cv.height,CX=W/2,CY=H/2,R=96;
-  // Fibonacci-pallo: tasainen pistejakauma
-  const N=170,GA=Math.PI*(3-Math.sqrt(5)),pts=[];
-  for(let i=0;i<N;i++){
-    const y=1-(i/(N-1))*2,r=Math.sqrt(1-y*y),th=GA*i;
-    pts.push({x:Math.cos(th)*r,y,z:Math.sin(th)*r,j:0,spike:Math.random()<.12?1+Math.random()*.16:1});
+  const g=cv.getContext('2d');
+  const W=cv.width,H=cv.height,CX=W/2,CY=H/2,R=124;
+  const TILT=.52;                       // kiekko viistosta
+  const N=520,ps=[];
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  function reset(p){
+    p.a=rnd(0,Math.PI*2);               // kulma radalla
+    p.r=Math.random()<.22?rnd(.06,.34):rnd(.4,1.0); // osa sisäpyörteessä, valtaosa renkaassa
+    p.v=rnd(.004,.017)*(Math.random()<.07?-1:1);    // kulmanopeus, muutama vastavirtaan
+    p.w=rnd(0,Math.PI*2);p.ws=rnd(.02,.09);p.wa=rnd(.015,.08); // säteen väreily
+    p.z=rnd(-.14,.14);                  // kiekon paksuus
+    p.hue=Math.random();
+    p.life=rnd(140,700);
+    p.px=null;p.py=null;
+    return p;
   }
-  // Ultronin verkko: naapuriparit lasketaan kerran (pallo on jäykkä)
-  const pairs=[];
-  for(let i=0;i<N;i++)for(let k=i+1;k<N;k++){
-    const dx=pts[i].x-pts[k].x,dy=pts[i].y-pts[k].y,dz=pts[i].z-pts[k].z;
-    if(dx*dx+dy*dy+dz*dz<.10)pairs.push([i,k]);
+  for(let i=0;i<N;i++)ps.push(reset({}));
+  function col(p,ultron){
+    if(ultron){
+      if(p.hue<.14)return '255,215,205';   // valkohehku
+      if(p.hue<.55)return '255,70,95';     // karmiini
+      return '190,15,40';                  // tumma veri
+    }
+    if(p.hue<.14)return '255,242,205';     // valkokulta
+    if(p.hue<.58)return '255,185,75';      // meripihka
+    return '255,115,25';                   // syvä oranssi
   }
-  let rot=0,wob=0,flicker=0;
-  const P=new Array(N);
+  let t=0;
   function draw(){
+    t++;
     const ultron=(MODE==='ultron');
     const talking=document.body.classList.contains('ai-talking');
-    const rgb=AI.rgb;
-    rot+=talking?.022:(ultron?.0055:.0035);
-    wob+=.007;
-    const tilt=-.32+Math.sin(wob)*.06;
-    cx2.clearRect(0,0,W,H);
-    const cr=Math.cos(rot),sr=Math.sin(rot),ct=Math.cos(tilt),st=Math.sin(tilt);
-    for(let i=0;i<N;i++){
-      const p=pts[i],sp=ultron?p.spike:1;
-      let x=(p.x*cr+p.z*sr)*sp,z=(-p.x*sr+p.z*cr)*sp,y=p.y*sp;
-      const y2=y*ct-z*st,z2=y*st+z*ct;
-      let gx=0,gy=0;
-      if(ultron){
-        if(p.j===0&&Math.random()<.003)p.j=7;
-        if(p.j>0){gx=(Math.random()-.5)*p.j;gy=(Math.random()-.5)*p.j;p.j*=.82;if(p.j<.4)p.j=0}
-      }
-      P[i]={sx:CX+x*R+gx,sy:CY+y2*R+gy,z:z2};
-    }
-    // Ytimen hehku
-    const breathe=.85+Math.sin(wob*2.2)*.15+(talking?.35:0);
-    const g=cx2.createRadialGradient(CX,CY,0,CX,CY,R*1.15);
+    const speed=(talking?2.1:1)*(ultron?1.3:1);
+    // Häivytä vanhat vanat (destination-out säilyttää läpinäkyvyyden)
+    g.globalCompositeOperation='destination-out';
+    g.fillStyle='rgba(0,0,0,'+(ultron?.17:.12)+')';
+    g.fillRect(0,0,W,H);
+    g.globalCompositeOperation='lighter';
+    // Ytimen hehku (additiivinen — tasapainottuu häivytyksen kanssa)
+    const breathe=.8+Math.sin(t*.045)*.2+(talking?.6:0);
+    const cg=g.createRadialGradient(CX,CY,0,CX,CY,R*.52);
     if(ultron){
-      g.addColorStop(0,'rgba(255,120,140,'+(.5*breathe)+')');
-      g.addColorStop(.25,'rgba('+rgb+','+(.28*breathe)+')');
-      g.addColorStop(.6,'rgba(120,8,28,'+(.14*breathe)+')');
-      g.addColorStop(1,'rgba(0,0,0,0)');
+      cg.addColorStop(0,'rgba(255,190,190,'+(.13*breathe)+')');
+      cg.addColorStop(.35,'rgba(255,55,80,'+(.07*breathe)+')');
+      cg.addColorStop(1,'rgba(0,0,0,0)');
     }else{
-      g.addColorStop(0,'rgba(235,255,255,'+(.75*breathe)+')');
-      g.addColorStop(.2,'rgba('+rgb+','+(.45*breathe)+')');
-      g.addColorStop(.55,'rgba('+rgb+','+(.12*breathe)+')');
-      g.addColorStop(1,'rgba(0,0,0,0)');
+      cg.addColorStop(0,'rgba(255,235,185,'+(.14*breathe)+')');
+      cg.addColorStop(.35,'rgba(255,160,55,'+(.08*breathe)+')');
+      cg.addColorStop(1,'rgba(0,0,0,0)');
     }
-    cx2.fillStyle=g;cx2.fillRect(0,0,W,H);
-    if(ultron){
-      // Verkon särmät
-      if(flicker>0)flicker--;
-      else if(Math.random()<.006)flicker=3;
-      const dim=flicker>0?.35:1;
-      cx2.lineWidth=.8;
-      for(const [i,k] of pairs){
-        const a=P[i],b=P[k];
-        const depth=(a.z+b.z)/2;             // -1 takana … +1 edessä
-        const al=(.08+(depth+1)*.26)*dim;
-        cx2.strokeStyle='rgba('+rgb+','+al+')';
-        cx2.beginPath();cx2.moveTo(a.sx,a.sy);cx2.lineTo(b.sx,b.sy);cx2.stroke();
+    g.fillStyle=cg;g.beginPath();g.arc(CX,CY,R*.52,0,Math.PI*2);g.fill();
+    // Partikkelivanat
+    for(const p of ps){
+      p.a+=p.v*speed;
+      p.w+=p.ws;
+      if(--p.life<=0)reset(p);
+      const wob=Math.sin(p.w)*p.wa+(ultron?(Math.random()-.5)*.025:0);
+      const r=(p.r+wob)*R;
+      const x=CX+Math.cos(p.a)*r;
+      const y=CY+Math.sin(p.a)*r*TILT+p.z*R;
+      // ULTRON: satunnainen glitch-heitto
+      if(ultron&&Math.random()<.0012){p.px=null;p.a+=rnd(-.9,.9)}
+      const front=Math.sin(p.a);          // -1 takana … +1 edessä
+      const al=(.24+(front+1)*.22)*(p.hue<.14?1.15:1);
+      if(p.px!=null){
+        g.strokeStyle='rgba('+col(p,ultron)+','+al+')';
+        g.lineWidth=p.hue<.14?1.4:1.1;
+        g.beginPath();g.moveTo(p.px,p.py);g.lineTo(x,y);g.stroke();
       }
-      // Noodit
-      for(const q of P){
-        const al=(.25+(q.z+1)*.35)*dim,s=1+(q.z+1)*1.1;
-        cx2.fillStyle='rgba(255,'+(140+Math.round(q.z*60))+',150,'+al+')';
-        cx2.fillRect(q.sx-s/2,q.sy-s/2,s,s);   // kulmikkaat pisteet
-      }
-    }else{
-      // Spiraalivirta: viiva fibonacci-järjestyksessä → pyörteinen pinta
-      cx2.lineWidth=1;
-      for(let i=0;i<N-1;i++){
-        const a=P[i],b=P[i+1];
-        const depth=(a.z+b.z)/2;
-        cx2.strokeStyle='rgba('+rgb+','+(.05+(depth+1)*.16)+')';
-        cx2.beginPath();cx2.moveTo(a.sx,a.sy);cx2.lineTo(b.sx,b.sy);cx2.stroke();
-      }
-      // Pisteet: pyöreät, syvyyden mukaan
-      for(const q of P){
-        const al=.2+(q.z+1)*.4,s=.7+(q.z+1)*1.25;
-        cx2.fillStyle='rgba(255,255,255,'+al*.55+')';
-        cx2.beginPath();cx2.arc(q.sx,q.sy,s,0,Math.PI*2);cx2.fill();
-        cx2.fillStyle='rgba('+rgb+','+al+')';
-        cx2.beginPath();cx2.arc(q.sx,q.sy,s*.6,0,Math.PI*2);cx2.fill();
+      p.px=x;p.py=y;
+      // kirkkaimmat hiukkaset saavat kipinäpään
+      if(p.hue<.07){
+        g.fillStyle='rgba(255,255,235,'+(al*.9)+')';
+        g.beginPath();g.arc(x,y,1.1,0,Math.PI*2);g.fill();
       }
     }
+    g.globalCompositeOperation='source-over';
     requestAnimationFrame(draw);
   }
   draw();
@@ -1705,6 +1695,22 @@ function buildContext(text){
       +(st.consumedKilocalories!=null?', syödyt kalorit '+Math.round(st.consumedKilocalories)+' kcal':'')
       +(dsw?'. Garminin päivän treeniehdotus: '+dsw:'')
       +'. Käytä tätä dataa kun Lassi kysyy treenaamisesta, palautumisesta tai jaksamisesta — anna konkreettinen suositus.');
+    if(Array.isArray(garminData.activities)&&garminData.activities.length){
+      lines.push('Tänään kirjatut suoritukset (Garmin): '+garminData.activities.map(a=>
+        (a.name||a.type||'suoritus')+(a.durationMin?' '+a.durationMin+' min':'')+(a.distanceKm?' '+a.distanceKm+' km':'')).join('; '));
+    }
+    if(Array.isArray(garminData.history)&&garminData.history.length){
+      lines.push('Edellisten päivien Garmin-tiivistelmä (uusin ensin):\n'+garminData.history.map(h=>
+        h.date+': '
+        +(h.readiness!=null?'valmius '+h.readiness+', ':'')
+        +(h.sleepHours!=null?'uni '+h.sleepHours+' h'+(h.sleepScore!=null?' ('+h.sleepScore+')':'')+', ':'')
+        +(h.totalSteps!=null?'askeleet '+h.totalSteps+', ':'')
+        +(h.restingHeartRate!=null?'leposyke '+h.restingHeartRate+', ':'')
+        +(h.totalKilocalories!=null?'poltetut '+Math.round(h.totalKilocalories)+' kcal':'')
+        +(Array.isArray(h.activities)&&h.activities.length?' — treenit: '+h.activities.map(a=>
+          (a.name||a.type||'')+(a.durationMin?' '+a.durationMin+' min':'')+(a.distanceKm?' '+a.distanceKm+' km':'')).join('; '):'')
+      ).join('\n'));
+    }
   }
 
   // Uutiset — jos haettu, lisää kontekstiin

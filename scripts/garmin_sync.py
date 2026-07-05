@@ -185,12 +185,73 @@ def main():
                 result = d
         return result
 
+    def history():
+        """Edellisten 6 paivan tiivistelmat - 'miten viime paivat meni' -kysymyksiin."""
+        days = []
+        for i in range(1, 7):
+            d = (today - datetime.timedelta(days=i)).isoformat()
+            row = {"date": d}
+            try:
+                row.update(pick(
+                    g.get_stats(d),
+                    "totalSteps", "restingHeartRate", "totalKilocalories", "consumedKilocalories",
+                ) or {})
+            except Exception:
+                pass
+            try:
+                sd = (g.get_sleep_data(d) or {}).get("dailySleepDTO") or {}
+                secs = sd.get("sleepTimeSeconds")
+                if secs:
+                    row["sleepHours"] = round(secs / 3600, 1)
+                sc = ((sd.get("sleepScores") or {}).get("overall") or {}).get("value")
+                if sc is not None:
+                    row["sleepScore"] = sc
+            except Exception:
+                pass
+            try:
+                r = g.get_training_readiness(d)
+                item = r[0] if isinstance(r, list) and r else r
+                if isinstance(item, dict) and item.get("score") is not None:
+                    row["readiness"] = item["score"]
+            except Exception:
+                pass
+            try:
+                acts = g.get_activities_by_date(d, d) or []
+                if acts:
+                    row["activities"] = [
+                        {
+                            "type": (a.get("activityType") or {}).get("typeKey"),
+                            "name": a.get("activityName"),
+                            "durationMin": round((a.get("duration") or 0) / 60),
+                            "distanceKm": round((a.get("distance") or 0) / 1000, 1) if a.get("distance") else None,
+                        }
+                        for a in acts[:4]
+                    ]
+            except Exception:
+                pass
+            days.append(row)
+        return days
+
+    def activities_today():
+        acts = g.get_activities_by_date(cdate, cdate) or []
+        return [
+            {
+                "type": (a.get("activityType") or {}).get("typeKey"),
+                "name": a.get("activityName"),
+                "durationMin": round((a.get("duration") or 0) / 60),
+                "distanceKm": round((a.get("distance") or 0) / 1000, 1) if a.get("distance") else None,
+            }
+            for a in acts[:4]
+        ] or None
+
     safe("stats", stats)
     safe("sleep", sleep)
     safe("trainingReadiness", readiness)
     safe("bodyBattery", body_battery)
     safe("hrv", hrv)
     safe("dsw", dsw)
+    safe("activities", activities_today)
+    safe("history", history)
 
     payload = json.dumps(out, ensure_ascii=False)
     if len(payload) > 90000:  # DSW-raakavastaus voi olla iso - pudota se tarvittaessa
