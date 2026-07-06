@@ -1449,7 +1449,7 @@ async function weather(){
     const d=await r.json();
     const temp=Math.round(d.current.temperature_2m);
     $('#wTemp').textContent=temp+'°';
-    const codes={0:'Selkeää',1:'Enimmäkseen selkeää',2:'Puolipilvistä',3:'Pilvistä',45:'Sumua',48:'Sumua',51:'Tihkua',61:'Sadetta',63:'Sadetta',65:'Rankkasade',71:'Lumisadetta',73:'Lumisadetta',75:'Runsas lumisade',80:'Sadekuuroja',95:'Ukkosta'};
+    const codes={0:'Selkeää',1:'Enimmäkseen selkeää',2:'Puolipilvistä',3:'Pilvistä',45:'Sumua',48:'Sumua',51:'Tihkua',53:'Tihkua',55:'Tihkua',56:'Jäätävää tihkua',57:'Jäätävää tihkua',61:'Sadetta',63:'Sadetta',65:'Rankkasade',66:'Jäätävää sadetta',67:'Jäätävää sadetta',71:'Lumisadetta',73:'Lumisadetta',75:'Runsas lumisade',77:'Lumijyväsiä',80:'Sadekuuroja',81:'Sadekuuroja',82:'Rankkoja kuuroja',85:'Lumikuuroja',86:'Lumikuuroja',95:'Ukkosta',96:'Ukkosta',99:'Ukkosta'};
     const desc=codes[d.current.weather_code]||'—';
     $('#wDesc').textContent=desc;
     const mT=document.getElementById('m-wTemp');if(mT)mT.textContent=temp+'°';
