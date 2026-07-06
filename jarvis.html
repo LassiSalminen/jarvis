@@ -255,6 +255,11 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 .msg .md-hr{border:none;border-top:1px solid var(--line2);margin:8px 0}
 .msg a{color:var(--cyan)}
 .msg strong{color:var(--txt-bright,#fff)}
+/* Chat-pikatoiminnot */
+.chips{display:flex;gap:6px;padding:6px 10px 0;overflow-x:auto;flex-shrink:0;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font-family:'Orbitron';font-size:9px;letter-spacing:.12em;color:var(--txt-dim);background:transparent;border:1px solid var(--line);border-radius:12px;padding:5px 11px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:color .15s,border-color .15s}
+.chip:hover{color:var(--cyan);border-color:var(--cyan)}
 
 
 /* ===== TABS ===== */
@@ -765,6 +770,13 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
         <span style="font-size:11px;color:var(--txt-dim);letter-spacing:.15em;flex:1">Keskustelu aktiivinen</span>
         <button class="end-btn" onclick="wakeMode?endConversation(false):endTextConversation()" style="font-family:'Orbitron';font-size:10px;letter-spacing:.15em;padding:4px 10px;background:transparent;border:1px solid rgba(255,61,61,.5);color:var(--red);border-radius:2px;cursor:pointer">✕ LOPETA &amp; KOKOA</button>
       </div>
+      <div class="chips" id="chatChips">
+        <button class="chip" data-q="Mikä on tilannekuvani — mitä minulla on käynnissä ja mitä kannattaisi tehdä seuraavaksi?">◈ TILANNE</button>
+        <button class="chip" data-q="Anna treenisuositus tämän päivän Garmin-datan perusteella.">⚡ TREENI</button>
+        <button class="chip" data-q="Millainen sää on tänään ja lähipäivinä? Mitä kannattaa huomioida?">☂ SÄÄ</button>
+        <button class="chip" data-q="Milloin sähkö on halvimmillaan seuraavan vuorokauden aikana ja mitä sillä kannattaa ajoittaa?">↯ SÄHKÖ</button>
+        <button class="chip" onclick="askNewsChip()">◰ UUTISET</button>
+      </div>
       <div class="inputbar">
         <button class="btn mic ghost" id="micChat">🎙</button>
         <input id="chatInput" placeholder="Puhu U.L.T.R.O.N.ille…" autocomplete="off">
@@ -833,6 +845,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
           </div>
           <div id="m-elBar" style="display:flex;gap:2px;margin-top:8px;height:28px;align-items:flex-end"></div>
           <div style="font-size:9px;color:var(--txt-dim);margin-top:3px;opacity:.5;letter-spacing:.1em">SEURAAVAT 12H</div>
+          <div id="m-elCheap" style="font-size:11px;color:var(--txt-dim);margin-top:5px;letter-spacing:.05em"></div>
         </div>
         <div class="m-card">
           <div class="m-card-title">KEHO · GARMIN</div>
@@ -912,6 +925,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
         </div>
         <div id="elBar" style="display:flex;gap:1px;margin-top:5px;height:20px;align-items:flex-end"></div>
         <div style="font-size:9px;color:var(--txt-dim);margin-top:2px;opacity:.5">seuraavat 12h</div>
+        <div id="elCheap" style="font-size:10px;color:var(--txt-dim);margin-top:4px;letter-spacing:.05em"></div>
       </div>
       <div style="border-top:1px solid var(--line);margin:6px 13px;padding-top:8px;padding-bottom:10px">
         <div style="font-family:'Orbitron';font-size:10px;letter-spacing:.15em;color:var(--txt-dim);margin-bottom:5px">KEHO · GARMIN</div>
@@ -1458,6 +1472,7 @@ async function weather(){
 weather();setInterval(weather,600000);
 
 /* ===== SÄHKÖN SPOT-HINTA (porssisahko.net) ===== */
+let elInfo=null; // {price, status, cheapHour, cheapPrice} — myös chatin kontekstiin
 async function fetchElectric(){
   try{
     const r=await fetch('https://api.porssisahko.net/v1/latest-prices.json');
@@ -1479,6 +1494,16 @@ async function fetchElectric(){
       $('#elStatus').textContent=status;
       const mP=document.getElementById('m-elPrice');if(mP){mP.textContent=c.toFixed(1);mP.style.color=col;}
       const mS=document.getElementById('m-elStatus');if(mS){mS.textContent=status;mS.style.color=col;}
+    }
+    // Halvin tuleva tunti (24h sisällä) — hyvä hetki pyykille/lataukselle
+    const next24=prices.filter(p=>{const s=new Date(p.startDate);return s>=now&&s-now<24*3600000});
+    if(next24.length){
+      const cheap=next24.reduce((a,b)=>b.price<a.price?b:a);
+      const ch=new Date(cheap.startDate).getHours();
+      elInfo={price:cur?cur.price:null,status:cur?(cur.price<5?'halpa':cur.price<15?'normaali':'kallis'):null,cheapHour:ch,cheapPrice:cheap.price};
+      const txt='Halvin tunti klo '+String(ch).padStart(2,'0')+': '+cheap.price.toFixed(1)+' snt';
+      const ec=document.getElementById('elCheap');if(ec)ec.textContent=txt;
+      const mEc=document.getElementById('m-elCheap');if(mEc)mEc.textContent=txt;
     }
     // Pylväskaavio seuraavat 12h
     const upcoming=prices.filter(p=>new Date(p.startDate)>=now).slice(0,12);
@@ -1808,6 +1833,12 @@ function buildContext(text){
     }
   }
 
+  // Sähkön spot-hinta
+  if(elInfo&&elInfo.price!=null){
+    lines.push('Sähkön spot-hinta nyt: '+elInfo.price.toFixed(1)+' snt/kWh ('+elInfo.status+')'
+      +(elInfo.cheapHour!=null?', halvin tuleva tunti klo '+String(elInfo.cheapHour).padStart(2,'0')+' ('+elInfo.cheapPrice.toFixed(1)+' snt)':'')+'.');
+  }
+
   // Sää — nykyhetki ja lähipäivät
   if(weatherNow){
     lines.push('Sää Nastolassa nyt: '+weatherNow.temp+'°, '+weatherNow.desc
@@ -1849,6 +1880,14 @@ async function sendChat(text){
   await attempt();
 }
 function typewrite(el,txt){el.textContent='';let i=0;const s=()=>{if(i<txt.length){el.textContent+=txt[i++];el.parentElement.parentElement.scrollTop=9e9;setTimeout(s,7)}else{el.innerHTML=mdRender(txt);el.parentElement.parentElement.scrollTop=9e9}};s()}
+
+// Uutis-pikatoiminto: varmista että uutiset on haettu ennen kysymystä,
+// jotta ne ovat chatin kontekstissa
+async function askNewsChip(){
+  sClick();
+  if(!newsCache){toast('Haen ensin uutiset…');await fetchNews();}
+  sendChat('Kerro päivän tärkeimmät uutiset lyhyesti.');
+}
 
 // Palauta edellinen keskustelu sivulatauksen jälkeen (esim. tabletti sammutti selaimen)
 function restoreChat(){
