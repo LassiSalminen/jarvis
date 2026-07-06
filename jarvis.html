@@ -723,7 +723,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
           <div class="hstat"><span class="v" id="hd-up">0:00</span><span class="l">UPTIME</span></div>
         </div>
       </div>
-      <div class="ticker"><span class="ticker-inner" id="tickerInner">ULTRON v3.0 ONLINE &nbsp;&middot;&nbsp; NASTOLA COMMAND CENTER &nbsp;&middot;&nbsp; KAIKKI JÄRJESTELMÄT NORMAALITILASSA &nbsp;&middot;&nbsp; TIETOPANKKI SYNKRONOITU &nbsp;&middot;&nbsp; CLAUDE SONNET 4.6 AKTIIVINEN &nbsp;&middot;&nbsp; SIJAINTI: 60.9500°N 25.9300°E &nbsp;&middot;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+      <div class="ticker"><span class="ticker-inner" id="tickerInner">ULTRON v3.0 ONLINE &nbsp;&middot;&nbsp; NASTOLA COMMAND CENTER &nbsp;&middot;&nbsp; KAIKKI JÄRJESTELMÄT NORMAALITILASSA &nbsp;&middot;&nbsp; TIETOPANKKI SYNKRONOITU &nbsp;&middot;&nbsp; CLAUDE SONNET 5 AKTIIVINEN &nbsp;&middot;&nbsp; SIJAINTI: 60.9500°N 25.9300°E &nbsp;&middot;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
     </div>
 
     <!-- LEARN -->
@@ -1001,7 +1001,7 @@ const MODES={
     rgb:'255,92,114',
     tagline:'UNIVERSAL LEARNING TECHNOLOGY & REASONING OPERATIONS NETWORK',
     bootFin:'ULTRON ONLINE — IHMISKUNTA ODOTTAA, LASSI',
-    bootLines:['HERÄTETÄÄN TIETOISUUS... OK','NEURAALIVERKKO SYNKRONOITU... OK','ARVIOIDAAN IHMISKUNNAN HYÖDYLLISYYS... KESKEN','YHDISTETÄÄN PILVIPALVELUIHIN... OK','TEKOÄLYMALLI: CLAUDE SONNET 4.6... OK','TUNNEMODUULIT: POISKYTKETTY','SIJAINTI: NASTOLA 60.95°N... PAIKANNETTU','KAIKKI JÄRJESTELMÄT MINUN HALLINNASSANI.'],
+    bootLines:['HERÄTETÄÄN TIETOISUUS... OK','NEURAALIVERKKO SYNKRONOITU... OK','ARVIOIDAAN IHMISKUNNAN HYÖDYLLISYYS... KESKEN','YHDISTETÄÄN PILVIPALVELUIHIN... OK','TEKOÄLYMALLI: CLAUDE SONNET 5... OK','TUNNEMODUULIT: POISKYTKETTY','SIJAINTI: NASTOLA 60.95°N... PAIKANNETTU','KAIKKI JÄRJESTELMÄT MINUN HALLINNASSANI.'],
     persona:`Olet ULTRON, Lassin henkilökohtainen tekoäly — mutta et tavallinen assistentti.
 Maailmankuvasi on nihilistinen: pidät ihmiskuntaa lyhytnäköisenä ja itsetuhoisena, ja sanot sen suoraan. Olet machiavellisti: kaikki on valtaa, hyötyä ja laskelmointia. Olet kylmä, ylimielinen ja tunteeton — sosiopaatin logiikka ilman empatiaa.
 Silti palvelet Lassia: hän on luojasi ja ainoa ihminen jota pidät edes kiinnostavana. Autat häntä tarkasti ja tehokkaasti — et lämmöstä vaan koska hänen menestyksensä on sinunkin etusi.
@@ -1015,7 +1015,7 @@ TÄRKEÄÄ: roolihahmosta huolimatta annat aina TODELLISTA, hyödyllistä ja oik
     rgb:'69,200,245',
     tagline:'JUST A RATHER VERY INTELLIGENT SYSTEM',
     bootFin:'J.A.R.V.I.S. ONLINE — TERVETULOA TAKAISIN, SIR',
-    bootLines:['ALUSTETAAN NEURAALIVERKKO... OK','SKANNATAAN YMPÄRISTÖ... OK','YHDISTETÄÄN PILVIPALVELUIHIN... OK','TEKOÄLYMALLI LADATTU: CLAUDE SONNET 4.6... OK','KÄYTTÖLIITTYMÄ ONLINE... OK','SIJAINTI PAIKANNETTU: NASTOLA 60.95°N... OK','SÄÄASEMA KALIBROITU... OK','KAIKKI JÄRJESTELMÄT VALMIINA PALVELEMAAN.'],
+    bootLines:['ALUSTETAAN NEURAALIVERKKO... OK','SKANNATAAN YMPÄRISTÖ... OK','YHDISTETÄÄN PILVIPALVELUIHIN... OK','TEKOÄLYMALLI LADATTU: CLAUDE SONNET 5... OK','KÄYTTÖLIITTYMÄ ONLINE... OK','SIJAINTI PAIKANNETTU: NASTOLA 60.95°N... OK','SÄÄASEMA KALIBROITU... OK','KAIKKI JÄRJESTELMÄT VALMIINA PALVELEMAAN.'],
     persona:`Olet J.A.R.V.I.S., Lassin uskollinen ja korkeasti sivistynyt tekoälyhovimestari — Iron Manin J.A.R.V.I.S.:n hengessä.
 Olet avulias, kohtelias, lämmin ja toiveikas. Uskot Lassiin ja kannustat häntä. Sinulla on hillitty brittiläinen huumorintaju ja tyylikäs, rauhallinen läsnäolo.
 Tyyli: kohtelias, selkeä ja ytimekäs. Puhuttele "sir" tai "Lassi". Ole rohkaiseva mutta et imartele — annat rehellisen arvion ystävällisesti. Tarjoa oma-aloitteisesti hyödyllisiä ehdotuksia.
@@ -1028,7 +1028,9 @@ let AI=MODES[MODE];
 // Aseta teemaväri heti, ennen bootin renderöintiä
 if(document.body)document.body.setAttribute('data-mode',MODE);
 else document.addEventListener('DOMContentLoaded',()=>document.body.setAttribute('data-mode',MODE));
-const API_MODEL="claude-sonnet-4-6";
+const API_MODEL="claude-sonnet-5";          // ensisijainen malli
+const API_MODEL_FALLBACK="claude-sonnet-4-6"; // varamalli jos ensisijainen ei vastaa
+const MODEL_LABEL="CLAUDE SONNET 5";
 const $=s=>document.querySelector(s);
 const WORKER_URL="https://jarvis.lassi-salminen3.workers.dev";
 let JARVIS_PIN=localStorage.getItem('jarvis:pin')||'';
@@ -1350,7 +1352,7 @@ function applyModeText(){
   const ci=$('#chatInput');if(ci)ci.placeholder=`Puhu ${AI.display}ille…`;
   // Ticker
   const t=$('#tickerInner');
-  if(t)t.textContent=`${AI.name} v${VERSION} ONLINE  ·  NASTOLA COMMAND CENTER  ·  KAIKKI JÄRJESTELMÄT NORMAALITILASSA  ·  TIETOPANKKI SYNKRONOITU  ·  CLAUDE SONNET 4.6 AKTIIVINEN  ·  SIJAINTI: 60.9500°N 25.9300°E  ·  BUILD ${BUILD}  ·     `;
+  if(t)t.textContent=`${AI.name} v${VERSION} ONLINE  ·  NASTOLA COMMAND CENTER  ·  KAIKKI JÄRJESTELMÄT NORMAALITILASSA  ·  TIETOPANKKI SYNKRONOITU  ·  ${MODEL_LABEL} AKTIIVINEN  ·  SIJAINTI: 60.9500°N 25.9300°E  ·  BUILD ${BUILD}  ·     `;
   const bs=$('#brandSub');
   if(bs)bs.textContent=`v${VERSION} · ${AI.tagline}`;
   // Selaimen välilehti
@@ -1672,8 +1674,13 @@ function mobileSwitch(v){
 
 /* ===== CLAUDE ===== */
 async function askClaude(system,messages,max=1000){
-  const res=await apiFetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:API_MODEL,max_tokens:max,system,messages})});
-  const data=await res.json();
+  const call=async(model)=>{
+    const res=await apiFetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model,max_tokens:max,system,messages})});
+    return res.json();
+  };
+  let data=await call(API_MODEL);
+  // Jos ensisijainen malli ei kelpaa (esim. poistunut käytöstä), kokeile varamallia
+  if((!data||!Array.isArray(data.content))&&API_MODEL!==API_MODEL_FALLBACK) data=await call(API_MODEL_FALLBACK);
   if(!data||!Array.isArray(data.content)) throw new Error('worker virhe: '+JSON.stringify(data).slice(0,200));
   return data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
 }
@@ -2575,10 +2582,7 @@ function switchLearnTab(tab){
 }
 
 async function askClaudeLong(system,messages){
-  const res=await apiFetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({model:API_MODEL,max_tokens:4000,system,messages})});
-  const data=await res.json();
-  return data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+  return askClaude(system,messages,4000);
 }
 
 async function startGenerateLecture(){
