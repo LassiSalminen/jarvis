@@ -1921,6 +1921,15 @@ document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{
 async function processKnowledge(text){
   if(!text.trim())return;sClick();
   trackUse('knowledge');
+  // "jäsennä tuonti-sivut" → syötä jäsentämättömät tuonnit uudelleen käsittelyyn (yksi kerrallaan)
+  if(/jäsennä.*tuonti/i.test(text)){
+    const imports=wiki.filter(w=>(w.tags||[]).includes('tuonti'));
+    if(!imports.length){addMsg('knowlog','jarvis','Ei jäsentämättömiä tuonteja, Lassi.');return}
+    const first=imports[0];
+    wiki=wiki.filter(w=>w.id!==first.id);await saveWiki();
+    addMsg('knowlog','system','[ Jäsennetään: '+first.title+(imports.length>1?' — jäljellä vielä '+(imports.length-1):'')+' ]');
+    return processKnowledge(first.body);
+  }
   // Tunnista ruoka/harjoitus seurantaan
   if(/söin|join|aamupala|lounas|päivällinen|välipala/i.test(text)) trackUse('foodlog');
   if(/juoksin|treenasiin|pyöräilin|kävelin|sali|harjoitus|juoksu|syke/i.test(text)) trackUse('exerciselog');
@@ -1940,20 +1949,44 @@ ${JSON.stringify(wiki.map(w=>({id:w.id,title:w.title,summary:w.summary,tags:w.ta
 Vastaa AINOASTAAN JSON-objektilla, ei koodiblokkeja:
 Kysymys: {"action":"query","reply":"<vastaus>"}
 Uusi tieto: {"action":"save","reply":"<lyhyt vahvistus>","page":{"id":"<slug>","title":"<otsikko>","summary":"<1-2 lausetta>","body":"<markdown — lisää uusi merkintä olemassaolevan perään jos sivu on jo olemassa>","tags":["aihe"]}}
-Jos sivu id:llä on jo olemassa, LISÄÄ uusi merkintä sen body:n loppuun älä korvaa.`;
+Iso syöte (esim. vienti toisesta tekoälystä, monta aihetta): jaa sisältö aiheittain USEIKSI sivuiksi:
+{"action":"save","reply":"<lyhyt vahvistus>","pages":[{...},{...}]}
+Jos sivu id:llä on jo olemassa, LISÄÄ uusi merkintä sen body:n loppuun älä korvaa.
+Säilytä sivujen bodyissa kaikki konkreettinen tieto — älä tiivistä yksityiskohtia pois.`;
   try{
-    let raw=await askClaude(sys,[{role:'user',content:text}]);
+    // Vastausbudjetti skaalautuu syötteen kokoon — iso vienti tarvitsee ison JSONin
+    const maxTok=Math.min(8000,Math.max(2000,Math.round(text.length/2)));
+    let raw=await askClaude(sys,[{role:'user',content:text}],maxTok);
     raw=raw.replace(/```json|```/g,'').trim();
-    const r=JSON.parse(raw);
+    const match=raw.match(/\{[\s\S]*\}/);
+    if(!match)throw new Error('ei JSON-vastausta');
+    const r=JSON.parse(match[0]);
     span.parentElement.classList.remove('typing');sMsg();
     typewrite(span,r.reply||'Käsitelty.');
-    if(r.action==='save'&&r.page){
-      const p=r.page;p.updated=Date.now();
-      const i=wiki.findIndex(w=>w.id===p.id);
-      if(i>=0)wiki[i]={...wiki[i],...p};else wiki.unshift(p);
-      await saveWiki();sSave();
+    if(r.action==='save'){
+      const pages=Array.isArray(r.pages)?r.pages:(r.page?[r.page]:[]);
+      pages.forEach(p=>{
+        if(!p||!p.id)return;
+        p.updated=Date.now();
+        const i=wiki.findIndex(w=>w.id===p.id);
+        if(i>=0)wiki[i]={...wiki[i],...p};else wiki.unshift(p);
+      });
+      if(pages.length){await saveWiki();sSave();}
     }
-  }catch(e){span.parentElement.classList.remove('typing');span.textContent='En kyennyt jäsentämään tietoa.'}
+  }catch(e){
+    span.parentElement.classList.remove('typing');
+    // Älä koskaan hukkaa syötettä: jos jäsennys epäonnistuu, tallenna raakana
+    if(text.length>200){
+      const stamp=new Date().toLocaleString('fi-FI');
+      wiki.unshift({id:'tuonti-'+Date.now(),title:'Tuonti (jäsentämätön) '+stamp,
+        summary:'Jäsentämätön syöte '+stamp+' — pyydä: "jäsennä tuonti-sivut".',
+        body:text,tags:['tuonti'],updated:Date.now()});
+      try{await saveWiki()}catch(_){}
+      span.textContent='Jäsennys ei onnistunut kerralla, mutta tallensin syötteen talteen sivulle "Tuonti (jäsentämätön)" — mitään ei kadonnut. Voit pyytää minulta: "jäsennä tuonti-sivut".';
+    }else{
+      span.textContent='En kyennyt jäsentämään tietoa. Yritä uudelleen tai muotoile toisin.';
+    }
+  }
 }
 $('#sendKnow').onclick=()=>{const v=$('#knowInput').value;$('#knowInput').value='';processKnowledge(v)};
 
