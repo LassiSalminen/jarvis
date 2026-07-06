@@ -239,6 +239,22 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 .weather .desc{font-size:13px;color:var(--txt);margin-top:2px}
 .weather .loc{font-size:10px;letter-spacing:.22em;color:var(--txt-dim);margin-top:3px}
 .weather .coords{font-size:9px;color:var(--txt-dim);letter-spacing:.1em;margin-top:5px;opacity:.5}
+/* Sääennuste — lähipäivät */
+.forecast{margin-top:8px;border-top:1px solid var(--line2);padding-top:6px;display:flex;flex-direction:column;gap:3px;text-align:left}
+.fc-row{display:flex;align-items:baseline;gap:8px;font-size:11px}
+.fc-day{font-family:'Orbitron';font-size:9px;letter-spacing:.15em;color:var(--txt-dim);text-transform:uppercase;width:30px;flex-shrink:0}
+.fc-temp{color:var(--txt);font-weight:600;width:58px;flex-shrink:0}
+.fc-min{color:var(--txt-dim);font-weight:400}
+.fc-desc{color:var(--txt-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Markdown chat-viesteissä */
+.msg .md-h{font-family:'Orbitron';font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);margin:8px 0 3px}
+.msg .md-list{margin:4px 0 4px 18px;padding:0}
+.msg .md-list li{margin:2px 0}
+.msg .md-pre{background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:3px;padding:8px 10px;margin:6px 0;font-family:'Share Tech Mono',monospace;font-size:12px;overflow-x:auto;white-space:pre-wrap}
+.msg .md-code{background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:2px;padding:0 4px;font-family:'Share Tech Mono',monospace;font-size:12px}
+.msg .md-hr{border:none;border-top:1px solid var(--line2);margin:8px 0}
+.msg a{color:var(--cyan)}
+.msg strong{color:var(--txt-bright,#fff)}
 
 
 /* ===== TABS ===== */
@@ -806,6 +822,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
               <div style="font-size:10px;color:var(--txt-dim);letter-spacing:.15em;margin-top:4px">NASTOLA, FI · 60.95°N</div>
             </div>
           </div>
+          <div class="forecast" id="m-wForecast" style="margin-top:8px"></div>
         </div>
         <div class="m-card">
           <div class="m-card-title">SÄHKÖ · SPOT-HINTA</div>
@@ -884,6 +901,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
         <div class="desc" id="wDesc">Haetaan…</div>
         <div class="loc">NASTOLA, FI</div>
         <div class="coords">60.9500°N · 25.9300°E</div>
+        <div class="forecast" id="wForecast"></div>
       </div>
       <div style="border-top:1px solid var(--line);margin:6px 13px;padding-top:8px">
         <div style="font-family:'Orbitron';font-size:10px;letter-spacing:.15em;color:var(--txt-dim);margin-bottom:4px">SÄHKÖ · SPOT</div>
@@ -957,7 +975,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="3.1";
+const VERSION="3.2";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1079,6 +1097,9 @@ async function apiFetch(path,opts={}){
 }
 
 let wiki=[],chatHistory=[],rawLog=[],lastCompile=0,chatCount=0;
+// Chat-historia säilyy yli sivulatausten (viimeiset 40 viestiä)
+try{const v=localStorage.getItem('jarvis:chat');if(v)chatHistory=JSON.parse(v)}catch(e){}
+function saveChat(){try{localStorage.setItem('jarvis:chat',JSON.stringify(chatHistory.slice(-40)))}catch(e){}}
 let portfolio=[]; // {id, symbol, name, shares, price, side:'buy'|'sell', currency, date}
 let usage={}; // {feature/wiki-id: {count, last}}
 try{const v=localStorage.getItem('jarvis:usage');if(v)usage=JSON.parse(v)}catch(e){}
@@ -1405,9 +1426,10 @@ setInterval(updateSysMetrics,30000);
 (()=>{const h=new Date().getHours();const g=h<6?'Hyvää yötä':h<11?'Hyvää huomenta':h<17?'Hyvää päivää':'Hyvää iltaa';$('#greet').innerHTML=g+', <span>Lassi</span>'})();
 
 /* ===== WEATHER ===== */
+let weatherNow=null; // {temp, desc, days:[{name,max,min,desc}]} — myös chatin kontekstiin
 async function weather(){
   try{
-    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=60.95&longitude=25.93&current=temperature_2m,weather_code');
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=60.95&longitude=25.93&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=4&timezone=auto');
     const d=await r.json();
     const temp=Math.round(d.current.temperature_2m);
     $('#wTemp').textContent=temp+'°';
@@ -1416,6 +1438,21 @@ async function weather(){
     $('#wDesc').textContent=desc;
     const mT=document.getElementById('m-wTemp');if(mT)mT.textContent=temp+'°';
     const mD=document.getElementById('m-wDesc');if(mD)mD.textContent=desc;
+    // Ennuste: huominen + 2 seuraavaa päivää
+    let days=[];
+    if(d.daily&&Array.isArray(d.daily.time)){
+      days=d.daily.time.map((t,i)=>({
+        name:new Date(t+'T12:00').toLocaleDateString('fi-FI',{weekday:'short'}),
+        max:Math.round(d.daily.temperature_2m_max[i]),
+        min:Math.round(d.daily.temperature_2m_min[i]),
+        desc:codes[d.daily.weather_code[i]]||'—'
+      })).slice(1); // pudota tänään — nykyhetki näkyy jo isolla
+    }
+    weatherNow={temp,desc,days};
+    const rows=days.map(f=>
+      `<div class="fc-row"><span class="fc-day">${f.name}</span><span class="fc-temp">${f.max}°<span class="fc-min">/${f.min}°</span></span><span class="fc-desc">${f.desc}</span></div>`).join('');
+    const fc=document.getElementById('wForecast');if(fc)fc.innerHTML=rows;
+    const mFc=document.getElementById('m-wForecast');if(mFc)mFc.innerHTML=rows;
   }catch(e){$('#wDesc').textContent='Ei yhteyttä'}
 }
 weather();setInterval(weather,600000);
@@ -1618,11 +1655,45 @@ async function askClaude(system,messages,max=1000){
 /* PERSONA tulee aktiivisesta moodista — AI.persona */
 
 /* ===== CHAT ===== */
+// Kevyt markdown-renderöinti AI-vastauksiin. Escapettaa ensin HTML:n,
+// joten mallin tuottama sisältö ei voi injektoida koodia.
+function mdRender(t){
+  if(!t)return'';
+  let s=String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const blocks=[];
+  s=s.replace(/```(\w*)\n?([\s\S]*?)```/g,(_,lang,code)=>{blocks.push('<pre class="md-pre">'+code.replace(/\n$/,'')+'</pre>');return'\u0000B'+(blocks.length-1)+'\u0000'});
+  s=s.replace(/`([^`\n]+)`/g,'<code class="md-code">$1</code>');
+  s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
+  s=s.replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s.,!?:;)]|$)/g,'$1<em>$2</em>');
+  s=s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  // Rivitason rakenteet: otsikot ja listat
+  const out=[];let list=null; // 'ul'|'ol'
+  const closeList=()=>{if(list){out.push('</'+list+'>');list=null}};
+  s.split('\n').forEach(line=>{
+    const h=line.match(/^#{1,4}\s+(.*)/);
+    const ul=line.match(/^\s*[-•]\s+(.*)/);
+    const ol=line.match(/^\s*\d+[.)]\s+(.*)/);
+    if(h){closeList();out.push('<div class="md-h">'+h[1]+'</div>')}
+    else if(ul){if(list!=='ul'){closeList();out.push('<ul class="md-list">');list='ul'}out.push('<li>'+ul[1]+'</li>')}
+    else if(ol){if(list!=='ol'){closeList();out.push('<ol class="md-list">');list='ol'}out.push('<li>'+ol[1]+'</li>')}
+    else if(line.trim()==='---'){closeList();out.push('<hr class="md-hr">')}
+    else{closeList();out.push(line)}
+  });
+  closeList();
+  s=out.join('\n')
+    .replace(/\n{2,}/g,'<br><br>').replace(/\n/g,'<br>')
+    .replace(/(<\/(?:ul|ol|pre|div|hr)[^>]*>)<br>/g,'$1').replace(/<br>(<(?:ul|ol|pre|div|hr))/g,'$1')
+    .replace(/(<(?:ul|ol)[^>]*>)<br>/g,'$1').replace(/(<\/li>)<br>/g,'$1');
+  s=s.replace(/\u0000B(\d+)\u0000/g,(_,i)=>blocks[+i]);
+  return s;
+}
 function addMsg(logId,who,text,cls){
   const log=$('#'+logId),m=document.createElement('div');
   m.className='msg '+(cls||who);
   if(who!=='system')m.innerHTML='<div class="who">'+(who==='user'?'LASSI':AI.display)+'</div>';
-  const span=document.createElement('span');span.textContent=text;m.appendChild(span);
+  const span=document.createElement('span');
+  if(who==='jarvis'&&text)span.innerHTML=mdRender(text);else span.textContent=text;
+  m.appendChild(span);
   log.appendChild(m);log.scrollTop=log.scrollHeight;return span;
 }
 function addFlag(el,q,a){
@@ -1655,6 +1726,11 @@ function buildContext(text){
   const now=Date.now();
   const DAY=86400000;
   const lines=[];
+
+  // NYT-konteksti — kevyt tilannekuva siitä mitä Lassilla on käynnissä.
+  // Kulkee mukana jokaisessa viestissä; päivittyy automaattisesti päivän koonnissa.
+  const nyt=wiki.find(w=>w.id==='nyt-konteksti');
+  if(nyt&&nyt.body)lines.push('NYKYINEN TILANNEKUVA (mitä Lassilla on käynnissä juuri nyt):\n'+nyt.body);
 
   // Nykyiseen viestiin liittyvät wiki-sivut kokonaisuudessaan — jotta persoona voi oikeasti
   // muistaa ja viitata niihin, ei vain tietää että ne ovat olemassa.
@@ -1732,6 +1808,12 @@ function buildContext(text){
     }
   }
 
+  // Sää — nykyhetki ja lähipäivät
+  if(weatherNow){
+    lines.push('Sää Nastolassa nyt: '+weatherNow.temp+'°, '+weatherNow.desc
+      +(weatherNow.days&&weatherNow.days.length?'. Ennuste: '+weatherNow.days.map(f=>f.name+' '+f.max+'°/'+f.min+'° '+f.desc).join(', '):'')+'.');
+  }
+
   // Uutiset — jos haettu, lisää kontekstiin
   if(newsCache && newsCache.length){
     const age=Math.round((Date.now()-newsCacheTs)/60000);
@@ -1744,19 +1826,42 @@ function buildContext(text){
 async function sendChat(text){
   if(!text.trim())return;sClick();chatCount++;
   trackUse('chat');
-  addMsg('chatlog','user',text);chatHistory.push({role:'user',content:text});
-  const span=addMsg('chatlog','jarvis','');span.parentElement.classList.add('typing');
-  const ctx=buildContext(text);
-  try{
-    const reply=await askClaude(AI.persona+ctx,chatHistory.slice(-10));
-    span.parentElement.classList.remove('typing');sMsg();
-    typewrite(span,reply);chatHistory.push({role:'assistant',content:reply});
-    addFlag(span.parentElement,text,reply);
-    const e=$('#hd-chat');if(e)e.textContent=chatHistory.filter(m=>m.role==='user').length;
-    if(wakeMode||convActive) speakTTS(reply);
-  }catch(e){span.parentElement.classList.remove('typing');span.textContent='Pahoittelut, yhteys epäonnistui.'}
+  addMsg('chatlog','user',text);chatHistory.push({role:'user',content:text});saveChat();
+  const span=addMsg('chatlog','jarvis','');
+  const attempt=async()=>{
+    span.textContent='';span.parentElement.classList.add('typing');
+    const ctx=buildContext(text);
+    try{
+      const reply=await askClaude(AI.persona+ctx,chatHistory.slice(-10));
+      span.parentElement.classList.remove('typing');sMsg();
+      typewrite(span,reply);chatHistory.push({role:'assistant',content:reply});saveChat();
+      addFlag(span.parentElement,text,reply);
+      const e=$('#hd-chat');if(e)e.textContent=chatHistory.filter(m=>m.role==='user').length;
+      if(wakeMode||convActive) speakTTS(reply);
+    }catch(e){
+      span.parentElement.classList.remove('typing');
+      span.textContent=navigator.onLine?'Pahoittelut, yhteys epäonnistui.':'Ei verkkoyhteyttä — viesti odottaa.';
+      const b=document.createElement('button');b.className='flagbtn';b.textContent='⟳ yritä uudelleen';
+      b.onclick=()=>{b.remove();attempt()};
+      span.parentElement.appendChild(b);
+    }
+  };
+  await attempt();
 }
-function typewrite(el,txt){el.textContent='';let i=0;const s=()=>{if(i<txt.length){el.textContent+=txt[i++];el.parentElement.parentElement.scrollTop=9e9;setTimeout(s,7)}};s()}
+function typewrite(el,txt){el.textContent='';let i=0;const s=()=>{if(i<txt.length){el.textContent+=txt[i++];el.parentElement.parentElement.scrollTop=9e9;setTimeout(s,7)}else{el.innerHTML=mdRender(txt);el.parentElement.parentElement.scrollTop=9e9}};s()}
+
+// Palauta edellinen keskustelu sivulatauksen jälkeen (esim. tabletti sammutti selaimen)
+function restoreChat(){
+  if(!chatHistory.length)return;
+  chatHistory.forEach(m=>{
+    if(typeof m.content!=='string')return;
+    addMsg('chatlog',m.role==='user'?'user':'jarvis',m.content);
+  });
+  addMsg('chatlog','system','[ Edellinen keskustelu palautettu — ✕ LOPETA & KOKOA aloittaa puhtaalta pöydältä ]');
+  if(chatHistory.length>=2)$('#endConvBar').classList.add('show');
+  const e=$('#hd-chat');if(e)e.textContent=chatHistory.filter(m=>m.role==='user').length;
+}
+restoreChat();
 
 $('#sendChat').onclick=()=>{const v=$('#chatInput').value;$('#chatInput').value='';sendChat(v)};
 $('#chatInput').onkeydown=e=>{if(e.key==='Enter')$('#sendChat').click()};
@@ -2081,8 +2186,10 @@ async function compileDay(auto){
   const tr=rawLog.filter(r=>r.ts>=today.getTime());
   if(!tr.length){if(!auto)addMsg('knowlog','jarvis','Tältä päivältä ei ole merkittyjä keskusteluja, Lassi. Nosta chatissa 👍 viesteistä jotka haluat muistiin.');return}
   const span=addMsg('knowlog','jarvis','');span.parentElement.classList.add('typing');
+  const nytPage=wiki.find(w=>w.id==='nyt-konteksti');
   const sys=`Olet ${AI.name} ja kokoat Lassin päivän. Vastaa AINOASTAAN JSON-objektilla (ei koodiblokkeja):
-{"reply":"<päiväyhteenveto suomeksi ${AI.name}-tyylillä ja -sävyllä>","pages":[{"id":"<slug>","title":"...","summary":"...","body":"<markdown>","tags":["..."]}]}
+{"reply":"<päiväyhteenveto suomeksi ${AI.name}-tyylillä ja -sävyllä>","pages":[{"id":"<slug>","title":"...","summary":"...","body":"<markdown>","tags":["..."]}],"nyt":"<päivitetty tilannekuva markdownina, max 10 riviä: aktiiviset projektit ja tekemiset, avoimet asiat, mitä seurataan. Säilytä edellisestä tilannekuvasta se mikä on yhä ajankohtaista, pudota vanhentunut.>"}
+${nytPage&&nytPage.body?'Edellinen tilannekuva:\n'+nytPage.body+'\n':''}
 Nykyiset wiki-sivut: ${JSON.stringify(wiki.map(w=>({id:w.id,title:w.title})))}`;
   try{
     let out=await askClaude(sys,[{role:'user',content:'Tämän päivän merkityt:\n\n'+tr.map(r=>`Lassi: ${r.q}\n${AI.name}: ${r.a}`).join('\n---\n')}],3000);
@@ -2095,6 +2202,11 @@ Nykyiset wiki-sivut: ${JSON.stringify(wiki.map(w=>({id:w.id,title:w.title})))}`;
     const dp={id:dayId,title:'Päiväkirja '+dstr,summary:r.reply.slice(0,120),body:r.reply,tags:['päiväkirja'],updated:Date.now()};
     if(di>=0)wiki[di]=dp;else wiki.unshift(dp);
     (r.pages||[]).forEach(p=>{p.updated=Date.now();const i=wiki.findIndex(w=>w.id===p.id);if(i>=0)wiki[i]={...wiki[i],...p};else wiki.unshift(p)});
+    if(r.nyt&&typeof r.nyt==='string'){
+      const np={id:'nyt-konteksti',title:'NYT — nykyinen konteksti',summary:'Tilannekuva: mitä Lassilla on käynnissä juuri nyt. Päivittyy päivän koonnissa.',body:r.nyt,tags:['järjestelmä'],updated:Date.now()};
+      const ni=wiki.findIndex(w=>w.id==='nyt-konteksti');
+      if(ni>=0)wiki[ni]={...wiki[ni],...np};else wiki.unshift(np);
+    }
     await saveWiki();sSave();
     lastCompile=Date.now();try{localStorage.setItem('jarvis:lastcompile',JSON.stringify(lastCompile))}catch(e){}
   }catch(e){span.parentElement.classList.remove('typing');span.textContent='Päivän koonti epäonnistui.'}
@@ -2141,7 +2253,9 @@ Jos mitään ei kannata poistaa/yhdistää, palauta {"poista":[],"yhdista":[]}.`
     raw=raw.replace(/```json|```/g,'').trim();
     const r=JSON.parse(raw);
     const removed=[];
+    const PROTECTED=new Set(['nyt-konteksti',OVERVIEW_ID]); // järjestelmäsivut, ei koskaan siivota
     (r.yhdista||[]).forEach(m=>{
+      if(PROTECTED.has(m.poistettava))return;
       const keep=wiki.find(w=>w.id===m.sailytettava),drop=wiki.find(w=>w.id===m.poistettava);
       if(keep&&drop&&keep.id!==drop.id){
         keep.body=(keep.body||'')+'\n\n---\n'+(drop.body||drop.summary||'');
@@ -2151,6 +2265,7 @@ Jos mitään ei kannata poistaa/yhdistää, palauta {"poista":[],"yhdista":[]}.`
       }
     });
     (r.poista||[]).forEach(p=>{
+      if(PROTECTED.has(p.id))return;
       const i=wiki.findIndex(w=>w.id===p.id);
       if(i>=0){removed.push(`${wiki[i].title} (${p.syy||'vanhentunut'})`);wiki.splice(i,1);}
     });
@@ -3141,7 +3256,7 @@ async function endTextConversation(){
   if(chatHistory.length<2){addMsg('chatlog','system','[ Ei riittävästi keskustelua yhteenvetoon ]');return}
   addMsg('chatlog','system','[ Luodaan yhteenveto… ]');
   await summarizeConv(chatHistory.slice(-20));
-  chatHistory=[];
+  chatHistory=[];saveChat();
   $('#endConvBar').classList.remove('show');
 }
 
