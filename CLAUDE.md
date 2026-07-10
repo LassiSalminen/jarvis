@@ -42,8 +42,11 @@ PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
   (punainen lanka + edellisen luvun loppu promptissa); HQ-ääni (Google TTS
   `/api/gtts`) ladataan automaattisesti generoinnin perään IndexedDB:hen →
   offline-kuuntelu; soittimessa ±15 s kelaus ja lukuvalikko;
-  e-kirjalukutila; navigator.storage.persist() suojaa äänet tyhjennykseltä;
-  fallback Web Speech.
+  Media Session → lukitusnäytön/kuulokkeiden ohjaimet; keskeytynyt
+  generointi jatkuu luonnoksesta (jarvis:lectureDraft) ja äänilataus
+  ohittaa jo ladatut luvut; ❓-nappi luo luennosta kertauskortit Oppi-
+  putkeen (SM-2); e-kirjalukutila; navigator.storage.persist() suojaa
+  äänet tyhjennykseltä; fallback Web Speech.
 - **Uutiset**: worker hakee, Claude suodattaa kiinnostusten mukaan.
 - **Sijoitus**: salkku + live-kurssit + AI-arviot (ei sijoitusneuvontaa).
 - **HUD**: arc reactor, sää+ennuste, sähkö+halvin tunti, Garmin, mittarit.
