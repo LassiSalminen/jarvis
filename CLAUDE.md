@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v3.2). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v3.3). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen.
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
 Kaksi persoonaa: U.L.T.R.O.N. (oletus, synkkä sarkasmi) ja J.A.R.V.I.S.
@@ -26,7 +26,7 @@ Malli: Claude Sonnet 5, automaattinen fallback Sonnet 4.6:een (`API_MODEL`).
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v3.2)
+## Toiminnot (v3.3)
 - **Chat**: persoonamoodit, markdown-renderöinti (mdRender, XSS-suojattu),
   historia säilyy localStoragessa yli latausten, yritä uudelleen -nappi,
   pikatoiminto-chipit (tilanne/treeni/sää/sähkö/uutiset). 👍-nosto → rawLog.
@@ -67,6 +67,8 @@ Kun muokkaat julkaistavia tiedostoja (`jarvis.html`, `manifest.json`, `sw.js`,
 ikonit), committaa ja pushaa muutokset GitHubiin automaattisesti muokkauksen
 jälkeen — GitHub Pages päivittyy pushista. `worker.js` EI koskaan GitHubiin.
 Muutosten jälkeen: aja `node --check` irrotetulle skriptilohkolle ennen pushia.
+Kun toiminnallisuus muuttuu, nosta `jarvis.html`:n `VERSION`-vakiota ja pidä
+CLAUDE.md:n versionumero samana (BUILD päivittyy itsestään).
 HUOM: worker.js-muutokset eivät tule voimaan ennen kuin Lassi päivittää
 workerin Cloudflareen käsin — älä riko HTML:ää workerin uusilla endpointeilla
 ilman fallbackia.
