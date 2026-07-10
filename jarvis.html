@@ -392,6 +392,10 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 .lp-title{font-family:'Orbitron';font-size:10px;color:var(--cyan);letter-spacing:.1em;margin-bottom:2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lp-chapter{font-size:11px;color:var(--txt-dim);margin-bottom:7px;letter-spacing:.08em}
+.lp-chapter-sel{font-size:11px;color:var(--txt-dim);margin-bottom:7px;letter-spacing:.08em;width:100%;
+  background:transparent;border:none;outline:none;cursor:pointer;font-family:'Share Tech Mono';
+  padding:2px 0;appearance:auto}
+.lp-chapter-sel option{background:#020810;color:var(--txt)}
 .lp-progress{height:2px;background:rgba(var(--accent-rgb),.1);border-radius:1px;margin-bottom:8px}
 .lp-fill{height:100%;background:var(--cyan);border-radius:1px;transition:width .4s}
 .lp-controls{display:flex;gap:6px;align-items:center}
@@ -755,7 +759,14 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
         <div class="learn-body" id="lectureList" style="flex:1;min-height:0;padding:10px"></div>
         <div class="lecture-gen">
           <input id="lectureTopicInput" class="lecture-input" placeholder="Aihe: esim. Kvanttimekaniikka, Rooman historia, Tekoälyn historia…">
-          <button class="btn" id="lectureGenBtn" onclick="startGenerateLecture()">⊕ LUO LUENTO</button>
+          <div style="display:flex;gap:6px">
+            <select id="lectureLenSel" class="lecture-input" style="flex:1;width:auto;cursor:pointer">
+              <option value="short">Tiivis · ~10 min</option>
+              <option value="normal" selected>Normaali · ~25 min</option>
+              <option value="deep">Syväluotaus · ~45 min</option>
+            </select>
+            <button class="btn" id="lectureGenBtn" style="flex:1" onclick="startGenerateLecture()">⊕ LUO LUENTO</button>
+          </div>
         </div>
         <div id="lecturePlayer" class="lecture-player" style="display:none"></div>
       </div>
@@ -2618,6 +2629,19 @@ async function askClaudeLong(system,messages){
   return askClaude(system,messages,4000);
 }
 
+// Yritä uudelleen kerran — yksittäisen luvun verkkovirhe ei kaada koko luentoa
+async function askClaudeRetry(system,messages,max){
+  try{return await askClaude(system,messages,max)}
+  catch(e){await new Promise(r=>setTimeout(r,2000));return askClaude(system,messages,max)}
+}
+
+// Pituuspresetit: lukumäärä + sanamäärä/luku + token-katto
+const LECTURE_PRESETS={
+  short: {chapters:4, words:'300-400', maxTok:2000},
+  normal:{chapters:6, words:'400-550', maxTok:2600},
+  deep:  {chapters:9, words:'550-750', maxTok:3600}
+};
+
 async function startGenerateLecture(){
   const inp=document.getElementById('lectureTopicInput');
   const topic=(inp?.value||'').trim();
@@ -2626,39 +2650,51 @@ async function startGenerateLecture(){
     addMsg('chatlog','system','[ Luennon generointi vaatii internet-yhteyden ]');
     return;
   }
+  const preset=LECTURE_PRESETS[document.getElementById('lectureLenSel')?.value]||LECTURE_PRESETS.normal;
   const btn=document.getElementById('lectureGenBtn');
   const listEl=document.getElementById('lectureList');
   btn.textContent='⏳ GENEROIDAAN…';btn.disabled=true;
   const setProg=t=>{listEl.innerHTML='<div class="learn-placeholder">'+esc(t)+'</div>';};
 
   try{
-    // 1) Suunnittele runko: otsikko, kuvaus, 6 luvun otsikot (pieni JSON)
+    // 1) Suunnittele runko: otsikko, kuvaus, punainen lanka + lukujen otsikot ja fokukset (pieni JSON)
     setProg(AI.name+' suunnittelee luennon rakennetta aiheesta "'+topic+'"…');
-    const planSys=`Olet ${AI.name}, taitava luennoitsija. Suunnittele SYVÄLLINEN, LAAJA oppimisluento aiheesta: "${topic}".
+    const N=preset.chapters;
+    const planSys=`Olet ${AI.name}, taitava luennoitsija. Suunnittele SYVÄLLINEN oppimisluento aiheesta: "${topic}". Luentoon tulee tasan ${N} lukua.
 Palauta VAIN validi JSON, ei mitään muuta tekstiä:
-{"title":"Napakka luennon otsikko","description":"1-2 lausetta mistä luento kertoo","chapters":["Luvun 1 otsikko","Luvun 2 otsikko","Luvun 3 otsikko","Luvun 4 otsikko","Luvun 5 otsikko","Luvun 6 otsikko"]}
-Luku 1 = koukuttava aloitus. Luvut 2-5 = konteksti, historia, mekaniikka, yhteydet, esimerkit. Luku 6 = yhteenveto ja miksi tämä muuttaa tapaa ajatella.`;
-    const planRaw=await askClaude(planSys,[{role:'user',content:'Suunnittele luento: '+topic}],1200);
+{"title":"Napakka luennon otsikko","description":"1-2 lausetta mistä luento kertoo","thread":"Yksi lause: luennon punainen lanka eli kantava idea joka sitoo luvut yhteen","chapters":[{"title":"Luvun otsikko","focus":"1 lause: mitä juuri tämä luku käsittelee ja mitä kuulija oivaltaa"}]}
+Luku 1 = koukuttava aloitus joka herättää kysymyksen. Keskiluvut = konteksti, historia, mekaniikka, yhteydet muihin ilmiöihin, konkreettiset esimerkit ja tarinat. Viimeinen luku = kokoava yhteenveto ja miksi tämä muuttaa tapaa ajatella.
+Suunnittele fokukset niin, että luvut eivät mene päällekkäin vaan rakentuvat toistensa varaan.`;
+    const planRaw=await askClaudeRetry(planSys,[{role:'user',content:'Suunnittele luento: '+topic}],1600);
     const pm=planRaw.match(/\{[\s\S]*\}/); if(!pm) throw new Error('ei runkoa');
     const plan=JSON.parse(pm[0]);
-    const titles=(plan.chapters||[]).slice(0,6).filter(Boolean);
-    if(!titles.length) throw new Error('ei lukuja');
+    const outline=(plan.chapters||[]).slice(0,N)
+      .map(c=>typeof c==='string'?{title:c,focus:''}:{title:c.title||'',focus:c.focus||''})
+      .filter(c=>c.title);
+    if(!outline.length) throw new Error('ei lukuja');
 
-    // 2) Kirjoita kukin luku erikseen — pelkkä proosa, ei JSON (ei token-katkeamista)
+    // 2) Kirjoita kukin luku erikseen — pelkkä proosa, ei JSON (ei token-katkeamista).
+    //    Jatkuvuus: luku näkee punaisen langan, koko rungon ja edellisen luvun lopun.
     const chapters=[];
-    for(let i=0;i<titles.length;i++){
-      setProg(AI.name+' kirjoittaa lukua '+(i+1)+'/'+titles.length+':\n\n"'+titles[i]+'"\n\nÄlä sulje sovellusta — tämä kestää hetken.');
+    for(let i=0;i<outline.length;i++){
+      setProg(AI.name+' kirjoittaa lukua '+(i+1)+'/'+outline.length+':\n\n"'+outline[i].title+'"\n\nÄlä sulje sovellusta — tämä kestää hetken.');
+      const isLast=i===outline.length-1;
+      const prevTail=i>0?(chapters[i-1].content||'').slice(-400):'';
       const chSys=`Olet ${AI.name}, innostava luennoitsija. Kirjoitat yhtä lukua laajasta, ääneen kuunneltavasta luennosta aiheesta "${topic}".
-Tämän luvun otsikko: "${titles[i]}".
-Koko luennon rakenne kontekstiksi: ${titles.map((t,n)=>(n+1)+'. '+t).join(' / ')}.
+Luennon punainen lanka: ${plan.thread||plan.description||topic}
+Koko luennon rakenne: ${outline.map((c,n)=>(n+1)+'. '+c.title).join(' / ')}.
+Tämän luvun otsikko: "${outline[i].title}" (luku ${i+1}/${outline.length}).${outline[i].focus?'\nTämän luvun fokus: '+outline[i].focus:''}${prevTail?'\n\nEdellinen luku päättyi näin — jatka tästä luontevasti, älä toista sitä:\n"…'+prevTail+'"':''}
 
 OHJEET:
-- Kirjoita 350-500 sanaa luontevaa suomenkielistä PROOSAA. EI listoja, EI väliotsikoita, EI bulletpointeja.
-- Luento kuunnellaan ääneen kävellessä — vältä merkkejä joita ei lueta ääneen (%, #, =, <, >).
-- Selitä syvällisesti mutta selkeästi, rakenna uteliaisuutta, käytä konkreettisia esimerkkejä.
-- Älä toista muiden lukujen sisältöä. Palauta VAIN tämän luvun teksti, ei otsikkoa eikä mitään muuta.`;
-      const txt=await askClaude(chSys,[{role:'user',content:'Kirjoita luku: '+titles[i]}],2500);
-      chapters.push({title:titles[i], content:(txt||'').trim()});
+- Kirjoita ${preset.words} sanaa luontevaa suomenkielistä PROOSAA. EI listoja, EI väliotsikoita, EI bulletpointeja.
+- Luento kuunnellaan ääneen kävellessä. Vältä merkkejä joita ei lueta ääneen (%, #, =, <, >) ja kirjoita numerot, vuosiluvut, yksiköt ja lyhenteet auki sanoiksi (esim. "kolmekymmentä prosenttia", "tuhatyhdeksänsataaluvulla").
+- Selitä syvällisesti mutta selkeästi. Käytä konkreettisia esimerkkejä, tarinoita ja vertauksia arkielämään — abstrakti asia aukeaa parhaiten kuvan kautta.
+- Puhuttele kuulijaa suoraan silloin tällöin ja rakenna uteliaisuutta: esitä kysymys ennen kuin vastaat siihen.
+- Pysy tämän luvun fokuksessa, älä toista muiden lukujen sisältöä.
+${isLast?'- Tämä on viimeinen luku: kokoa punainen lanka yhteen ja päätä ajatukseen joka jää mieleen.':'- Päätä luku yhdellä lauseella joka virittää kuulijan seuraavaan lukuun ("'+outline[i+1].title+'") paljastamatta sen sisältöä.'}
+- Palauta VAIN tämän luvun teksti, ei otsikkoa eikä mitään muuta.`;
+      const txt=await askClaudeRetry(chSys,[{role:'user',content:'Kirjoita luku: '+outline[i].title}],preset.maxTok);
+      chapters.push({title:outline[i].title, content:(txt||'').trim()});
     }
 
     const lecture={
@@ -2672,7 +2708,18 @@ OHJEET:
     saveLectures();
     if(inp)inp.value='';
     sSave();
+
+    // 3) Lataa HQ-ääni heti perään → luento on valmis offline-kuunteluun yhdellä painalluksella.
+    //    Epäonnistuminen (esim. TTS-avain puuttuu) ei kaada luentoa — manuaalinen nappi jää soittimeen.
+    try{
+      await fetchLectureAudio(lecture,(n,t)=>setProg('Luento valmis!\n\nLadataan HQ-ääntä: luku '+n+'/'+t+'…\n\nÄlä sulje sovellusta.'));
+      saveLectures();
+      toast('🎧 Luento ja HQ-ääni valmiit — kuunneltavissa offline');
+    }catch(e){
+      toast('Luento valmis. HQ-äänen lataus epäonnistui: '+(e.message||'virhe')+' — voit yrittää soittimen napista.',5000);
+    }
     renderLectureList();
+    openLecture(0);
   }catch(e){
     listEl.innerHTML='<div class="learn-placeholder">Luennon generointi epäonnistui ('+esc(e.message||'virhe')+').\n\n<button class="btn ghost" style="margin-top:10px" onclick="startGenerateLecture()">↻ Yritä uudelleen</button></div>';
   }
@@ -2683,7 +2730,7 @@ function renderLectureList(){
   const listEl=document.getElementById('lectureList');
   if(!listEl)return;
   if(!lectures.length){
-    listEl.innerHTML='<div class="learn-placeholder">Ei tallennettuja luentoja.\n\nKirjoita aihe alle ja paina LUO LUENTO.\n\nLuento tallennetaan laitteelle — kuuntelet sen offline-tilassa kävellessä. ✓</div>';
+    listEl.innerHTML='<div class="learn-placeholder">Ei tallennettuja luentoja.\n\nKirjoita aihe, valitse pituus ja paina LUO LUENTO.\n\nLuento ja HQ-ääni tallennetaan laitteelle automaattisesti — kuuntelet sen offline-tilassa kävellessä. ✓</div>';
     return;
   }
   listEl.innerHTML=lectures.map((l,i)=>{
@@ -2760,7 +2807,6 @@ function updateLecturePlayer(){
   if(!player)return;
   if(!lp.lecture){player.style.display='none';return;}
   player.style.display='block';
-  const ch=lp.lecture.chapters[lp.chapter];
   const total=lp.lecture.chapters.length;
   const audioBtn=lp.dl
     ?`<button class="btn ghost" style="font-size:11px;min-height:38px;flex:1" disabled>⏳ ${esc(lp.dlMsg||'Ladataan…')}</button>`
@@ -2769,13 +2815,17 @@ function updateLecturePlayer(){
       :`<button class="btn ghost" style="font-size:11px;min-height:38px;flex:1" onclick="downloadLectureAudio()">⭳ LATAA HQ-ÄÄNI</button>`);
   player.innerHTML=`
     <div class="lp-title">${esc(lp.lecture.title)}</div>
-    <div class="lp-chapter">Luku ${lp.chapter+1}/${total}: ${esc(ch?.title||'')}</div>
+    <select class="lp-chapter-sel" onchange="lpGoto(+this.value)" title="Valitse luku">
+      ${lp.lecture.chapters.map((c,i)=>`<option value="${i}"${i===lp.chapter?' selected':''}>Luku ${i+1}/${total}: ${esc(c.title||'')}</option>`).join('')}
+    </select>
     <div class="lp-progress" onclick="lpSeek(event)"><div class="lp-fill" id="lpFill" style="width:0%"></div></div>
     <div class="lp-timerow"><span id="lpTime">${lp.hasAudio?'0:00':'—'}</span><span>${lp.hasAudio?'🎧 HQ-ääni · kelattava':'laitteen puheääni'}</span></div>
     <div class="lp-controls">
-      <button class="btn ghost" style="font-size:16px;padding:0 14px;min-height:42px" onclick="lpPrev()" title="Edellinen luku">⏮</button>
+      <button class="btn ghost" style="font-size:16px;padding:0 10px;min-height:42px" onclick="lpPrev()" title="Edellinen luku">⏮</button>
+      <button class="btn ghost" style="font-size:11px;padding:0 8px;min-height:42px" onclick="lpSkip(-15)" title="15 s taaksepäin">↺15</button>
       <button class="btn" style="font-size:13px;min-height:42px;flex:1" onclick="lpToggle()">${lp.playing?'⏸ TAUKO':'▶ TOISTA'}</button>
-      <button class="btn ghost" style="font-size:16px;padding:0 14px;min-height:42px" onclick="lpNext()" title="Seuraava luku">⏭</button>
+      <button class="btn ghost" style="font-size:11px;padding:0 8px;min-height:42px" onclick="lpSkip(15)" title="15 s eteenpäin">15↻</button>
+      <button class="btn ghost" style="font-size:16px;padding:0 10px;min-height:42px" onclick="lpNext()" title="Seuraava luku">⏭</button>
     </div>
     <div class="lp-controls" style="margin-top:6px">
       ${audioBtn}
@@ -2918,6 +2968,20 @@ function lpGoto(ch){
 function lpPrev(){if(lp.lecture)lpGoto(lp.chapter-1);}
 function lpNext(){if(lp.lecture)lpGoto(lp.chapter+1);}
 
+// ±15 s -kelaus (vain HQ-äänellä — puhesynteesi ei tue kelausta)
+function lpSkip(sec){
+  if(lp.audio&&lp.audio.duration){
+    const a=lp.audio;
+    a.currentTime=Math.max(0,Math.min(a.duration,a.currentTime+sec));
+    lpPaintProgress(a.currentTime/a.duration,a.currentTime,a.duration);
+    lpMaybeSavePos(a.currentTime);
+  }else if(lp.hasAudio){
+    toast('Paina ensin ▶ TOISTA — sitten voit kelata');
+  }else{
+    toast('Kelaus vaatii HQ-äänen — paina ⭳ LATAA HQ-ÄÄNI');
+  }
+}
+
 function lpCycleSpeed(){
   const speeds=[0.8,0.9,1.0,1.1,1.2,1.4,1.6];
   const idx=speeds.indexOf(lp.speed);
@@ -2929,27 +2993,46 @@ function lpCycleSpeed(){
 function lpClose(){lpHardStop();lp.lecture=null;updateLecturePlayer();}
 
 /* HQ-äänen lataus: Google TTS workerin kautta → IndexedDB → offline-toisto */
+
+// Pyydä pysyvää tallennusta kerran — ilman tätä Android voi tyhjentää
+// IndexedDB:n äänet tilan loppuessa, ja offline-luennot katoaisivat.
+let _persistAsked=false;
+async function ensurePersistentStorage(){
+  if(_persistAsked)return;_persistAsked=true;
+  try{
+    if(navigator.storage?.persist&&!(await navigator.storage.persisted()))
+      await navigator.storage.persist();
+  }catch(e){}
+}
+
+// Hae luennon kaikkien lukujen HQ-ääni IndexedDB:hen (jaettu: soittimen nappi + autolataus generoinnin jälkeen)
+async function fetchLectureAudio(l,onProg){
+  await ensurePersistentStorage();
+  for(let i=0;i<l.chapters.length;i++){
+    if(onProg)onProg(i+1,l.chapters.length);
+    const ch=l.chapters[i];
+    const text='Luku '+(i+1)+': '+ch.title+'. '+ch.content;
+    const parts=splitTextForTTS(text,4200);
+    const blobs=[];
+    for(const p of parts){
+      const r=await apiFetch('/api/gtts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:p})});
+      if(r.status===501)throw new Error('GOOGLE_TTS_API_KEY puuttuu workerista — ks. ASENNUS.md');
+      if(!r.ok)throw new Error('TTS-virhe '+r.status);
+      blobs.push(await r.blob());
+    }
+    await idbPut('aud:'+l.id+':'+i,new Blob(blobs,{type:'audio/mpeg'}));
+  }
+  l.audio=true;
+}
+
 async function downloadLectureAudio(){
   if(!lp.lecture||lp.dl)return;
   if(!navigator.onLine){toast('Äänen lataus vaatii verkkoyhteyden');return;}
   lp.dl=true;
   const l=lp.lecture;
   try{
-    for(let i=0;i<l.chapters.length;i++){
-      lp.dlMsg='Luku '+(i+1)+'/'+l.chapters.length+'…';updateLecturePlayer();
-      const ch=l.chapters[i];
-      const text='Luku '+(i+1)+': '+ch.title+'. '+ch.content;
-      const parts=splitTextForTTS(text,4200);
-      const blobs=[];
-      for(const p of parts){
-        const r=await apiFetch('/api/gtts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:p})});
-        if(r.status===501)throw new Error('GOOGLE_TTS_API_KEY puuttuu workerista — ks. ASENNUS.md');
-        if(!r.ok)throw new Error('TTS-virhe '+r.status);
-        blobs.push(await r.blob());
-      }
-      await idbPut('aud:'+l.id+':'+i,new Blob(blobs,{type:'audio/mpeg'}));
-    }
-    lp.hasAudio=true;l.audio=true;saveLectures();renderLectureList();
+    await fetchLectureAudio(l,(n,t)=>{lp.dlMsg='Luku '+n+'/'+t+'…';updateLecturePlayer();});
+    lp.hasAudio=true;saveLectures();renderLectureList();
     toast('🎧 HQ-ääni ladattu — toimii offline ja kelattavana');
   }catch(e){toast('Äänen lataus epäonnistui: '+(e.message||'tuntematon virhe'),4000);}
   lp.dl=false;lp.dlMsg='';updateLecturePlayer();

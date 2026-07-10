@@ -37,8 +37,13 @@ PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
   + yhteenveto-välilehti. Tiedostot: txt/md/pdf/kuvat/audio.
   "Kokoa päivä" klo 21 + automaattisiivous (pruneWiki) — järjestelmäsivut
   `nyt-konteksti` ja `yleiskatsaus` on suojattu siivoukselta.
-- **Oppi**: SM-2-kertausalgoritmi, päiväputki. **Luennot**: generointi +
-  TTS-toisto (ElevenLabs/Web Speech), e-kirjalukutila, audio IndexedDB:ssä.
+- **Oppi**: SM-2-kertausalgoritmi, päiväputki. **Luennot**: generointi
+  pituusvalinnalla (tiivis/normaali/syvä) ja lukujen jatkuvuudella
+  (punainen lanka + edellisen luvun loppu promptissa); HQ-ääni (Google TTS
+  `/api/gtts`) ladataan automaattisesti generoinnin perään IndexedDB:hen →
+  offline-kuuntelu; soittimessa ±15 s kelaus ja lukuvalikko;
+  e-kirjalukutila; navigator.storage.persist() suojaa äänet tyhjennykseltä;
+  fallback Web Speech.
 - **Uutiset**: worker hakee, Claude suodattaa kiinnostusten mukaan.
 - **Sijoitus**: salkku + live-kurssit + AI-arviot (ei sijoitusneuvontaa).
 - **HUD**: arc reactor, sää+ennuste, sähkö+halvin tunti, Garmin, mittarit.
