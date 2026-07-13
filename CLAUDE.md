@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v3.3). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v3.4). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen.
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
 Kaksi persoonaa: U.L.T.R.O.N. (oletus, synkkä sarkasmi) ja J.A.R.V.I.S.
@@ -26,7 +26,7 @@ Malli: Claude Sonnet 5, automaattinen fallback Sonnet 4.6:een (`API_MODEL`).
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v3.3)
+## Toiminnot (v3.4)
 - **Chat**: persoonamoodit, markdown-renderöinti (mdRender, XSS-suojattu),
   historia säilyy localStoragessa yli latausten, yritä uudelleen -nappi,
   pikatoiminto-chipit (tilanne/treeni/sää/sähkö/uutiset). 👍-nosto → rawLog.
@@ -47,6 +47,11 @@ PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
   ohittaa jo ladatut luvut; ❓-nappi luo luennosta kertauskortit Oppi-
   putkeen (SM-2); e-kirjalukutila; navigator.storage.persist() suojaa
   äänet tyhjennykseltä; fallback Web Speech.
+- **Offline (reissutila)**: wiki + luennot peilataan localStorageen →
+  listat toimivat ilman verkkoa; "Lataa kaikki HQ-äänet" -massalataus +
+  tallennustilan näyttö luentolistassa; Oppi-kertaukset toimivat offline
+  vaikka uuden oppitunnin haku epäonnistuu; sw.js cachettaa myös ikonit
+  ja CDN-resurssit (fontit, pdf.js).
 - **Uutiset**: worker hakee, Claude suodattaa kiinnostusten mukaan.
 - **Sijoitus**: salkku + live-kurssit + AI-arviot (ei sijoitusneuvontaa).
 - **HUD**: arc reactor, sää+ennuste, sähkö+halvin tunti, Garmin, mittarit.

@@ -727,7 +727,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
           <div class="hstat"><span class="v" id="hd-up">0:00</span><span class="l">UPTIME</span></div>
         </div>
       </div>
-      <div class="ticker"><span class="ticker-inner" id="tickerInner">ULTRON v3.3 ONLINE &nbsp;&middot;&nbsp; NASTOLA COMMAND CENTER &nbsp;&middot;&nbsp; KAIKKI JÄRJESTELMÄT NORMAALITILASSA &nbsp;&middot;&nbsp; TIETOPANKKI SYNKRONOITU &nbsp;&middot;&nbsp; CLAUDE SONNET 5 AKTIIVINEN &nbsp;&middot;&nbsp; SIJAINTI: 60.9500°N 25.9300°E &nbsp;&middot;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+      <div class="ticker"><span class="ticker-inner" id="tickerInner">ULTRON v3.4 ONLINE &nbsp;&middot;&nbsp; NASTOLA COMMAND CENTER &nbsp;&middot;&nbsp; KAIKKI JÄRJESTELMÄT NORMAALITILASSA &nbsp;&middot;&nbsp; TIETOPANKKI SYNKRONOITU &nbsp;&middot;&nbsp; CLAUDE SONNET 5 AKTIIVINEN &nbsp;&middot;&nbsp; SIJAINTI: 60.9500°N 25.9300°E &nbsp;&middot;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
     </div>
 
     <!-- LEARN -->
@@ -1000,7 +1000,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="3.3";
+const VERSION="3.4";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1337,13 +1337,24 @@ setInterval(()=>{
 },1000);
 
 /* ===== STORAGE ===== */
+/* Offline-peili: wiki ja luennot elävät workerin KV:ssä, mutta reissulla
+   ilman verkkoa käytetään localStorage-kopiota — muuten listat olisivat
+   tyhjiä vaikka data (ja äänet) ovat laitteella. */
+function saveWikiMirror(){try{localStorage.setItem('jarvis:wikiCache',JSON.stringify(wiki))}catch(e){}}
 async function loadWiki(){
-  try{const r=await apiFetch('/api/wiki');wiki=await r.json();if(!Array.isArray(wiki))wiki=[]}catch(e){wiki=[]}
+  try{
+    const r=await apiFetch('/api/wiki');wiki=await r.json();if(!Array.isArray(wiki))wiki=[];
+    saveWikiMirror();
+  }catch(e){
+    try{wiki=JSON.parse(localStorage.getItem('jarvis:wikiCache')||'[]')}catch(e2){wiki=[]}
+    if(!Array.isArray(wiki))wiki=[];
+  }
   try{const v=localStorage.getItem('jarvis:raw');if(v)rawLog=JSON.parse(v)}catch(e){}
   try{const v=localStorage.getItem('jarvis:lastcompile');if(v)lastCompile=JSON.parse(v)}catch(e){}
   renderWiki();
 }
 async function saveWiki(){
+  saveWikiMirror();
   try{await apiFetch('/api/wiki',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(wiki)})}catch(e){}
   renderWiki();
 }
@@ -2430,7 +2441,9 @@ Vastaa VAIN JSON:
     const lesson=JSON.parse(match[0]);
     renderLesson(lesson);
   }catch(e){
-    body.innerHTML=`<div class="learn-placeholder">Lataus epäonnistui.<br><br><button class="btn ghost" onclick="generateLesson()">… Yritä uudelleen</button></div>`;
+    // Offline/virhe: kertaukset toimivat silti — ne ovat laitteella (SM-2 + luentokortit)
+    if(dueTopics().length)renderLesson(null);
+    else body.innerHTML=`<div class="learn-placeholder">Lataus epäonnistui${navigator.onLine?'':' — ei verkkoyhteyttä'}.<br><br><button class="btn ghost" onclick="generateLesson()">… Yritä uudelleen</button></div>`;
   }
 }
 
@@ -2462,6 +2475,13 @@ function renderLesson(lesson){
         </div>
       </div>`;
     }
+  }
+
+  // lesson voi olla null (offline): näytetään vain kertaukset
+  if(!lesson){
+    html+=`<div class="learn-placeholder" style="padding:14px">Uusi oppitunti vaatii verkkoyhteyden — mutta kertaukset toimivat offline. ✓<br><br><button class="btn ghost" style="font-size:11px" onclick="generateLesson()">↻ Yritä hakea oppitunti</button></div>`;
+    body.innerHTML=html;
+    return;
   }
 
   // Tallenna lesson globaalisti — onclick viittaa näihin
@@ -2591,6 +2611,7 @@ document.querySelector('.tab[data-view="learn"]').addEventListener('click',()=>{
 
 /* ===== LUENNOT ===== */
 let lectures=[];
+function saveLecturesMirror(){try{localStorage.setItem('jarvis:lecturesCache',JSON.stringify(lectures))}catch(e){}}
 async function loadLectures(){
   try{
     const r=await apiFetch('/api/lectures');lectures=await r.json();if(!Array.isArray(lectures))lectures=[];
@@ -2604,10 +2625,16 @@ async function loadLectures(){
         }
       }catch(e){}
     }
-  }catch(e){lectures=[]}
+    saveLecturesMirror();
+  }catch(e){
+    // Offline: käytä paikallista peiliä — luennot ja äänet ovat laitteella
+    try{lectures=JSON.parse(localStorage.getItem('jarvis:lecturesCache')||'[]')}catch(e2){lectures=[]}
+    if(!Array.isArray(lectures))lectures=[];
+  }
   renderLectureList();
 }
 async function saveLectures(){
+  saveLecturesMirror();
   try{await apiFetch('/api/lectures',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(lectures)})}catch(e){}
 }
 
@@ -2781,6 +2808,11 @@ function renderLectureList(){
     listEl.innerHTML='<div class="learn-placeholder">Ei tallennettuja luentoja.\n\nKirjoita aihe, valitse pituus ja paina LUO LUENTO.\n\nLuento ja HQ-ääni tallennetaan laitteelle automaattisesti — kuuntelet sen offline-tilassa kävellessä. ✓</div>';
     return;
   }
+  const missing=lectures.filter(l=>!l.audio).length;
+  const footer=`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line)">
+    ${missing?`<button class="btn ghost" id="dlAllBtn" style="font-size:11px;min-height:36px;width:100%" onclick="downloadAllLectureAudio()">⭳ LATAA KAIKKI HQ-ÄÄNET (${missing} luentoa) — reissuvalmistelu</button>`:''}
+    <div id="audioStorageInfo" style="font-size:10px;color:var(--txt-dim);letter-spacing:.06em;margin-top:6px;text-align:center"></div>
+  </div>`;
   listEl.innerHTML=draftHtml+lectures.map((l,i)=>{
     const mins=Math.round((l.wordCount||0)/130);
     const date=new Date(l.created).toLocaleDateString('fi-FI',{day:'numeric',month:'short'});
@@ -2790,7 +2822,45 @@ function renderLectureList(){
       <div class="li-title">${esc(l.title)}</div>
       <div class="li-meta">${chCount} lukua &middot; ~${mins} min &middot; ${date} &middot; ${l.audio?'<span style="color:var(--green)">🎧 HQ-ÄÄNI</span>':'✓ OFFLINE'}</div>
     </div>`;
-  }).join('');
+  }).join('')+footer;
+  updateAudioStorageInfo();
+}
+
+// Tallennustilan tilanne luentolistan alle — reissulla vanhalla tabletilla tila on kortilla
+async function updateAudioStorageInfo(){
+  const el=document.getElementById('audioStorageInfo');
+  if(!el||!navigator.storage?.estimate)return;
+  try{
+    const {usage,quota}=await navigator.storage.estimate();
+    const mb=v=>v>=1073741824?(v/1073741824).toFixed(1)+' GT':Math.round(v/1048576)+' MT';
+    el.textContent='Tallennustila: '+mb(usage||0)+' käytössä · '+mb((quota||0)-(usage||0))+' vapaana';
+  }catch(e){}
+}
+
+// Reissuvalmistelu: lataa kaikkien luentojen HQ-äänet kerralla laitteelle.
+// Jo ladatut luvut ohitetaan, joten keskeytynyt lataus jatkuu turvallisesti.
+let _dlAll=false;
+async function downloadAllLectureAudio(){
+  if(_dlAll)return;
+  if(!navigator.onLine){toast('Äänten lataus vaatii verkkoyhteyden');return;}
+  _dlAll=true;
+  const btn=document.getElementById('dlAllBtn');
+  const todo=lectures.filter(l=>!l.audio);
+  let done=0;
+  try{
+    for(const l of todo){
+      await fetchLectureAudio(l,(n,t)=>{
+        if(btn)btn.textContent='⏳ Luento '+(done+1)+'/'+todo.length+' · luku '+n+'/'+t+'…';
+      });
+      done++;
+      saveLectures();
+    }
+    toast('🎧 Kaikki HQ-äänet ladattu — '+done+' luentoa valmiina offline-kuunteluun');
+  }catch(e){
+    toast('Lataus keskeytyi ('+(e.message||'virhe')+') — '+done+'/'+todo.length+' luentoa ehti valmistua. Jo ladatut luvut säilyvät.',5000);
+  }
+  _dlAll=false;
+  renderLectureList();
 }
 
 /* ===== YLEISET APURIT: toast, puheanimaatio, IndexedDB ===== */
