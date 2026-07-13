@@ -84,8 +84,10 @@ Ilmaiskiintiö ~1 milj. merkkiä/kk ≈ kymmeniä luentoja ilmaiseksi.
    - Value: äsken kopioitu avain → **Deploy**.
 6. Muista myös päivittää Workerin koodi ("Edit code" → liitä uusin
    `worker.js` → Deploy), jos siinä ei vielä ole `/api/gtts`-reittiä.
-7. Sovelluksessa: avaa luento → paina **⭳ LATAA HQ-ÄÄNI**. Ääni tallentuu
-   laitteelle ja toimii sen jälkeen offline-tilassa kelattavana.
+7. Sovelluksessa: uusille luennoille HQ-ääni ladataan automaattisesti heti
+   generoinnin perään. Vanhoille luennoille: avaa luento → paina
+   **⭳ LATAA HQ-ÄÄNI**. Ääni tallentuu laitteelle ja toimii sen jälkeen
+   offline-tilassa kelattavana.
 
 ---
 

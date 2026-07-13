@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v3.2). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v3.4). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen.
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
 Kaksi persoonaa: U.L.T.R.O.N. (oletus, synkkä sarkasmi) ja J.A.R.V.I.S.
@@ -26,19 +26,33 @@ Malli: Claude Sonnet 5, automaattinen fallback Sonnet 4.6:een (`API_MODEL`).
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v3.2)
+## Toiminnot (v3.4)
 - **Chat**: persoonamoodit, markdown-renderöinti (mdRender, XSS-suojattu),
   historia säilyy localStoragessa yli latausten, yritä uudelleen -nappi,
   pikatoiminto-chipit (tilanne/treeni/sää/sähkö/uutiset). 👍-nosto → rawLog.
 - **Konteksti** (buildContext): NYT-tilannekuva (wiki-id `nyt-konteksti`),
   relevantit wiki-sivut avainsanahaulla, Garmin-data + historia, sää +
   3 pv ennuste, sähkön spot + halvin tunti, uutiset.
-- **Knowledge**: kaatopaikka (raaka syöte → Claude jäsentää wiki-sivuiksi)
+- **Knowledge**: kaatopaikka (raaka syöte → Claude jäsentää wiki-sivuiksi;
+  iso syöte pilkotaan otsikko-/kappalerajoista osiin ja käsitellään peräkkäin)
   + yhteenveto-välilehti. Tiedostot: txt/md/pdf/kuvat/audio.
   "Kokoa päivä" klo 21 + automaattisiivous (pruneWiki) — järjestelmäsivut
   `nyt-konteksti` ja `yleiskatsaus` on suojattu siivoukselta.
-- **Oppi**: SM-2-kertausalgoritmi, päiväputki. **Luennot**: generointi +
-  TTS-toisto (ElevenLabs/Web Speech), e-kirjalukutila, audio IndexedDB:ssä.
+- **Oppi**: SM-2-kertausalgoritmi, päiväputki. **Luennot**: generointi
+  pituusvalinnalla (tiivis/normaali/syvä) ja lukujen jatkuvuudella
+  (punainen lanka + edellisen luvun loppu promptissa); HQ-ääni (Google TTS
+  `/api/gtts`) ladataan automaattisesti generoinnin perään IndexedDB:hen →
+  offline-kuuntelu; soittimessa ±15 s kelaus ja lukuvalikko;
+  Media Session → lukitusnäytön/kuulokkeiden ohjaimet; keskeytynyt
+  generointi jatkuu luonnoksesta (jarvis:lectureDraft) ja äänilataus
+  ohittaa jo ladatut luvut; ❓-nappi luo luennosta kertauskortit Oppi-
+  putkeen (SM-2); e-kirjalukutila; navigator.storage.persist() suojaa
+  äänet tyhjennykseltä; fallback Web Speech.
+- **Offline (reissutila)**: wiki + luennot peilataan localStorageen →
+  listat toimivat ilman verkkoa; "Lataa kaikki HQ-äänet" -massalataus +
+  tallennustilan näyttö luentolistassa; Oppi-kertaukset toimivat offline
+  vaikka uuden oppitunnin haku epäonnistuu; sw.js cachettaa myös ikonit
+  ja CDN-resurssit (fontit, pdf.js).
 - **Uutiset**: worker hakee, Claude suodattaa kiinnostusten mukaan.
 - **Sijoitus**: salkku + live-kurssit + AI-arviot (ei sijoitusneuvontaa).
 - **HUD**: arc reactor, sää+ennuste, sähkö+halvin tunti, Garmin, mittarit.
@@ -59,6 +73,8 @@ Kun muokkaat julkaistavia tiedostoja (`jarvis.html`, `manifest.json`, `sw.js`,
 ikonit), committaa ja pushaa muutokset GitHubiin automaattisesti muokkauksen
 jälkeen — GitHub Pages päivittyy pushista. `worker.js` EI koskaan GitHubiin.
 Muutosten jälkeen: aja `node --check` irrotetulle skriptilohkolle ennen pushia.
+Kun toiminnallisuus muuttuu, nosta `jarvis.html`:n `VERSION`-vakiota ja pidä
+CLAUDE.md:n versionumero samana (BUILD päivittyy itsestään).
 HUOM: worker.js-muutokset eivät tule voimaan ennen kuin Lassi päivittää
 workerin Cloudflareen käsin — älä riko HTML:ää workerin uusilla endpointeilla
 ilman fallbackia.
