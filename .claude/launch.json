@@ -12,6 +12,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8792", "--directory", "C:/projektit/korpi"],
       "port": 8792
+    },
+    {
+      "name": "tahto-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8793", "--directory", "C:/projektit/tahto"],
+      "port": 8793
     }
   ]
 }
