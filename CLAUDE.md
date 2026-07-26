@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v3.7). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v3.8). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -27,7 +27,7 @@ Malli: Claude Sonnet 5, automaattinen fallback Sonnet 4.6:een (`API_MODEL`).
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v3.7)
+## Toiminnot (v3.8)
 - **Chat**: persoonamoodit, markdown-renderöinti (mdRender, XSS-suojattu),
   historia säilyy localStoragessa yli latausten, yritä uudelleen -nappi,
   pikatoiminto-chipit (tilanne/treeni/sää/sähkö/uutiset). 👍-nosto → rawLog.
@@ -93,6 +93,14 @@ PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
   EI voi tehdä datasta tuoreempaa; tuoreus näkyy `updated`-leimasta
   ("35 min sitten"). Haku uusitaan myös kun sovellus palaa etualalle
   (>10 min) ja 30 min välein. Käsiajo: Actions → Garmin sync → Run workflow.
+  **⚡ SYNKKAA** laukaisee oikean haun: sovellus → workerin
+  `POST /api/garminsync` → GitHub `workflow_dispatch` → sama workflow kuin
+  ajastuksella (logiikka pysyy yhdessä paikassa). Worker tarvitsee
+  `GITHUB_TOKEN`-secretin (fine-grained PAT, Actions: Read and write).
+  Sovellus pollaa `updated`-leimaa 10 s välein max 5 min ja poimii uuden
+  datan itsestään. Fallback on kunnossa: 404 → "workeria ei ole päivitetty",
+  501 → "GITHUB_TOKEN puuttuu", 502 → GitHubin virhe + ohje käsiajoon.
+  Asennusohje: ASENNUS.md kohta 2e.
 - **Varmuuskopio**: vie/tuo JSON (mobiili-INFO-välilehti).
 
 ## Suunnitteluperiaatteet (tärkeää)

@@ -89,6 +89,33 @@ Ilmaiskiintiö ~1 milj. merkkiä/kk ≈ kymmeniä luentoja ilmaiseksi.
    **⭳ LATAA HQ-ÄÄNI**. Ääni tallentuu laitteelle ja toimii sen jälkeen
    offline-tilassa kelattavana.
 
+### 2e — (Vapaaehtoinen) Garmin-synkkaus käskystä: ⚡ SYNKKAA -nappi
+
+Garmin-data haetaan automaattisesti neljä kertaa vuorokaudessa (klo 6, 12, 18
+ja 24). Tällä lisäyksellä saat HUDiin napin, joka käynnistää haun heti — kätevä
+esimerkiksi juuri ennen salia tai heti treenin jälkeen.
+
+Ilman tätä kaikki muu toimii normaalisti: nappi kertoo silloin selkokielisesti
+ettei toimintoa ole käytössä, ja synkkauksen voi ajaa käsin GitHubissa
+(Actions → Garmin sync → Run workflow).
+
+1. Mene: https://github.com/settings/personal-access-tokens → **Generate new
+   token** (fine-grained).
+2. Asetukset:
+   - **Repository access**: Only select repositories → `LassiSalminen/jarvis`
+   - **Permissions** → Repository permissions → **Actions: Read and write**
+   - Expiration: valitse mieleisesi (muista uusia token sen umpeutuessa)
+3. Kopioi token heti talteen — GitHub näyttää sen vain kerran.
+4. Cloudflare: Workerisi → Settings → Variables and Secrets → Add:
+   - Type: **Secret**
+   - Name: `GITHUB_TOKEN` (tasan tämä nimi!)
+   - Value: äsken kopioitu token → **Deploy**.
+5. Päivitä Workerin koodi ("Edit code" → liitä uusin `worker.js` → Deploy),
+   jotta `/api/garminsync`-reitti tulee käyttöön.
+6. Sovelluksessa: HUD → Garmin-kortti → **⚡ SYNKKAA**. Nappi näyttää
+   ajastimen ja hakee uuden datan itsestään heti kun ajo valmistuu
+   (tavallisesti noin minuutti).
+
 ---
 
 ## VAIHE 3 — Liitä osoite käyttöliittymään (3 min)

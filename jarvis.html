@@ -1118,7 +1118,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="3.7";
+const VERSION="3.8";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1704,6 +1704,64 @@ document.addEventListener('visibilitychange',()=>{
   if(!document.hidden&&JARVIS_PIN&&Date.now()-garminFetched>600000)loadGarmin();
 });
 setInterval(()=>{if(JARVIS_PIN&&!document.hidden)loadGarmin()},1800000);
+
+/* ---- SYNKKAA NYT: oikea haku Garminista käskystä ----
+   Worker ei osaa puhua Garminille, joten se laukaisee GitHub Actions
+   -workflown, joka ajaa synkkausskriptin ja työntää tuloksen KV:hen.
+   Ajo kestää noin minuutin, joten odotetaan uutta `updated`-leimaa.
+   HUOM: endpoint on workerissa, joka päivitetään Cloudflareen käsin —
+   siihen asti nappi kertoo sen suoraan eikä jätä käyttäjää arvailemaan. */
+let garminStatus='',garminSyncing=false,garminPollIv=null;
+async function garminSyncNow(){
+  if(garminSyncing)return;
+  garminSyncing=true;garminStatus='Käynnistetään synkkausta…';renderGarmin();sClick();
+  // Vertailukohta: mikä leima datassa on juuri nyt
+  try{const r0=await apiFetch('/api/garmin');const d0=await r0.json();if(d0&&d0.date)garminData=d0;}catch(e){}
+  const before=(garminData&&garminData.updated)||'';
+  try{
+    const r=await apiFetch('/api/garminsync',{method:'POST'});
+    if(r.status===404||r.status===405){
+      garminSyncing=false;
+      garminStatus='Workeria ei ole vielä päivitetty tällä toiminnolla. Synkkaa käsin: GitHub → Actions → Garmin sync → Run workflow.';
+      renderGarmin();return;
+    }
+    let d={};try{d=await r.json()}catch(e){}
+    if(!r.ok||d.error){
+      garminSyncing=false;
+      garminStatus=d.error==='no_github_token'
+        ? 'Workerista puuttuu GITHUB_TOKEN — lisää se Cloudflaren asetuksiin.'
+        : 'Synkkauksen käynnistys ei onnistunut'+(d.error?' ('+d.error+')':'')+'. Voit ajaa sen käsin Actionsista.';
+      renderGarmin();return;
+    }
+    garminPoll(before,Date.now());
+  }catch(e){
+    garminSyncing=false;garminStatus='Ei yhteyttä workeriin.';renderGarmin();
+  }
+}
+function garminPoll(before,started){
+  if(garminPollIv)clearInterval(garminPollIv);
+  const tick=async()=>{
+    const secs=Math.round((Date.now()-started)/1000);
+    if(secs>300){
+      clearInterval(garminPollIv);garminPollIv=null;garminSyncing=false;
+      garminStatus='Synkkaus vie tavallista kauemmin. Se jatkuu taustalla — data päivittyy kun ajo valmistuu.';
+      renderGarmin();return;
+    }
+    garminStatus='Synkkaus käynnissä… '+Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0');
+    try{
+      const r=await apiFetch('/api/garmin');
+      const d=await r.json();
+      if(d&&d.date&&(d.updated||'')!==before){
+        garminData=d;garminFetched=Date.now();
+        clearInterval(garminPollIv);garminPollIv=null;
+        garminSyncing=false;garminStatus='';sSave();renderGarmin();return;
+      }
+    }catch(e){}
+    renderGarmin();
+  };
+  garminPollIv=setInterval(tick,10000);
+  tick();
+}
 // Kaiva treeniehdotuksen nimi DSW-vastauksesta (muoto vaihtelee endpointin mukaan)
 function garminDswName(){
   const d=garminData&&garminData.dsw;
@@ -1715,11 +1773,17 @@ function garminDswName(){
 function renderGarmin(){
   const g=garminData;
   let html;
-  const refreshBtn='<button onclick="loadGarmin(true)" style="background:none;border:1px solid var(--line);'
-    +'color:var(--cyan);font-family:\'Orbitron\';font-size:9px;letter-spacing:.12em;padding:4px 9px;'
-    +'border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent">⟳ PÄIVITÄ</button>';
+  const bs='background:none;border:1px solid var(--line);font-family:\'Orbitron\';font-size:9px;'
+    +'letter-spacing:.12em;padding:4px 9px;border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent';
+  const refreshBtn='<div style="display:flex;gap:5px;flex-shrink:0">'
+    +'<button onclick="loadGarmin(true)" style="'+bs+';color:var(--cyan)">⟳ PÄIVITÄ</button>'
+    +'<button onclick="garminSyncNow()"'+(garminSyncing?' disabled':'')+' style="'+bs+';color:'
+    +(garminSyncing?'var(--txt-dim)':'var(--gold)')+'">⚡ SYNKKAA</button></div>';
+  const statusLine=garminStatus
+    ? '<div style="margin-bottom:8px;font-size:10px;color:var(--gold);line-height:1.5">'+esc(garminStatus)+'</div>'
+    : '';
   if(!g){
-    html='<div style="margin-bottom:8px">Ei kellodataa vielä — synkkaus ajaa klo 6, 12, 18 ja 24.</div>'+refreshBtn;
+    html=statusLine+'<div style="margin-bottom:8px">Ei kellodataa vielä — synkkaus ajaa klo 6, 12, 18 ja 24.</div>'+refreshBtn;
   }else{
     const tr=g.trainingReadiness||{},bb=g.bodyBattery||{},sl=g.sleep||{},st=g.stats||{},hrv=g.hrv||{};
     const r=[];
@@ -1739,7 +1803,7 @@ function renderGarmin(){
     r.push('<div style="margin-top:7px;display:flex;justify-content:space-between;align-items:center;gap:8px">'
       +'<span style="font-size:9px;opacity:.55">'+esc(g.date||'')+(age?' · '+esc(age):'')+'</span>'
       +refreshBtn+'</div>');
-    html=r.join('')||'Ei kellodataa.';
+    html=statusLine+(r.join('')||'Ei kellodataa.');
   }
   const el=document.getElementById('garminBox');if(el)el.innerHTML=html;
   const em=document.getElementById('m-garminBox');if(em)em.innerHTML=html;
