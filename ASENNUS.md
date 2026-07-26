@@ -91,9 +91,9 @@ Ilmaiskiintiö ~1 milj. merkkiä/kk ≈ kymmeniä luentoja ilmaiseksi.
 
 ### 2e — (Vapaaehtoinen) Garmin-synkkaus käskystä: ⚡ SYNKKAA -nappi
 
-Garmin-data haetaan automaattisesti neljä kertaa vuorokaudessa (klo 6, 12, 18
-ja 24). Tällä lisäyksellä saat HUDiin napin, joka käynnistää haun heti — kätevä
-esimerkiksi juuri ennen salia tai heti treenin jälkeen.
+Garmin-data haetaan automaattisesti kolmen tunnin välein. Tällä lisäyksellä
+saat HUDiin napin, joka käynnistää haun heti — kätevä esimerkiksi juuri ennen
+salia tai heti treenin jälkeen.
 
 Ilman tätä kaikki muu toimii normaalisti: nappi kertoo silloin selkokielisesti
 ettei toimintoa ole käytössä, ja synkkauksen voi ajaa käsin GitHubissa

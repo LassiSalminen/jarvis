@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v3.8). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v3.9). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -27,7 +27,7 @@ Malli: Claude Sonnet 5, automaattinen fallback Sonnet 4.6:een (`API_MODEL`).
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v3.8)
+## Toiminnot (v3.9)
 - **Chat**: persoonamoodit, markdown-renderöinti (mdRender, XSS-suojattu),
   historia säilyy localStoragessa yli latausten, yritä uudelleen -nappi,
   pikatoiminto-chipit (tilanne/treeni/sää/sähkö/uutiset). 👍-nosto → rawLog.
@@ -85,11 +85,14 @@ PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 - **HUD**: arc reactor, sää+ennuste, sähkö+halvin tunti, Garmin, mittarit.
 - **Garmin-synkkaus**: worker EI hae Garminista mitään — se lukee vain KV:n
   arvon, jonka GitHub Actions (`.github/workflows/garmin-sync.yml` +
-  `scripts/garmin_sync.py`) sinne työntää. Ajo 4× vrk klo 6/12/18/24 Suomen
-  kesäaikaa (cron `7 3,9,15,21 * * *` UTC; minuutti 7, koska tasatunnit
-  ruuhkautuvat GitHubin ajastusjonossa). Skripti kierrättää Garmin-istunto-
-  tokenin KV:n kautta (`/api/garmintoken`), joten tiheämpi ajo ei tarkoita
-  neljää kirjautumista. Sovelluksen ⟳ PÄIVITÄ lukee vain KV:n uudestaan — se
+  `scripts/garmin_sync.py`) sinne työntää. Ajo **3 h välein** (cron
+  `7 */3 * * *`). Ei yritetä osua kellonaikoihin: GitHubin ajastusjono
+  viivästyttää ajoja tässä repossa johdonmukaisesti 2,5–3 h (mitattu:
+  cron 03:00 UTC → ajot 05:35–06:06 UTC seitsemän päivän ajan), joten
+  tarkat kellonajat ovat saavuttamattomissa — tiheys ratkaisee oikean
+  ongelman. Skripti kierrättää Garmin-istuntotokenin KV:n kautta
+  (`/api/garmintoken`), joten tiheämpi ajo ei tarkoita kahdeksaa
+  kirjautumista; yksi ajo kestää ~30 s. Sovelluksen ⟳ PÄIVITÄ lukee vain KV:n uudestaan — se
   EI voi tehdä datasta tuoreempaa; tuoreus näkyy `updated`-leimasta
   ("35 min sitten"). Haku uusitaan myös kun sovellus palaa etualalle
   (>10 min) ja 30 min välein. Käsiajo: Actions → Garmin sync → Run workflow.

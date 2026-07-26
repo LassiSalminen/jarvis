@@ -1118,7 +1118,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="3.8";
+const VERSION="3.9";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1783,7 +1783,7 @@ function renderGarmin(){
     ? '<div style="margin-bottom:8px;font-size:10px;color:var(--gold);line-height:1.5">'+esc(garminStatus)+'</div>'
     : '';
   if(!g){
-    html=statusLine+'<div style="margin-bottom:8px">Ei kellodataa vielä — synkkaus ajaa klo 6, 12, 18 ja 24.</div>'+refreshBtn;
+    html=statusLine+'<div style="margin-bottom:8px">Ei kellodataa vielä — synkkaus ajaa kolmen tunnin välein. ⚡ SYNKKAA hakee heti.</div>'+refreshBtn;
   }else{
     const tr=g.trainingReadiness||{},bb=g.bodyBattery||{},sl=g.sleep||{},st=g.stats||{},hrv=g.hrv||{};
     const r=[];

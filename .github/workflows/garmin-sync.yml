@@ -1,20 +1,23 @@
 # Hakee Garmin-kellodatan ja tyontaa sen Workerin KV-muistiin.
 # Voi ajaa myos kasin: Actions -> Garmin sync -> Run workflow.
 #
-# Ajetaan 4x vuorokaudessa: aamulla yon uni ja treenivalmius, keskipaivalla ja
-# illalla Body Battery ja paivan suoritukset ennen ja jalkeen salin, yolla
-# paivan loppulukemat. Skripti kierrattaa Garmin-istuntotokenin KV:n kautta,
-# joten tiheampi ajo ei tarkoita neljaa kirjautumista.
+# Ajetaan kolmen tunnin valein. Tama EI yrita osua tiettyihin kellonaikoihin:
+# GitHubin ajastusjono viivastyttaa ajoja tassa repossa johdonmukaisesti
+# 2,5-3 tuntia (mitattu: cron 03:00 UTC -> ajot 05:35-06:06 UTC seitseman
+# paivan ajan), joten tasmalliset kellonajat ovat saavuttamattomissa.
+# Tiheampi vali ratkaisee oikean ongelman - data ei ole koskaan kovin vanhaa -
+# riippumatta siita paljonko jono venyy.
 #
-# Minuutti on 7 eika 0, koska tasatunnit ovat GitHubin ajastusjonon
-# ruuhkaisimmat hetket ja ajo voi silloin myohastya kymmenia minuutteja.
+# Skripti kierrattaa Garmin-istuntotokenin KV:n kautta, joten tiheampi ajo ei
+# tarkoita kahdeksaa kirjautumista. Yksi ajo kestaa ~30 s.
+#
+# Tarkkaan hetkeen (esim. juuri ennen salia) kaytetaan sovelluksen
+# SYNKKAA-nappia, joka laukaisee taman saman workflown heti.
 name: Garmin sync
 
 on:
   schedule:
-    # 03:07, 09:07, 15:07, 21:07 UTC = klo 6, 12, 18 ja 24 Suomen kesaaikaa
-    # (talviaikaan tunnin aiemmin - cron ei seuraa kesaaikaa)
-    - cron: '7 3,9,15,21 * * *'
+    - cron: '7 */3 * * *'
   workflow_dispatch:
 
 jobs:
