@@ -857,6 +857,13 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
       <!-- LUENNOT -->
       <div id="learn-luennot-area" style="flex:1;min-height:0;display:none;flex-direction:column;overflow:hidden">
         <div class="learn-body" id="lectureList" style="flex:1;min-height:0;padding:10px"></div>
+        <div class="lecture-gen" id="ttsCfgBox" style="border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:2px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <span style="font-family:'Orbitron';font-size:9px;letter-spacing:.18em;color:var(--txt-dim)">LUENTOÄÄNI</span>
+            <button class="btn ghost" style="font-size:10px;height:26px;padding:0 10px" onclick="toggleTtsCfg()" id="ttsCfgBtn">SÄÄDÄ</button>
+          </div>
+          <div id="ttsCfgPanel" style="display:none;margin-top:9px"></div>
+        </div>
         <div class="lecture-gen">
           <input id="lectureTopicInput" class="lecture-input" placeholder="Aihe: esim. Kvanttimekaniikka, Rooman historia, Tekoälyn historia…">
           <div style="display:flex;gap:6px">
@@ -1118,7 +1125,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="3.9";
+const VERSION="4.0";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1775,7 +1782,9 @@ function renderGarmin(){
   let html;
   const bs='background:none;border:1px solid var(--line);font-family:\'Orbitron\';font-size:9px;'
     +'letter-spacing:.12em;padding:4px 9px;border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent';
-  const refreshBtn='<div style="display:flex;gap:5px;flex-shrink:0">'
+  // Napit omalle rivilleen ja rivittyvinä: HUDin sivupalkki on kapea, eikä
+  // päivämäärä + kaksi nappia mahdu samalle riville ilman ylivuotoa.
+  const refreshBtn='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">'
     +'<button onclick="loadGarmin(true)" style="'+bs+';color:var(--cyan)">⟳ PÄIVITÄ</button>'
     +'<button onclick="garminSyncNow()"'+(garminSyncing?' disabled':'')+' style="'+bs+';color:'
     +(garminSyncing?'var(--txt-dim)':'var(--gold)')+'">⚡ SYNKKAA</button></div>';
@@ -1800,8 +1809,8 @@ function renderGarmin(){
     if(dsw)r.push('<div style="margin-top:5px;color:var(--txt)">▶ '+esc(String(dsw))+'</div>');
     else if(tr.feedbackShort)r.push('<div style="margin-top:5px;color:var(--txt)">'+esc(String(tr.feedbackShort).replace(/_/g,' ').toLowerCase())+'</div>');
     const age=garminAgeText();
-    r.push('<div style="margin-top:7px;display:flex;justify-content:space-between;align-items:center;gap:8px">'
-      +'<span style="font-size:9px;opacity:.55">'+esc(g.date||'')+(age?' · '+esc(age):'')+'</span>'
+    r.push('<div style="margin-top:7px">'
+      +'<div style="font-size:9px;opacity:.55">'+esc(g.date||'')+(age?' · '+esc(age):'')+'</div>'
       +refreshBtn+'</div>');
     html=statusLine+(r.join('')||'Ei kellodataa.');
   }
@@ -4051,6 +4060,168 @@ function lpClose(){
   if('mediaSession' in navigator){try{navigator.mediaSession.metadata=null}catch(e){}}
 }
 
+/* ===== PUHEEKSI VALMISTELU =====
+   Luentoteksti on kirjoitettua kieltä: markdown-merkkejä, lyhenteitä ja
+   pitkiä virkkeitä. Raakana syötettynä TTS lukee tähdet ja otsikkoristit
+   ääneen ja rullaa tasaisena massana ilman hengähdyksiä. Nämä kaksi
+   funktiota tekevät siitä puhuttavaa:
+     speechify() — siivoaa merkinnät ja avaa lyhenteet (toimii aina)
+     ttsSsml()   — merkitsee lause- ja kappalerajat tauoiksi (vaatii
+                   workerin, joka osaa lähettää SSML:n Googlelle)
+   Molemmat lähetetään aina: vanha worker käyttää text-kenttää ja jättää
+   ssml:n huomiotta, uusi worker käyttää ssml:ää. Mikään ei siis rikkoudu
+   ennen kuin worker päivitetään. */
+const TTS_DEFAULTS={voice:'fi-FI-Chirp3-HD-Charon',rate:0.92,pause:'normaali'};
+let ttsCfg={...TTS_DEFAULTS};
+try{const v=JSON.parse(localStorage.getItem('jarvis:tts')||'null');if(v&&typeof v==='object')ttsCfg={...TTS_DEFAULTS,...v}}catch(e){}
+function saveTtsCfg(){try{localStorage.setItem('jarvis:tts',JSON.stringify(ttsCfg))}catch(e){}}
+const TTS_PAUSES={lyhyet:260,normaali:450,pitkat:700};
+
+function speechify(t){
+  let s=String(t||'');
+  s=s.replace(/```[\s\S]*?```/g,' ');            // koodilohkot pois
+  s=s.replace(/`([^`]+)`/g,'$1');
+  s=s.replace(/!?\[([^\]]*)\]\([^)]*\)/g,'$1');  // linkit → pelkkä teksti
+  s=s.replace(/^#{1,6}\s*/gm,'');                // otsikkoristit
+  s=s.replace(/\*\*([^*]+)\*\*/g,'$1').replace(/\*([^*\n]+)\*/g,'$1');
+  // Luetelmat omiksi kappaleikseen. Pelkkä viivan poisto sulauttaisi kohdat
+  // edelliseen virkkeeseen ("eka kohta toka kohta"), jolloin ääni rullaa
+  // listan läpi yhtenä hengästyttävänä puurona ilman taukoja.
+  s=s.replace(/^[ \t]*[-*•+][ \t]+(.+)$/gm,(m,g)=>'\n\n'+g.trim().replace(/[.;:,]+$/,'')+'.\n\n');
+  s=s.replace(/^[ \t]*\d+[.)][ \t]+(.+)$/gm,(m,g)=>'\n\n'+g.trim().replace(/[.;:,]+$/,'')+'.\n\n');
+  s=s.replace(/[_>|~]/g,' ');
+  // Lyhenteet auki — muuten ääni sanoo "esim" ja "jne"
+  [[/\besim\./gi,'esimerkiksi'],[/\bmm\./gi,'muun muassa'],[/\bjne\./gi,'ja niin edelleen'],
+   [/\bts\./gi,'toisin sanoen'],[/\bvrt\./gi,'vertaa'],[/\bks\./gi,'katso'],
+   [/\bnk\./gi,'niin kutsuttu'],[/\byms\./gi,'ynnä muuta sellaista'],
+   [/\bn\.\s+(?=\d)/gi,'noin ']].forEach(([re,to])=>{s=s.replace(re,to)});
+  s=s.replace(/(\d)\s*%/g,'$1 prosenttia');
+  s=s.replace(/(\d)\s*°C/g,'$1 celsiusastetta');
+  s=s.replace(/\s*—\s*/g,', ');                  // ajatusviiva → luonteva tauko
+  // Kappalejako säilytetään: se on tauotuksen tärkein vihje
+  s=s.split(/\n{2,}/).map(p=>p.replace(/[ \t]*\n[ \t]*/g,' ').replace(/\s{2,}/g,' ').trim())
+     .filter(Boolean)
+     .map(p=>/[.!?…:]$/.test(p)?p:p+'.')         // varmista päätemerkki
+     .join('\n\n');
+  return s.trim();
+}
+function ttsSsml(text,pauseMs){
+  const e=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const paras=text.split(/\n{2,}/).map(p=>p.trim()).filter(Boolean);
+  const body=paras.map(p=>{
+    const sents=p.split(/(?<=[.!?…])\s+/).map(x=>x.trim()).filter(Boolean);
+    return '<p>'+sents.map(x=>'<s>'+e(x)+'</s>').join('<break time="'+Math.round(pauseMs*0.5)+'ms"/>')+'</p>';
+  }).join('<break time="'+pauseMs+'ms"/>');
+  return '<speak>'+body+'</speak>';
+}
+// Yksi runko molemmille poluille — pilkonta tehdään puhtaasta tekstistä,
+// jotta SSML-merkintä ei kasvata palaa yli Googlen 5000 tavun rajan.
+// Pilkkoo ensisijaisesti kappaleista ja vasta pakon edessä lauseista.
+// splitTextForTTS liittää palat välilyönnillä ja hävittäisi kappalerajat —
+// juuri ne, joihin koko tauotus perustuu.
+function splitSpeechText(text,maxBytes){
+  const enc=new TextEncoder();
+  if(enc.encode(text).length<=maxBytes)return[text];
+  const out=[];let cur='';
+  const push=()=>{if(cur.trim())out.push(cur.trim());cur=''};
+  for(const para of text.split(/\n{2,}/)){
+    const cand=cur?cur+'\n\n'+para:para;
+    if(enc.encode(cand).length<=maxBytes){cur=cand;continue}
+    push();
+    if(enc.encode(para).length<=maxBytes){cur=para;continue}
+    let seg='';
+    for(const s of para.split(/(?<=[.!?…])\s+/)){
+      const c=seg?seg+' '+s:s;
+      if(enc.encode(c).length>maxBytes&&seg){out.push(seg);seg=s}
+      else seg=c;
+    }
+    cur=seg;
+  }
+  push();
+  return out;
+}
+function ttsPayload(plain){
+  return {text:plain,ssml:ttsSsml(plain,TTS_PAUSES[ttsCfg.pause]||450),
+    voice:ttsCfg.voice,rate:ttsCfg.rate};
+}
+
+/* ---- Ääniasetukset: valinta on korvakuulolta, ei minun arvaukseni ----
+   Googlen suomenkielinen äänivalikoima elää, joten tarjolla on lista
+   ehdokkaita ja näytenappi. Jos ääntä ei ole saatavilla, worker vaihtaa
+   automaattisesti Wavenetiin ja kertoo X-TTS-Voice-otsakkeessa mitä
+   oikeasti käytettiin — näyte näyttää sen, joten arvailua ei tarvita. */
+const TTS_VOICES=[
+  ['fi-FI-Chirp3-HD-Charon','Charon — matala, rauhallinen (nykyinen)'],
+  ['fi-FI-Chirp3-HD-Aoede','Aoede — pehmeä, lämmin'],
+  ['fi-FI-Chirp3-HD-Kore','Kore — kirkas, ystävällinen'],
+  ['fi-FI-Chirp3-HD-Leda','Leda — pehmeä, vaimea'],
+  ['fi-FI-Chirp3-HD-Puck','Puck — eloisa'],
+  ['fi-FI-Chirp3-HD-Zephyr','Zephyr — kevyt'],
+  ['fi-FI-Wavenet-A','Wavenet A — perinteinen, varma'],
+  ['fi-FI-Standard-A','Standard A — kevyin, robottimaisin']
+];
+let ttsSample=null;
+function toggleTtsCfg(){
+  const p=document.getElementById('ttsCfgPanel');if(!p)return;
+  const open=p.style.display==='none';
+  p.style.display=open?'block':'none';
+  const b=document.getElementById('ttsCfgBtn');if(b)b.textContent=open?'SULJE':'SÄÄDÄ';
+  if(open)renderTtsCfg();
+  sClick();
+}
+function renderTtsCfg(){
+  const p=document.getElementById('ttsCfgPanel');if(!p)return;
+  const sel='background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--txt);'
+    +'font-family:inherit;font-size:13px;padding:8px;border-radius:2px;width:100%;box-sizing:border-box';
+  const lbl='font-family:\'Orbitron\';font-size:9px;letter-spacing:.14em;color:var(--txt-dim);display:block;margin-bottom:4px';
+  p.innerHTML=
+    '<div style="margin-bottom:9px"><label style="'+lbl+'">ÄÄNI</label>'
+      +'<select style="'+sel+'" onchange="ttsSet(\'voice\',this.value)">'
+      +TTS_VOICES.map(v=>'<option value="'+esc(v[0])+'"'+(ttsCfg.voice===v[0]?' selected':'')+'>'+esc(v[1])+'</option>').join('')
+      +'</select></div>'
+    +'<div style="display:flex;gap:9px;margin-bottom:9px">'
+      +'<div style="flex:1"><label style="'+lbl+'">PUHENOPEUS</label>'
+        +'<select style="'+sel+'" onchange="ttsSet(\'rate\',parseFloat(this.value))">'
+        +[['0.85','Hidas'],['0.92','Rauhallinen'],['1','Normaali'],['1.08','Ripeä']]
+          .map(r=>'<option value="'+r[0]+'"'+(Math.abs(ttsCfg.rate-parseFloat(r[0]))<0.001?' selected':'')+'>'+r[1]+'</option>').join('')
+        +'</select></div>'
+      +'<div style="flex:1"><label style="'+lbl+'">TAUOT</label>'
+        +'<select style="'+sel+'" onchange="ttsSet(\'pause\',this.value)">'
+        +[['lyhyet','Lyhyet'],['normaali','Normaalit'],['pitkat','Pitkät']]
+          .map(r=>'<option value="'+r[0]+'"'+(ttsCfg.pause===r[0]?' selected':'')+'>'+r[1]+'</option>').join('')
+        +'</select></div></div>'
+    +'<div class="learn-btns"><button class="btn ghost" style="font-size:11px" id="ttsSampleBtn" onclick="playTtsSample()">▶ KUUNTELE NÄYTE</button></div>'
+    +'<div id="ttsSampleMsg" style="font-size:11px;color:var(--txt-dim);line-height:1.6;margin-top:8px">'
+      +'Asetukset koskevat uusia äänilatauksia. Jo ladatut luvut säilyvät ennallaan — lataa ne uudelleen jos haluat uuden äänen.</div>';
+}
+function ttsSet(k,v){ttsCfg[k]=v;saveTtsCfg();renderTtsCfg()}
+async function playTtsSample(){
+  const btn=document.getElementById('ttsSampleBtn'),msg=document.getElementById('ttsSampleMsg');
+  if(ttsSample){try{ttsSample.pause()}catch(e){}ttsSample=null}
+  if(btn){btn.disabled=true;btn.textContent='⏳ HAETAAN…'}
+  const demo=speechify('Tervetuloa kuuntelemaan. Tässä on näyte siitä, miltä luentoääni kuulostaa valitsemillasi asetuksilla.\n\nHuomaa tauko kappaleiden välissä. Se tekee kuuntelusta rauhallisempaa, koska ajatus ehtii asettua ennen seuraavaa.');
+  try{
+    const r=await apiFetch('/api/gtts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ttsPayload(demo))});
+    if(r.status===501)throw new Error('GOOGLE_TTS_API_KEY puuttuu workerista');
+    if(!r.ok)throw new Error('TTS-virhe '+r.status);
+    const used=r.headers.get('X-TTS-Voice');
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    ttsSample=new Audio(url);
+    ttsSample.onended=()=>{URL.revokeObjectURL(url);ttsSample=null};
+    ttsSample.play();
+    if(msg)msg.innerHTML=used
+      ? (used===ttsCfg.voice
+          ? 'Soi äänellä <b>'+esc(used)+'</b>.'
+          : 'Valitsemasi ääni ei ollut saatavilla — worker käytti ääntä <b>'+esc(used)+'</b>. Kokeile toista vaihtoehtoa.')
+      : 'Näyte soi. (Worker ei kerro käytettyä ääntä — päivitä worker, niin näet sen ja tauot tulevat käyttöön.)';
+  }catch(e){
+    if(msg)msg.textContent='Näytettä ei saatu: '+(e.message||e);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='▶ KUUNTELE NÄYTE'}
+  }
+}
+
 /* HQ-äänen lataus: Google TTS workerin kautta → IndexedDB → offline-toisto */
 
 // Pyydä pysyvää tallennusta kerran — ilman tätä Android voi tyhjentää
@@ -4072,11 +4243,14 @@ async function fetchLectureAudio(l,onProg){
     // Keskeytyneen latauksen jatko: ohita jo laitteella olevat luvut
     try{if(await idbGet('aud:'+l.id+':'+i))continue;}catch(e){}
     const ch=l.chapters[i];
-    const text='Luku '+(i+1)+': '+ch.title+'. '+ch.content;
-    const parts=splitTextForTTS(text,4200);
+    // Otsikon jälkeen kappalejako, jotta luvun alkuun tulee kunnon hengähdys
+    const text=speechify('Luku '+(i+1)+': '+ch.title+'.\n\n'+ch.content);
+    // Pienempi pala kuin ennen: SSML-merkintä kasvattaa tavumäärää ja
+    // Googlen raja on 5000 tavua.
+    const parts=splitSpeechText(text,2600);
     const blobs=[];
     for(const p of parts){
-      const r=await apiFetch('/api/gtts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:p})});
+      const r=await apiFetch('/api/gtts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ttsPayload(p))});
       if(r.status===501)throw new Error('GOOGLE_TTS_API_KEY puuttuu workerista — ks. ASENNUS.md');
       if(!r.ok)throw new Error('TTS-virhe '+r.status);
       blobs.push(await r.blob());

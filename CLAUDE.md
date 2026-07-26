@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v3.9). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v4.0). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -27,7 +27,7 @@ Malli: Claude Sonnet 5, automaattinen fallback Sonnet 4.6:een (`API_MODEL`).
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v3.9)
+## Toiminnot (v4.0)
 - **Chat**: persoonamoodit, markdown-renderöinti (mdRender, XSS-suojattu),
   historia säilyy localStoragessa yli latausten, yritä uudelleen -nappi,
   pikatoiminto-chipit (tilanne/treeni/sää/sähkö/uutiset). 👍-nosto → rawLog.
@@ -49,6 +49,22 @@ PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
   ohittaa jo ladatut luvut; ❓-nappi luo luennosta kertauskortit Oppi-
   putkeen (SM-2); e-kirjalukutila; navigator.storage.persist() suojaa
   äänet tyhjennykseltä; fallback Web Speech.
+  **Luentoäänen luonnollisuus (v4.0)**: teksti valmistellaan puheeksi ennen
+  lähetystä. `speechify()` poistaa markdownin (muuten ääni lukee tähdet ja
+  otsikkoristit), avaa lyhenteet (esim.→esimerkiksi, n.→noin, %→prosenttia)
+  ja nostaa luetelmakohdat omiksi kappaleikseen — pelkkä viivan poisto
+  sulautti ne edelliseen virkkeeseen yhdeksi puuroksi. `ttsSsml()` merkitsee
+  kappale- ja lauserajat `<break>`-tauoiksi. `splitSpeechText()` pilkkoo
+  kappaleista (vanha `splitTextForTTS` liitti palat välilyönnillä ja hävitti
+  kappalerajat); pala 2600 tavua, koska SSML kasvattaa kokoa ja Googen raja
+  on 5000. Ääniasetukset LUENNOT-välilehdellä: ääni, puhenopeus (oletus
+  0.92), taukojen pituus + näytteen kuuntelu; tallentuu `jarvis:tts`.
+  **Fallback**: payloadissa lähetetään AINA sekä `text` että `ssml` — vanha
+  worker käyttää `text`iä ja jättää `ssml`:n huomiotta, joten mikään ei
+  rikkoudu ennen workerin päivitystä. Uusi worker kokeilee portaittain
+  halutun äänen SSML:llä → sama ääni tekstinä → Wavenet SSML:llä, ja
+  kertoo `X-TTS-Voice`-otsakkeessa mitä oikeasti käytettiin (kaikki äänet
+  eivät tue SSML:ää, mm. Chirp-HD ottaa vain tekstiä).
 - **Offline (reissutila)**: wiki + luennot peilataan localStorageen →
   listat toimivat ilman verkkoa; "Lataa kaikki HQ-äänet" -massalataus +
   tallennustilan näyttö luentolistassa; Oppi-kertaukset toimivat offline
