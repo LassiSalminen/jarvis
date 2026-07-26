@@ -1118,7 +1118,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="3.6";
+const VERSION="3.7";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1670,16 +1670,40 @@ async function fetchElectric(){
 }
 fetchElectric();setInterval(fetchElectric,1800000);
 
-/* ===== GARMIN-KELLODATA ===== */
-let garminData=null;
-async function loadGarmin(){
+/* ===== GARMIN-KELLODATA =====
+   Worker ei hae Garminista mitaan — se lukee vain arvon jonka GitHub
+   Actions -synkkaus on tyontanyt KV:hen (4x vrk: klo 6, 12, 18, 24).
+   Tama haku lukee siis KV:n, ei kelloa: tuoreus riippuu synkkauksesta,
+   ja `updated`-leima kertoo kayttajalle milloin data oikeasti syntyi. */
+let garminData=null,garminFetched=0;
+async function loadGarmin(manual){
+  if(manual){
+    sClick();
+    ['garminBox','m-garminBox'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='Haetaan…'});
+  }
   try{
     const r=await apiFetch('/api/garmin');
     const d=await r.json();
-    if(d&&d.date)garminData=d;
+    if(d&&d.date){garminData=d;garminFetched=Date.now()}
   }catch(e){}
   renderGarmin();
 }
+// Kuinka vanhaa data on — synkkauksen leiman mukaan, ei hakuhetken
+function garminAgeText(){
+  const u=garminData&&garminData.updated;
+  const t=u?Date.parse(u):NaN;
+  if(!isFinite(t))return'';
+  const m=Math.max(0,Math.round((Date.now()-t)/60000));
+  if(m<60)return m+' min sitten';
+  const h=Math.round(m/60);
+  return h<24?h+' h sitten':Math.round(h/24)+' vrk sitten';
+}
+// Sovellus voi olla auki tuntikausia tai palata taskusta — haetaan tuore
+// lukema kun se palaa etualalle ja saannollisin valein.
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&JARVIS_PIN&&Date.now()-garminFetched>600000)loadGarmin();
+});
+setInterval(()=>{if(JARVIS_PIN&&!document.hidden)loadGarmin()},1800000);
 // Kaiva treeniehdotuksen nimi DSW-vastauksesta (muoto vaihtelee endpointin mukaan)
 function garminDswName(){
   const d=garminData&&garminData.dsw;
@@ -1691,8 +1715,11 @@ function garminDswName(){
 function renderGarmin(){
   const g=garminData;
   let html;
+  const refreshBtn='<button onclick="loadGarmin(true)" style="background:none;border:1px solid var(--line);'
+    +'color:var(--cyan);font-family:\'Orbitron\';font-size:9px;letter-spacing:.12em;padding:4px 9px;'
+    +'border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent">⟳ PÄIVITÄ</button>';
   if(!g){
-    html='Ei kellodataa vielä — synkkaus ajaa aamuisin klo 6.';
+    html='<div style="margin-bottom:8px">Ei kellodataa vielä — synkkaus ajaa klo 6, 12, 18 ja 24.</div>'+refreshBtn;
   }else{
     const tr=g.trainingReadiness||{},bb=g.bodyBattery||{},sl=g.sleep||{},st=g.stats||{},hrv=g.hrv||{};
     const r=[];
@@ -1708,7 +1735,10 @@ function renderGarmin(){
     const dsw=garminDswName();
     if(dsw)r.push('<div style="margin-top:5px;color:var(--txt)">▶ '+esc(String(dsw))+'</div>');
     else if(tr.feedbackShort)r.push('<div style="margin-top:5px;color:var(--txt)">'+esc(String(tr.feedbackShort).replace(/_/g,' ').toLowerCase())+'</div>');
-    r.push('<div style="margin-top:3px;font-size:9px;opacity:.5">'+esc(g.date||'')+'</div>');
+    const age=garminAgeText();
+    r.push('<div style="margin-top:7px;display:flex;justify-content:space-between;align-items:center;gap:8px">'
+      +'<span style="font-size:9px;opacity:.55">'+esc(g.date||'')+(age?' · '+esc(age):'')+'</span>'
+      +refreshBtn+'</div>');
     html=r.join('')||'Ei kellodataa.';
   }
   const el=document.getElementById('garminBox');if(el)el.innerHTML=html;

@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v3.6). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v3.7). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -27,7 +27,7 @@ Malli: Claude Sonnet 5, automaattinen fallback Sonnet 4.6:een (`API_MODEL`).
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v3.6)
+## Toiminnot (v3.7)
 - **Chat**: persoonamoodit, markdown-renderöinti (mdRender, XSS-suojattu),
   historia säilyy localStoragessa yli latausten, yritä uudelleen -nappi,
   pikatoiminto-chipit (tilanne/treeni/sää/sähkö/uutiset). 👍-nosto → rawLog.
@@ -83,6 +83,16 @@ PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 - **Uutiset**: worker hakee, Claude suodattaa kiinnostusten mukaan.
 - **Sijoitus**: salkku + live-kurssit + AI-arviot (ei sijoitusneuvontaa).
 - **HUD**: arc reactor, sää+ennuste, sähkö+halvin tunti, Garmin, mittarit.
+- **Garmin-synkkaus**: worker EI hae Garminista mitään — se lukee vain KV:n
+  arvon, jonka GitHub Actions (`.github/workflows/garmin-sync.yml` +
+  `scripts/garmin_sync.py`) sinne työntää. Ajo 4× vrk klo 6/12/18/24 Suomen
+  kesäaikaa (cron `7 3,9,15,21 * * *` UTC; minuutti 7, koska tasatunnit
+  ruuhkautuvat GitHubin ajastusjonossa). Skripti kierrättää Garmin-istunto-
+  tokenin KV:n kautta (`/api/garmintoken`), joten tiheämpi ajo ei tarkoita
+  neljää kirjautumista. Sovelluksen ⟳ PÄIVITÄ lukee vain KV:n uudestaan — se
+  EI voi tehdä datasta tuoreempaa; tuoreus näkyy `updated`-leimasta
+  ("35 min sitten"). Haku uusitaan myös kun sovellus palaa etualalle
+  (>10 min) ja 30 min välein. Käsiajo: Actions → Garmin sync → Run workflow.
 - **Varmuuskopio**: vie/tuo JSON (mobiili-INFO-välilehti).
 
 ## Suunnitteluperiaatteet (tärkeää)
