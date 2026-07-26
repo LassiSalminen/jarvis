@@ -3,8 +3,9 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v3.4). Yksi yhtenäinen
-käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen.
+Henkilökohtainen tekoälyassistentti Lassille (v3.5). Yksi yhtenäinen
+käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
++ PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
 Kaksi persoonaa: U.L.T.R.O.N. (oletus, synkkä sarkasmi) ja J.A.R.V.I.S.
 (kohtelias hovimestari) — vaihdettavissa käyttöliittymästä.
@@ -26,7 +27,7 @@ Malli: Claude Sonnet 5, automaattinen fallback Sonnet 4.6:een (`API_MODEL`).
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v3.4)
+## Toiminnot (v3.5)
 - **Chat**: persoonamoodit, markdown-renderöinti (mdRender, XSS-suojattu),
   historia säilyy localStoragessa yli latausten, yritä uudelleen -nappi,
   pikatoiminto-chipit (tilanne/treeni/sää/sähkö/uutiset). 👍-nosto → rawLog.
@@ -53,6 +54,22 @@ PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
   tallennustilan näyttö luentolistassa; Oppi-kertaukset toimivat offline
   vaikka uuden oppitunnin haku epäonnistuu; sw.js cachettaa myös ikonit
   ja CDN-resurssit (fontit, pdf.js).
+- **PT (Treeni)**: oma välilehti, alavälilehdet TÄNÄÄN / OHJELMA / RUOKA /
+  KEHITYS. Claude generoi kuntosaliohjelman (aloittelija, 3× vk, perusliikkeet);
+  treenin kirjaus prefiltteröi painot edellisestä kerrasta ja ehdottaa
+  +1,25/2,5 kg kun kaikki toistot menivät ylärajaan; lepokello sarjan
+  kuittauksesta; kesken oleva treeni säilyy localStoragessa (`jarvis:ptSession`)
+  → salin kellarissa verkon katkeaminen ei hukkaa sarjoja. Garminin
+  treenivalmius säätää päivän suositusta. Ravinto: Mifflin–St Jeor laskee
+  kcal/proteiini/hiilari/rasva paikallisesti (toimii offline), ruoan kirjaus
+  arkikielellä → Claude arvioi makrot, ateriaehdotukset. Kehitys: liikekohtainen
+  painonnousu, kokonaiskuorma, paino, historia. Valmentajan kommentti
+  tallennuksen jälkeen (ei estä tallennusta jos verkko pätkii).
+  **Tallennus**: koko PT-tila on yhdessä wiki-sivussa (`pt-data`, body = JSON)
+  → synkkaa laitteiden välillä olemassa olevalla `/api/wiki`-endpointilla,
+  workeriin EI tarvittu mitään uutta. Sivu on piilotettu tietopankin listalta,
+  siivoukselta, yleiskatsaukselta ja chatin wiki-haulta (`userWiki()`);
+  chattiin menee sen sijaan luettava tiivistelmä buildContextissa.
 - **Uutiset**: worker hakee, Claude suodattaa kiinnostusten mukaan.
 - **Sijoitus**: salkku + live-kurssit + AI-arviot (ei sijoitusneuvontaa).
 - **HUD**: arc reactor, sää+ennuste, sähkö+halvin tunti, Garmin, mittarit.

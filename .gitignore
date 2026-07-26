@@ -3,3 +3,6 @@ worker.js
 
 # Claude Code -sessiokohtaiset asetukset
 .claude/settings.local.json
+
+# Pythonin käännöskakut
+__pycache__/
