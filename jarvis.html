@@ -562,70 +562,103 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
   flex-shrink:0;gap:8px;align-items:center}
 #endConvBar.show{display:flex}
 
-/* ===== PT — TREENI & RAVINTO ===== */
+/* ===== PT — TREENI & RAVINTO =====
+   Isot tekstit ja väljä rytmi: tätä luetaan salilla puhelimen näytöltä
+   sarjojen välissä, usein hikisin sormin ja vilkaisulla. Leipäteksti on
+   neutraali ja vaalea, väriä käytetään vain korostuksena. */
+#view-pt .learn-subtab{font-size:11px;padding:8px 0}
+#view-pt .learn-body{gap:14px;padding:14px}
+#view-pt .btn{font-size:14px;height:46px}
+#view-pt .btn.ghost{font-size:13px}
 .pt-hero{background:linear-gradient(135deg,rgba(var(--accent-rgb),.07),transparent);border:1px solid var(--line);
-  border-left:3px solid var(--cyan);border-radius:3px;padding:15px}
-.pt-tag{font-family:'Orbitron';font-size:8px;letter-spacing:.2em;color:var(--cyan);margin-bottom:8px}
-.pt-hero h2{font-family:'Orbitron';font-size:16px;color:var(--txt);margin:0 0 6px;line-height:1.35}
-.pt-sub{font-size:12px;color:var(--txt-dim);line-height:1.65}
-.pt-readout{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0}
-.pt-readout div{font-size:9px;font-family:'Orbitron';letter-spacing:.15em;color:var(--txt-dim)}
-.pt-readout b{display:block;font-size:15px;color:var(--txt);margin-top:3px;letter-spacing:.05em}
-.pt-ex{border:1px solid var(--line);border-radius:3px;padding:11px 12px;background:rgba(0,0,0,.22)}
-.pt-ex-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:9px}
-.pt-ex-name{font-family:'Orbitron';font-size:12px;color:var(--txt);letter-spacing:.05em;line-height:1.3}
-.pt-ex-scheme{font-family:'Share Tech Mono';font-size:11px;color:var(--cyan);white-space:nowrap;flex-shrink:0}
-.pt-sets{display:flex;flex-direction:column;gap:6px}
-.pt-set{display:flex;align-items:center;gap:7px}
-.pt-set .n{font-family:'Share Tech Mono';font-size:11px;color:var(--txt-dim);width:20px;flex-shrink:0}
+  border-left:3px solid var(--cyan);border-radius:3px;padding:17px}
+.pt-tag{font-family:'Orbitron';font-size:10px;letter-spacing:.18em;color:var(--cyan);margin-bottom:10px}
+.pt-hero h2{font-family:'Orbitron';font-size:21px;color:var(--txt);margin:0 0 9px;line-height:1.3}
+.pt-sub{font-size:15px;color:var(--txt);line-height:1.65}
+.pt-readout{display:flex;gap:18px;flex-wrap:wrap;margin:15px 0}
+.pt-readout div{font-size:10px;font-family:'Orbitron';letter-spacing:.14em;color:var(--txt-dim)}
+.pt-readout b{display:block;font-size:23px;color:var(--txt);margin-top:5px;letter-spacing:.03em}
+.pt-ex{border:1px solid var(--line);border-radius:3px;padding:14px;background:rgba(0,0,0,.22);
+  border-left:3px solid rgba(var(--accent-rgb),.3)}
+.pt-ex.active{border-left-color:var(--cyan);background:rgba(var(--accent-rgb),.05)}
+.pt-ex.done{border-left-color:var(--green);opacity:.62}
+.pt-ex-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px}
+.pt-ex-name{font-family:'Orbitron';font-size:16px;color:var(--txt);letter-spacing:.03em;line-height:1.3}
+.pt-ex-scheme{font-family:'Share Tech Mono';font-size:14px;color:var(--cyan);white-space:nowrap;flex-shrink:0}
+.pt-ex-idx{font-family:'Orbitron';font-size:10px;letter-spacing:.16em;color:var(--txt-dim);margin-bottom:11px}
+.pt-sets{display:flex;flex-direction:column;gap:8px}
+.pt-set{display:flex;align-items:center;gap:8px}
+.pt-set .n{font-family:'Share Tech Mono';font-size:14px;color:var(--txt-dim);width:24px;flex-shrink:0}
 .pt-set input{width:100%;min-width:0;background:rgba(0,0,0,.45);border:1px solid var(--line);color:var(--txt);
-  font-family:'Share Tech Mono';font-size:15px;padding:8px 6px;border-radius:2px;text-align:center;-moz-appearance:textfield}
+  font-family:'Share Tech Mono';font-size:21px;padding:11px 6px;border-radius:2px;text-align:center;-moz-appearance:textfield}
 .pt-set input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 8px rgba(var(--accent-rgb),.2)}
 .pt-set input::-webkit-outer-spin-button,.pt-set input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.pt-set .u{font-family:'Share Tech Mono';font-size:10px;color:var(--txt-dim);flex-shrink:0}
+.pt-set .u{font-family:'Share Tech Mono';font-size:13px;color:var(--txt-dim);flex-shrink:0}
 .pt-set .ok{background:none;border:1px solid var(--line);color:var(--txt-dim);border-radius:2px;
-  width:36px;height:36px;flex-shrink:0;cursor:pointer;font-size:14px;transition:.15s;-webkit-tap-highlight-color:transparent}
+  width:46px;height:46px;flex-shrink:0;cursor:pointer;font-size:19px;transition:.15s;-webkit-tap-highlight-color:transparent}
 .pt-set.done .ok{background:var(--green);border-color:var(--green);color:#00180d}
 .pt-set.done input{opacity:.5}
-.pt-hint{font-family:'Share Tech Mono';font-size:10px;color:var(--gold);margin-top:8px;line-height:1.5}
-.pt-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:9px 0;
-  border-bottom:1px solid var(--line);font-size:12px;color:var(--txt)}
+.pt-hint{font-size:13px;color:var(--txt);margin-top:11px;line-height:1.6;
+  border-left:2px solid var(--gold);padding-left:10px}
+.pt-hint b{font-family:'Orbitron';font-size:10px;letter-spacing:.16em;color:var(--gold);display:block;margin-bottom:3px}
+.pt-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:11px 0;
+  border-bottom:1px solid var(--line);font-size:15px;color:var(--txt)}
 .pt-row:last-child{border-bottom:none}
-.pt-row .lbl{color:var(--txt-dim);font-size:11px}
-.pt-row .val{font-family:'Share Tech Mono';font-size:12px;white-space:nowrap}
-.pt-bar{height:5px;background:rgba(var(--accent-rgb),.08);border-radius:3px;overflow:hidden;margin-top:7px}
-.pt-bar i{display:block;height:100%;background:var(--cyan);border-radius:3px;transition:width .4s}
+.pt-row .lbl{color:var(--txt-dim);font-size:13px}
+.pt-row .val{font-family:'Share Tech Mono';font-size:15px;white-space:nowrap}
+.pt-bar{height:8px;background:rgba(var(--accent-rgb),.08);border-radius:4px;overflow:hidden;margin-top:8px}
+.pt-bar i{display:block;height:100%;background:var(--cyan);border-radius:4px;transition:width .4s}
 .pt-bar i.hit{background:var(--green)}
 .pt-bar i.over{background:var(--amber)}
-.pt-macros{display:flex;gap:8px;margin-top:12px}
-.pt-macro{flex:1;text-align:center;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:3px;padding:9px 3px}
-.pt-macro .v{font-family:'Orbitron';font-size:14px;color:var(--txt);display:block}
-.pt-macro .l{font-family:'Orbitron';font-size:8px;letter-spacing:.12em;color:var(--txt-dim)}
+.pt-macros{display:flex;gap:9px;margin-top:14px}
+.pt-macro{flex:1;text-align:center;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:3px;padding:12px 4px}
+.pt-macro .v{font-family:'Orbitron';font-size:20px;color:var(--txt);display:block;margin-bottom:3px}
+.pt-macro .l{font-family:'Orbitron';font-size:9px;letter-spacing:.1em;color:var(--txt-dim)}
 .pt-day{border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:3px;
-  padding:12px 13px;background:rgba(var(--accent-rgb),.03)}
+  padding:15px;background:rgba(var(--accent-rgb),.03)}
 .pt-day.next{border-left-color:var(--gold);background:rgba(var(--accent-rgb),.06)}
-.pt-day h4{font-family:'Orbitron';font-size:11px;color:var(--cyan);margin:0 0 9px;letter-spacing:.12em}
+.pt-day h4{font-family:'Orbitron';font-size:13px;color:var(--cyan);margin:0 0 11px;letter-spacing:.1em}
 .pt-day.next h4{color:var(--gold)}
-.pt-day ul{margin:0;padding-left:15px}
-.pt-day li{font-size:12px;color:var(--txt);line-height:1.85}
-.pt-day li i{color:var(--txt-dim);font-family:'Share Tech Mono';font-size:11px;font-style:normal}
+.pt-day ul{margin:0;padding-left:17px}
+.pt-day li{font-size:15px;color:var(--txt);line-height:2}
+.pt-day li i{color:var(--txt-dim);font-family:'Share Tech Mono';font-size:14px;font-style:normal}
 .pt-input{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--txt);
-  font-family:inherit;font-size:13px;padding:10px;border-radius:2px;resize:vertical;box-sizing:border-box}
+  font-family:inherit;font-size:16px;padding:12px;border-radius:2px;resize:vertical;box-sizing:border-box}
 .pt-input:focus{outline:none;border-color:var(--cyan)}
-.pt-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pt-field{display:flex;flex-direction:column;gap:4px}
-.pt-field label{font-family:'Orbitron';font-size:8px;letter-spacing:.15em;color:var(--txt-dim)}
+.pt-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.pt-field{display:flex;flex-direction:column;gap:5px}
+.pt-field label{font-family:'Orbitron';font-size:10px;letter-spacing:.13em;color:var(--txt-dim)}
 .pt-timer{position:sticky;top:0;z-index:5;background:rgba(0,3,10,.96);border:1px solid var(--line);
-  border-left:3px solid var(--gold);border-radius:3px;padding:9px 12px;display:flex;
-  justify-content:space-between;align-items:center;backdrop-filter:blur(8px)}
-.pt-timer .t{font-family:'Orbitron';font-size:19px;color:var(--gold);letter-spacing:.08em}
-.pt-timer .l{font-family:'Orbitron';font-size:8px;letter-spacing:.2em;color:var(--txt-dim)}
+  border-left:3px solid var(--gold);border-radius:3px;padding:12px 14px;display:flex;
+  justify-content:space-between;align-items:center;gap:10px;backdrop-filter:blur(8px)}
+.pt-timer .t{font-family:'Orbitron';font-size:28px;color:var(--gold);letter-spacing:.06em}
+.pt-timer .l{font-family:'Orbitron';font-size:10px;letter-spacing:.16em;color:var(--txt-dim)}
 .pt-coach{border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:3px;
-  padding:12px 13px;background:rgba(0,0,0,.22);font-size:12px;color:var(--txt);line-height:1.7}
+  padding:15px;background:rgba(0,0,0,.22);font-size:15px;color:var(--txt);line-height:1.7}
 .pt-coach .pt-tag{color:var(--gold)}
-.pt-spark{display:flex;align-items:flex-end;gap:3px;height:34px;margin-top:8px}
-.pt-spark i{flex:1;background:rgba(var(--accent-rgb),.35);border-radius:1px 1px 0 0;min-height:2px}
+.pt-spark{display:flex;align-items:flex-end;gap:4px;height:44px;margin-top:10px}
+.pt-spark i{flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;min-height:3px}
 .pt-spark i.last{background:var(--cyan)}
+/* Treenin edistyminen — yksi vilkaisu kertoo montako sarjaa on jäljellä */
+.pt-prog{position:sticky;top:0;z-index:6;background:rgba(0,3,10,.97);border:1px solid var(--line);
+  border-left:3px solid var(--cyan);border-radius:3px;padding:13px 15px;backdrop-filter:blur(8px)}
+.pt-prog .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.pt-prog h3{font-family:'Orbitron';font-size:18px;color:var(--txt);margin:0;letter-spacing:.03em}
+.pt-prog .cnt{font-family:'Share Tech Mono';font-size:15px;color:var(--cyan);white-space:nowrap}
+/* "Mikä tämä liike on?" — videolinkki ja tekniikkaohje */
+.pt-lnk{font-family:'Orbitron';font-size:11px;letter-spacing:.1em;color:var(--cyan);
+  background:none;border:none;padding:0;margin-left:14px;cursor:pointer;text-decoration:none;white-space:nowrap}
+.pt-lnk:hover{text-decoration:underline}
+.pt-day li .pt-lnk{margin-left:10px}
+.pt-tech{font-size:14px;color:var(--txt);line-height:1.75;margin-top:10px;
+  border-left:2px solid var(--cyan);padding-left:11px;white-space:pre-wrap}
+/* Ruokavalion vaihtoehdot — yksi napautus kirjaa annoksen */
+.pt-opt{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:13px 0;border-bottom:1px solid var(--line)}
+.pt-opt:last-child{border-bottom:none}
+.pt-opt-name{font-size:15px;color:var(--txt);line-height:1.5}
+.pt-opt-macros{font-family:'Share Tech Mono';font-size:13px;color:var(--txt-dim);margin-top:5px}
+.pt-opt .btn{flex-shrink:0}
 
 /* ===== MOBILE BOTTOM NAV ===== */
 #mobileNav{
@@ -1085,7 +1118,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="3.5";
+const VERSION="3.6";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -2300,7 +2333,7 @@ let pt=null,ptTab='today',ptSession=null,ptRestT=0,ptRestIv=null;
 // PT-sivu on konepeltiä: se ei kuulu tietopankin listaan, siivoukseen,
 // yhteenvetoon eikä chatin wiki-hakuun — muuten iso JSON söisi kontekstin.
 function userWiki(){return wiki.filter(w=>w.id!==PT_ID)}
-function ptDefault(){return{profile:null,program:null,log:[],food:[],weights:[],targets:null,updated:0}}
+function ptDefault(){return{profile:null,program:null,log:[],food:[],weights:[],targets:null,tech:{},updated:0}}
 function ptToday(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function ptFmtDate(s){if(!s)return'';const p=s.split('-');return p.length===3?(+p[2])+'.'+(+p[1])+'.':s}
 function ptNum(v){const n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:null}
@@ -2312,6 +2345,7 @@ function ptLoad(){
   if(!raw){try{raw=JSON.parse(localStorage.getItem('jarvis:pt')||'null')}catch(e){}}
   pt=(raw&&typeof raw==='object')?{...ptDefault(),...raw}:ptDefault();
   ['log','food','weights'].forEach(k=>{if(!Array.isArray(pt[k]))pt[k]=[]});
+  if(!pt.tech||typeof pt.tech!=='object')pt.tech={};
   try{const s=JSON.parse(localStorage.getItem('jarvis:ptSession')||'null');if(s&&Array.isArray(s.exercises))ptSession=s}catch(e){}
   ptMirror();
 }
@@ -2412,14 +2446,35 @@ function ptFoodSum(){
 }
 
 /* ===== RENDER ===== */
+let ptLastView='';
 function renderPt(){
   if(!pt)pt=ptDefault();
   const el=document.getElementById('ptBody');if(!el)return;
-  if(ptSession){el.innerHTML=ptSessionHtml();ptTickRender();return}
-  if(ptTab==='today')el.innerHTML=ptTodayHtml();
-  else if(ptTab==='prog')el.innerHTML=ptProgHtml();
-  else if(ptTab==='food')el.innerHTML=ptFoodHtml();
-  else el.innerHTML=ptStatsHtml();
+  // Käynnissä oleva treeni elää TÄNÄÄN-välilehdellä. Muut välilehdet pysyvät
+  // selattavina kesken treenin — ohjelmaa tai ravintoa pitää voida vilkaista
+  // sarjojen välissä ilman että treeni pitää hylätä.
+  const t0=document.getElementById('subtab-pt-today');
+  if(t0)t0.textContent=ptSession?'▶ TREENI':'TÄNÄÄN';
+  const inSession=ptSession&&ptTab==='today';
+  const view=inSession?'session':ptTab;
+  // Sama näkymä uudelleen (esim. tekniikkaohje auki) ei saa hypäyttää
+  // vieritystä alkuun kesken treenin — vain välilehden vaihto nollaa sen.
+  const sc=el.scrollTop,same=view===ptLastView;
+  if(inSession){
+    el.innerHTML=ptSessionHtml();
+    el.scrollTop=same?sc:0;ptLastView=view;ptTickRender();return;
+  }
+  const banner=ptSession?ptResumeHtml():'';
+  el.innerHTML=banner+(ptTab==='prog'?ptProgHtml():ptTab==='food'?ptFoodHtml():ptTab==='stats'?ptStatsHtml():ptTodayHtml());
+  el.scrollTop=same?sc:0;ptLastView=view;
+}
+// Muistutus + paluu käynnissä olevaan treeniin
+function ptResumeHtml(){
+  const done=ptSession.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0);
+  const all=ptSession.exercises.reduce((a,e)=>a+e.sets.length,0);
+  return `<div class="pt-timer" style="border-left-color:var(--green)">
+    <span class="l">TREENI KÄYNNISSÄ · ${done}/${all} SARJAA</span>
+    <button class="btn ghost" style="font-size:10px;height:26px;padding:0 10px" onclick="switchPtTab('today')">PALAA</button></div>`;
 }
 
 function ptTodayHtml(){
@@ -2450,7 +2505,7 @@ function ptTodayHtml(){
       <button class="btn ghost" style="font-size:11px" onclick="switchPtTab('prog')">OHJELMA</button>
     </div></div>
   <div class="pt-day next"><h4>OHJELMASSA TÄNÄÄN</h4><ul>${
-    (day.exercises||[]).map(e=>`<li>${esc(e.name)} <i>${e.sets||3} × ${esc(e.reps||'8-10')}</i></li>`).join('')
+    (day.exercises||[]).map(e=>`<li>${esc(e.name)} <i>${e.sets||3} × ${esc(e.reps||'8-10')}</i>${ptExLinks(e.name)}${ptTechHtml(e.name)}</li>`).join('')
   }</ul></div>
   ${t?`<div class="pt-hero"><div class="pt-tag">RAVINTO TÄNÄÄN</div>
     ${ptBarRow('Energia',f.kcal,t.kcal,'kcal')}
@@ -2484,35 +2539,97 @@ function ptProgHtml(){
     <div class="pt-sub">${esc(p.idea||'')}</div></div>
   ${(p.days||[]).map((d,i)=>`<div class="pt-day${i===idx?' next':''}">
     <h4>${esc(d.name)}${i===idx?' · SEURAAVA':''}</h4>
-    <ul>${(d.exercises||[]).map(e=>`<li>${esc(e.name)} <i>${e.sets||3} × ${esc(e.reps||'8-10')}</i>${e.note?`<br><i>${esc(e.note)}</i>`:''}</li>`).join('')}</ul>
+    <ul>${(d.exercises||[]).map(e=>`<li>${esc(e.name)} <i>${e.sets||3} × ${esc(e.reps||'8-10')}</i>${ptExLinks(e.name)}${e.note?`<br><i>${esc(e.note)}</i>`:''}${ptTechHtml(e.name)}</li>`).join('')}</ul>
     <div class="learn-btns" style="margin-top:10px"><button class="btn ghost" style="font-size:10px" onclick="ptStartSession(${i})">▶ ALOITA TÄMÄ</button></div>
   </div>`).join('')}
   ${p.progression?`<div class="pt-coach"><div class="pt-tag">PROGRESSIO</div>${esc(p.progression)}</div>`:''}
   <div class="learn-btns"><button class="btn ghost" style="font-size:11px" onclick="ptGenerateProgram(true)">⟳ UUSI OHJELMA</button></div>`;
 }
 
+/* ---- "Mikä tämä liike on?" — video + tekniikkaohje ----
+   Videolinkki osoittaa YouTuben hakuun eikä yksittäiseen videoon: haku ei
+   mene rikki vaikka video poistettaisiin. Tekniikkaohje haetaan kerran ja
+   jää talteen, joten se toimii salilla myös ilman verkkoa. */
+let ptTechOpen={};
+function ptVideoUrl(name){return 'https://www.youtube.com/results?search_query='+encodeURIComponent(name+' tekniikka kuntosali')}
+function ptAttr(s){return JSON.stringify(String(s)).replace(/'/g,'&#39;')}
+function ptExLinks(name){
+  return `<a class="pt-lnk" href="${esc(ptVideoUrl(name))}" target="_blank" rel="noopener">▶ VIDEO</a>`+
+    `<button class="pt-lnk" onclick='ptTechnique(${ptAttr(name)})'>ⓘ TEKNIIKKA</button>`;
+}
+function ptTechHtml(name){
+  if(!ptTechOpen[name])return'';
+  const t=pt.tech&&pt.tech[name];
+  return `<div class="pt-tech">${t?esc(t):'Haetaan tekniikkaohjetta…'}</div>`;
+}
+async function ptTechnique(name){
+  ptTechOpen[name]=!ptTechOpen[name];
+  renderPt();
+  if(!ptTechOpen[name])return;
+  if(pt.tech&&pt.tech[name])return; // jo haettu — näytetään muistista
+  try{
+    const sys=`Olet voimavalmentaja. Kerro liikkeen "${name}" suoritustekniikka aloittelijalle.
+Muoto: 3-4 lyhyttä ranskalaista viivaa (aloita "• "), yksi rivi kukin, sekä viimeisenä rivinä "Yleisin virhe: ...".
+Enintään 60 sanaa yhteensä. Pelkkä teksti, ei markdownia, ei otsikkoa. Suomeksi.`;
+    const txt=await askClaude(sys,[{role:'user',content:name}],400);
+    if(!pt.tech)pt.tech={};
+    pt.tech[name]=txt.trim();
+    await ptSave();
+  }catch(e){
+    console.warn('ptTechnique:',e);
+    if(!pt.tech)pt.tech={};
+    pt.tech[name]='Ohjeen haku epäonnistui — katso video yltä.';
+  }
+  renderPt();
+}
+
+function ptExDone(ex){return ex.sets.length>0&&ex.sets.every(s=>s.done)}
+function ptActiveIdx(){const i=ptSession.exercises.findIndex(ex=>!ptExDone(ex));return i<0?ptSession.exercises.length-1:i}
+function ptSetCounts(){
+  const done=ptSession.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0);
+  const all=ptSession.exercises.reduce((a,e)=>a+e.sets.length,0);
+  return{done,all,pct:all?Math.round(done/all*100):0};
+}
 function ptSessionHtml(){
-  const s=ptSession;
-  return `<div class="pt-timer" id="ptTimer" style="display:${ptRestT>0?'flex':'none'}">
+  const s=ptSession,c=ptSetCounts(),act=ptActiveIdx();
+  return `<div class="pt-prog">
+      <div class="top"><h3>${esc(s.dayName)}</h3><span class="cnt" id="ptProgCnt">${c.done} / ${c.all} sarjaa</span></div>
+      <div class="pt-bar"><i id="ptProgBar" class="${c.pct>=100?'hit':''}" style="width:${c.pct}%"></i></div></div>
+    <div class="pt-timer" id="ptTimer" style="display:${ptRestT>0?'flex':'none'}">
       <span class="l">LEPO</span><span class="t" id="ptTimerT">0:00</span>
-      <button class="btn ghost" style="font-size:10px;height:26px;padding:0 10px" onclick="ptStopRest()">OHITA</button></div>
-    <div class="pt-hero"><div class="pt-tag">TREENI KÄYNNISSÄ</div><h2>${esc(s.dayName)}</h2>
-      <div class="pt-sub">Kirjaa paino ja toistot jokaisesta sarjasta. ✓ merkitsee sarjan tehdyksi ja käynnistää lepokellon.</div></div>
-    ${s.exercises.map((ex,i)=>`<div class="pt-ex">
+      <button class="btn ghost" style="height:30px;padding:0 12px" onclick="ptStopRest()">OHITA</button></div>
+    ${s.exercises.map((ex,i)=>`<div class="pt-ex${ptExDone(ex)?' done':(i===act?' active':'')}" id="ptEx${i}">
       <div class="pt-ex-head"><span class="pt-ex-name">${esc(ex.name)}</span><span class="pt-ex-scheme">${esc(ex.scheme||'')}</span></div>
-      <div class="pt-sets">${ex.sets.map((st,j)=>`<div class="pt-set${st.done?' done':''}">
+      <div class="pt-ex-idx">LIIKE ${i+1} / ${s.exercises.length}${ptExLinks(ex.name)}</div>
+      ${ptTechHtml(ex.name)}
+      <div class="pt-sets" style="margin-top:11px">${ex.sets.map((st,j)=>`<div class="pt-set${st.done?' done':''}">
         <span class="n">${j+1}.</span>
         <input type="number" inputmode="decimal" step="0.5" placeholder="kg" value="${st.w!==''&&st.w!=null?st.w:''}" oninput="ptSetVal(${i},${j},'w',this.value)">
         <span class="u">kg</span>
         <input type="number" inputmode="numeric" placeholder="toistot" value="${st.r!==''&&st.r!=null?st.r:''}" oninput="ptSetVal(${i},${j},'r',this.value)">
         <span class="u">×</span>
         <button class="ok" onclick="ptSetDone(${i},${j},this)">✓</button></div>`).join('')}</div>
-      ${ex.hint?`<div class="pt-hint">${esc(ex.hint)}</div>`:''}
-      <div class="learn-btns" style="margin-top:9px"><button class="btn ghost" style="font-size:10px;height:26px" onclick="ptAddSet(${i})">+ SARJA</button></div>
+      ${ex.hint?`<div class="pt-hint"><b>VIIMEKSI</b>${esc(ex.hint)}</div>`:''}
+      <div class="learn-btns" style="margin-top:11px"><button class="btn ghost" style="height:32px" onclick="ptAddSet(${i})">+ SARJA</button></div>
     </div>`).join('')}
     <textarea class="pt-input" id="ptSessionNote" rows="2" placeholder="Fiilis, kipeät kohdat, muuta huomioitavaa…">${esc(s.note||'')}</textarea>
     <div class="learn-btns"><button class="btn" onclick="ptFinishSession()">✓ TALLENNA TREENI</button>
-      <button class="btn ghost" style="font-size:11px" onclick="ptCancelSession()">HYLKÄÄ</button></div>`;
+      <button class="btn ghost" onclick="ptCancelSession()">HYLKÄÄ</button></div>`;
+}
+// Sarjan kuittaus päivittää edistymisen ilman uudelleenpiirtoa, jotta
+// syötekenttien kohdistus ja sivun vieritys eivät hyppää kesken treenin.
+function ptUpdateProgress(){
+  if(!ptSession)return;
+  const c=ptSetCounts(),act=ptActiveIdx();
+  const cnt=document.getElementById('ptProgCnt');if(cnt)cnt.textContent=c.done+' / '+c.all+' sarjaa';
+  const bar=document.getElementById('ptProgBar');
+  if(bar){bar.style.width=c.pct+'%';bar.classList.toggle('hit',c.pct>=100)}
+  ptSession.exercises.forEach((ex,i)=>{
+    const el=document.getElementById('ptEx'+i);if(!el)return;
+    const d=ptExDone(ex);
+    el.classList.toggle('done',d);
+    el.classList.toggle('active',!d&&i===act);
+  });
 }
 
 function ptFoodHtml(){
@@ -2539,10 +2656,10 @@ function ptFoodHtml(){
       <span class="val">${Math.round(it.kcal||0)} kcal · ${Math.round(it.protein||0)} g
       <button class="btn ghost" style="font-size:9px;height:22px;padding:0 7px;margin-left:6px" onclick="ptDelFood(${pt.food.indexOf(it)})">✕</button></span></div>`).join('')}
     </div>`:''}
-  ${pt.mealPlan?`<div class="pt-coach"><div class="pt-tag">ESIMERKKIPÄIVÄ</div>${esc(pt.mealPlan)}</div>`:''}
+  ${ptMealsHtml()}
   <div class="learn-btns">
-    <button class="btn ghost" style="font-size:11px" onclick="ptMealPlan()">⊕ ATERIAEHDOTUKSET</button>
-    <button class="btn ghost" style="font-size:11px" onclick="pt.targets=null;renderPt()">MUOKKAA TIETOJA</button></div>`;
+    <button class="btn ghost" onclick="ptMealPlan()">${pt.meals?'⟳ UUSI RUOKAVALIO':'⊕ RUOKAVALIO VAIHTOEHTOINEEN'}</button>
+    <button class="btn ghost" onclick="pt.targets=null;renderPt()">MUOKKAA TIETOJA</button></div>`;
 }
 function ptProfileFormHtml(){
   const p=pt.profile||{};
@@ -2641,6 +2758,8 @@ Säännöt:
 function ptStartSession(idx){
   const day=(pt.program&&pt.program.days||[])[idx];
   if(!day)return;
+  // Kesken oleva treeni ei saa kadota vahingossa toisen treenin alta
+  if(ptSession&&!confirm('Treeni "'+ptSession.dayName+'" on kesken. Aloitetaanko uusi? Kirjatut sarjat menetetään.'))return;
   sClick();
   ptSession={date:ptToday(),dayName:day.name,started:Date.now(),note:'',
     exercises:(day.exercises||[]).map(ex=>{
@@ -2648,7 +2767,7 @@ function ptStartSession(idx){
       return{name:ex.name,scheme:(ex.sets||3)+' × '+(ex.reps||'8-10'),hint:s.hint,
         sets:Array.from({length:ex.sets||3},()=>({w:s.w===''?'':String(s.w),r:'',done:false}))};
     })};
-  ptSaveSession();renderPt();
+  ptSaveSession();switchPtTab('today'); // treeni avautuu heti, myös OHJELMA-välilehdeltä aloitettuna
 }
 function ptSetVal(i,j,k,v){if(!ptSession)return;ptSession.exercises[i].sets[j][k]=v;ptSaveSession()}
 function ptSetDone(i,j,btn){
@@ -2656,7 +2775,7 @@ function ptSetDone(i,j,btn){
   const s=ptSession.exercises[i].sets[j];
   s.done=!s.done;
   const row=btn.closest('.pt-set');if(row)row.classList.toggle('done',s.done);
-  ptSaveSession();
+  ptSaveSession();ptUpdateProgress();
   if(s.done){sSave();ptStartRest()}
 }
 function ptAddSet(i){
@@ -2766,20 +2885,53 @@ function ptDelFood(i){
   if(i<0||i>=pt.food.length)return;
   pt.food.splice(i,1);ptSave();renderPt();
 }
+/* Ruokavalio vaihtoehtoineen: jokaiseen ateriaan useita vaihtoehtoja, jotka
+   on mitoitettu niin että yksi kustakin osuu päivän tavoitteeseen. Makrot
+   tulevat valmiiksi mukana → kirjaus ei vaadi uutta tekoälykutsua, ja
+   valitseminen onnistuu myös ilman verkkoa. */
+function ptMealsHtml(){
+  const ms=pt.meals&&Array.isArray(pt.meals.meals)?pt.meals.meals:null;
+  if(!ms||!ms.length)return pt.mealPlan?`<div class="pt-coach"><div class="pt-tag">ESIMERKKIPÄIVÄ</div>${esc(pt.mealPlan)}</div>`:'';
+  return ms.map((m,mi)=>`<div class="pt-hero"><div class="pt-tag">${esc(m.name||'Ateria')}</div>
+    ${(m.options||[]).map((o,oi)=>`<div class="pt-opt">
+      <div><div class="pt-opt-name">${esc(o.name||'')}</div>
+        <div class="pt-opt-macros">${Math.round(o.kcal||0)} kcal · ${Math.round(o.protein||0)} g proteiinia</div></div>
+      <button class="btn ghost" onclick="ptLogMealOption(${mi},${oi})">+ KIRJAA</button></div>`).join('')}
+  </div>`).join('');
+}
+async function ptLogMealOption(mi,oi){
+  const m=pt.meals&&pt.meals.meals&&pt.meals.meals[mi];
+  const o=m&&m.options&&m.options[oi];
+  if(!o)return;
+  pt.food.push({date:ptToday(),name:o.name,kcal:+o.kcal||0,protein:+o.protein||0,
+    carbs:+o.carbs||0,fat:+o.fat||0,ts:Date.now()});
+  await ptSave();sSave();renderPt();
+}
 async function ptMealPlan(){
   if(!pt.targets)return;
   const el=document.getElementById('ptBody');
-  if(el)el.innerHTML='<div class="learn-placeholder">Valmentaja kokoaa ateriaehdotuksia…</div>';
+  if(el)el.innerHTML='<div class="learn-placeholder">Valmentaja kokoaa ruokavaliota vaihtoehtoineen…</div>';
   try{
-    const t=pt.targets;
-    const sys=`Olet ravitsemusvalmentaja. Kokoa Lassille yhden päivän esimerkkiruokavalio suomalaisista arkiruoista.
-Tavoite: ${t.kcal} kcal, ${t.protein} g proteiinia, ${t.carbs} g hiilihydraattia, ${t.fat} g rasvaa.
-Kirjoita tiiviisti: aamiainen, lounas, välipala, päivällinen, iltapala — kunkin kohdalla ruoat ja arvioitu kcal/proteiini.
-Arkiruokaa, ei erikoistuotteita. Enintään 200 sanaa. Pelkkä teksti, ei markdownia.`;
-    const txt=await askClaude(sys,[{role:'user',content:'Kokoa esimerkkipäivä.'}],800);
-    pt.mealPlan=txt.trim();
+    const t=pt.targets,p=pt.profile||{};
+    const sys=`Olet ravitsemusvalmentaja. Kokoa Lassille päivän ruokavalio VAIHTOEHTOINEEN.
+Päivän tavoite: ${t.kcal} kcal, ${t.protein} g proteiinia, ${t.carbs} g hiilihydraattia, ${t.fat} g rasvaa.${p.dietGoal==='massa'?' Tavoitteena lihasmassan kasvu.':p.dietGoal==='rasva'?' Tavoitteena rasvanpudotus, proteiini pidettävä korkealla.':''}
+Anna viisi ateriaa: Aamiainen, Lounas, Välipala, Päivällinen, Iltapala.
+Anna JOKAISEEN ateriaan 3 eri vaihtoehtoa, jotta on varaa valita mielialan ja jääkaapin mukaan.
+Mitoita niin että kun jokaisesta ateriasta valitaan yksi vaihtoehto, päivä osuu tavoitteeseen noin ±5 %.
+Suomalaista arkiruokaa, tavallisia kaupan raaka-aineita, ei erikoistuotteita eikä lisäravinteita.
+Kirjoita annos konkreettisesti määrineen, esim. "Kaurapuuro 1 dl, 2 dl maitoa, 150 g raejuustoa, kourallinen mustikoita".
+Palauta VAIN JSON, ei muuta tekstiä:
+{"meals":[{"name":"Aamiainen","options":[{"name":"...","kcal":520,"protein":34,"carbs":70,"fat":11}]}]}`;
+    const raw=await askClaudeRetry(sys,[{role:'user',content:'Kokoa ruokavalio vaihtoehtoineen.'}],2600);
+    const r=ptParseJson(raw);
+    if(!r||!Array.isArray(r.meals)||!r.meals.length)throw new Error('ruokavaliota ei saatu jäsennettyä');
+    pt.meals={created:Date.now(),meals:r.meals};
+    pt.mealPlan=''; // vanha vapaamuotoinen teksti korvautuu rakenteisella
     await ptSave();sSave();
-  }catch(e){console.warn('ptMealPlan:',e)}
+  }catch(e){
+    console.warn('ptMealPlan:',e);
+    alert('Ruokavalion kokoaminen epäonnistui. Yritä uudelleen.');
+  }
   renderPt();
 }
 

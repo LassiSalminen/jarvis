@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v3.5). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v3.6). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -27,7 +27,7 @@ Malli: Claude Sonnet 5, automaattinen fallback Sonnet 4.6:een (`API_MODEL`).
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v3.5)
+## Toiminnot (v3.6)
 - **Chat**: persoonamoodit, markdown-renderöinti (mdRender, XSS-suojattu),
   historia säilyy localStoragessa yli latausten, yritä uudelleen -nappi,
   pikatoiminto-chipit (tilanne/treeni/sää/sähkö/uutiset). 👍-nosto → rawLog.
@@ -60,9 +60,19 @@ PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
   +1,25/2,5 kg kun kaikki toistot menivät ylärajaan; lepokello sarjan
   kuittauksesta; kesken oleva treeni säilyy localStoragessa (`jarvis:ptSession`)
   → salin kellarissa verkon katkeaminen ei hukkaa sarjoja. Garminin
-  treenivalmius säätää päivän suositusta. Ravinto: Mifflin–St Jeor laskee
-  kcal/proteiini/hiilari/rasva paikallisesti (toimii offline), ruoan kirjaus
-  arkikielellä → Claude arvioi makrot, ateriaehdotukset. Kehitys: liikekohtainen
+  treenivalmius säätää päivän suositusta. Treeninäkymässä kiinteä
+  edistymispalkki (x/y sarjaa), liikkeet numeroituna, nykyinen liike
+  korostettuna ja valmiit himmennettynä; edistyminen päivittyy ilman
+  uudelleenpiirtoa, joten syötekentän kohdistus ja vieritys eivät hyppää.
+  Alavälilehdet toimivat myös kesken treenin (paluupalkki + PALAA-nappi) —
+  ohjelmaa ja ravintoa voi vilkaista sarjojen välissä hylkäämättä treeniä.
+  Liikkeissä ▶ VIDEO (YouTube-haku, ei yksittäinen video → ei rikkoudu) ja
+  ⓘ TEKNIIKKA (Claude-ohje, tallentuu `pt.tech` → toimii sen jälkeen offline).
+  Ravinto: Mifflin–St Jeor laskee kcal/proteiini/hiilari/rasva paikallisesti
+  (toimii offline), ruoan kirjaus arkikielellä → Claude arvioi makrot.
+  Ruokavalio vaihtoehtoineen: 5 ateriaa × 3 vaihtoehtoa makroineen
+  (`pt.meals`), mitoitettu osumaan päivän tavoitteeseen; vaihtoehdon voi
+  kirjata yhdellä napautuksella ilman uutta tekoälykutsua. Kehitys: liikekohtainen
   painonnousu, kokonaiskuorma, paino, historia. Valmentajan kommentti
   tallennuksen jälkeen (ei estä tallennusta jos verkko pätkii).
   **Tallennus**: koko PT-tila on yhdessä wiki-sivussa (`pt-data`, body = JSON)
