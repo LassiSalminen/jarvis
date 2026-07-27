@@ -1125,7 +1125,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="4.1";
+const VERSION="4.2";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -4251,16 +4251,28 @@ async function playTtsSample(){
     if(r.status===501)throw new Error('GOOGLE_TTS_API_KEY puuttuu workerista');
     if(!r.ok)throw new Error('TTS-virhe '+r.status);
     const used=r.headers.get('X-TTS-Voice');
+    const ssmlUsed=r.headers.get('X-TTS-Ssml')==='1';
     const blob=await r.blob();
     const url=URL.createObjectURL(blob);
     ttsSample=new Audio(url);
     ttsSample.onended=()=>{URL.revokeObjectURL(url);ttsSample=null};
     ttsSample.play();
-    if(msg)msg.innerHTML=used
-      ? (used===ttsCfg.voice
-          ? 'Soi äänellä <b>'+esc(used)+'</b>.'
-          : 'Valitsemasi ääni ei ollut saatavilla — worker käytti ääntä <b>'+esc(used)+'</b>. Kokeile toista vaihtoehtoa.')
-      : 'Näyte soi. (Worker ei kerro käytettyä ääntä — päivitä worker, niin näet sen ja tauot tulevat käyttöön.)';
+    // Kaksi erillistä asiaa: mikä ääni soi ja toteutuivatko tauot.
+    // Kaikki äänet eivät tue SSML:ää, joten tauot voivat jäädä pois vaikka
+    // ääni olisi oikea — se on syytä kertoa suoraan eikä arvailtavaksi.
+    if(msg){
+      const aani=used
+        ? (used===ttsCfg.voice
+            ? 'Ääni: <b>'+esc(used)+'</b>.'
+            : 'Valitsemasi ääni ei ollut saatavilla — worker käytti ääntä <b>'+esc(used)+'</b>. Kokeile toista vaihtoehtoa.')
+        : 'Worker ei kerro käytettyä ääntä — se on vielä päivittämättä.';
+      const tauot=!used
+        ? ' Tauot eivät ole käytössä ennen workerin päivitystä.'
+        : (ssmlUsed
+            ? ' <span style="color:var(--green)">Tauot käytössä.</span>'
+            : ' <span style="color:var(--gold)">Tauot eivät ole käytössä: tämä ääni ei tue niitä. Kokeile Wavenet A:ta.</span>');
+      msg.innerHTML=aani+tauot;
+    }
   }catch(e){
     if(msg)msg.textContent='Näytettä ei saatu: '+(e.message||e);
   }finally{
