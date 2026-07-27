@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v4.6). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v4.7). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -34,7 +34,14 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v4.6)
+## Toiminnot (v4.7)
+- **HUOM painotavoite ja vaje**: `ptCalcTargets` laskee kalorivajeen
+  **viikkovauhtina kehonpainosta**, ei kiinteänä prosenttina: recomp 0,5 %/vko,
+  rasvanpudotus 0,75 %/vko, rasvakilo = 7700 kcal. Turvaraja estää menemästä
+  perusaineenvaihdunnan (tai 1500/1200 kcal) alle — liian jyrkkä vaje söisi
+  lihasta, mikä on päinvastoin kuin tavoite. Vajeella proteiini nostetaan
+  2,1 g/kg. Profiilissa on `goalWeight`; TAVOITE-osio näyttää laskennan auki
+  (ylläpito → vaje → viikkovauhti → arvioitu kesto).
 - **HUOM isot JSON-vastaukset**: älä pyydä yhtä jättimäistä JSONia. Ruokavalio
   (5 ateriaa × 3 vaihtoehtoa) katkesi token-kattoon ja katkennut JSON näytti
   samalta kuin täysi epäonnistuminen. Se pyydetään nyt **ateria kerrallaan**
@@ -113,8 +120,16 @@ PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
   Ravinto: Mifflin–St Jeor laskee kcal/proteiini/hiilari/rasva paikallisesti
   (toimii offline), ruoan kirjaus arkikielellä → Claude arvioi makrot.
   Ruokavalio vaihtoehtoineen: 5 ateriaa × 3 vaihtoehtoa makroineen
-  (`pt.meals`), mitoitettu osumaan päivän tavoitteeseen; vaihtoehdon voi
-  kirjata yhdellä napautuksella ilman uutta tekoälykutsua. Kehitys: liikekohtainen
+  (`pt.meals`), mitoitettu osumaan päivän tavoitteeseen ja jokaisen
+  raaka-aineen määrä grammoina; vaihtoehdon voi kirjata yhdellä
+  napautuksella ilman uutta tekoälykutsua.
+  **Ravintohistoria**: `pt.food` on aina sisältänyt päivämäärän, mutta
+  kaikki lukupaikat suodattivat sen tähän päivään — historia oli tallessa
+  mutta näkymätön (korjattu v4.7). `ptFoodByDay()` koostaa sen ja KEHITYS
+  näyttää 14 päivän palkit, 7 pv liukuvan keskiarvon (se luku joka kertoo
+  suunnan, ei yksittäinen päivä) ja päivän napautuksella sen ateriat.
+  Historia menee myös buildContextiin, joten chat osaa vastata
+  "paljonko söin eilen". Kehitys: liikekohtainen
   painonnousu, kokonaiskuorma, paino, historia. Valmentajan kommentti
   tallennuksen jälkeen (ei estä tallennusta jos verkko pätkii).
   **Tallennus**: koko PT-tila on yhdessä wiki-sivussa (`pt-data`, body = JSON)

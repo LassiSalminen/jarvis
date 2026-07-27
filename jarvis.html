@@ -1133,7 +1133,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="4.6";
+const VERSION="4.7";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -2126,6 +2126,15 @@ function buildContext(text){
     if(pt.targets)l.push('Ravintotavoite: '+pt.targets.kcal+' kcal ja '+pt.targets.protein+' g proteiinia vuorokaudessa.');
     const f=ptFoodSum();
     if(f.kcal)l.push('Tänään kirjattu ravinto: '+Math.round(f.kcal)+' kcal, '+Math.round(f.protein)+' g proteiinia.');
+    // Ravintohistoria: chatin pitää pystyä vastaamaan "paljonko söin eilen"
+    const hist=ptFoodByDay().slice(0,7);
+    if(hist.length>1){
+      l.push('Ravintohistoria (uusin ensin):\n'+hist.map(d=>
+        ptFmtDate(d.date)+' '+Math.round(d.kcal)+' kcal, '+Math.round(d.protein)+' g proteiinia'
+        +(d.items.length?' — '+d.items.map(i=>i.name).join(', '):'')).join('\n'));
+      const a=ptFoodAvg(7);
+      if(a)l.push('Keskiarvo viimeiseltä '+a.paivia+' kirjatulta päivältä: '+a.kcal+' kcal, '+a.protein+' g proteiinia.');
+    }
     const w=pt.weights[pt.weights.length-1];
     if(w)l.push('Viimeisin punnitus: '+w.kg+' kg ('+ptFmtDate(w.date)+').');
     lines.push('PT — TREENI JA RAVINTO:\n'+l.join('\n'));
@@ -2559,18 +2568,63 @@ function ptReadiness(){
 }
 
 /* ---- Ravinto: Mifflin–St Jeor, lasketaan paikallisesti (toimii offline) ---- */
+/* Tavoitteet ja kalorivaje.
+   Vaje lasketaan kehonpainosta viikkovauhtina, ei kiinteänä prosenttina:
+   0,5 %/vko säilyttää lihasta (rasvanpudotus + lihasmassa), 0,75 %/vko
+   pudottaa nopeammin. Rasvakiloa vastaa noin 7700 kcal.
+   Turvaraja estää menemästä perusaineenvaihdunnan alle — liian jyrkkä vaje
+   syö lihasta, mikä on juuri päinvastoin kuin tavoitteena. */
 function ptCalcTargets(p){
   if(!p||!p.weight||!p.height||!p.age)return null;
   const bmr=10*p.weight+6.25*p.height-5*p.age+(p.sex==='nainen'?-161:5);
   const act={kevyt:1.375,keski:1.55,kova:1.725}[p.activity||'keski']||1.55;
-  let kcal=bmr*act;
-  if(p.dietGoal==='massa')kcal*=1.10;
-  else if(p.dietGoal==='rasva')kcal*=0.82;
+  const tdee=bmr*act;
+  let kcal=tdee,deficit=0,rate=0;
+  if(p.dietGoal==='massa'){kcal=tdee*1.10}
+  else if(p.dietGoal==='recomp'||p.dietGoal==='rasva'){
+    rate=p.weight*(p.dietGoal==='recomp'?0.005:0.0075); // kg/vko
+    deficit=Math.round(rate*7700/7);
+    kcal=tdee-deficit;
+  }
+  const floor=Math.max(bmr,p.sex==='nainen'?1200:1500);
+  if(kcal<floor){kcal=floor;deficit=Math.max(0,Math.round(tdee-kcal));rate=deficit*7/7700}
   kcal=Math.round(kcal/10)*10;
-  const protein=Math.round(p.weight*(p.dietGoal==='rasva'?2.2:1.8));
-  const fat=Math.round(p.weight*0.9);
+  // Vajeella proteiini ylös: se on se mikä säilyttää lihaksen kun energiaa on niukasti
+  const protein=Math.round(p.weight*(deficit>0?2.1:1.8));
+  const fat=Math.round(p.weight*(deficit>0?0.8:0.9));
   const carbs=Math.max(0,Math.round((kcal-protein*4-fat*9)/4));
-  return{kcal,protein,fat,carbs};
+  const jaljella=p.goalWeight?Math.max(0,Math.round((p.weight-p.goalWeight)*10)/10):0;
+  const viikkoja=(jaljella&&rate>0)?Math.ceil(jaljella/rate):0;
+  return{kcal,protein,fat,carbs,tdee:Math.round(tdee),bmr:Math.round(bmr),
+    deficit:Math.round(deficit),rate:Math.round(rate*100)/100,jaljella,viikkoja};
+}
+/* Ravintohistoria. Kirjaukset ovat aina sisältäneet päivämäärän, mutta
+   jokainen lukupaikka suodatti ne tähän päivään — historia oli tallessa
+   mutta näkymätön. Nämä koostavat sen päiväkohtaiseksi. */
+function ptFoodByDay(){
+  const map={};
+  (pt&&pt.food||[]).forEach(f=>{
+    const d=f.date||'';if(!d)return;
+    if(!map[d])map[d]={date:d,kcal:0,protein:0,carbs:0,fat:0,items:[]};
+    const g=map[d];
+    g.kcal+=f.kcal||0;g.protein+=f.protein||0;g.carbs+=f.carbs||0;g.fat+=f.fat||0;
+    g.items.push(f);
+  });
+  return Object.values(map).sort((a,b)=>a.date<b.date?1:-1); // uusin ensin
+}
+// Liukuva keskiarvo on se luku joka oikeasti kertoo suunnan — yksittäinen
+// päivä heittelee vedenpidätyksen ja kirjausten epätarkkuuden mukana.
+function ptFoodAvg(days){
+  const d=ptFoodByDay().slice(0,days);
+  if(!d.length)return null;
+  return{paivia:d.length,
+    kcal:Math.round(d.reduce((a,x)=>a+x.kcal,0)/d.length),
+    protein:Math.round(d.reduce((a,x)=>a+x.protein,0)/d.length)};
+}
+// Montako ateriaa on vielä edessä — jäljellä oleva energia jaetaan niille
+function ptMealsLeft(){
+  const s=ptSchedule(),now=ptNowMin();
+  return s.filter(m=>m.min+30>=now).length;
 }
 function ptFoodToday(){
   const d=ptToday();
@@ -2608,9 +2662,16 @@ function ptNextMeal(){
 function ptRemaining(){
   const t=pt&&pt.targets,f=ptFoodSum();
   if(!t)return null;
-  return{kcal:Math.max(0,Math.round(t.kcal-f.kcal)),protein:Math.max(0,Math.round(t.protein-f.protein)),
+  const left=ptMealsLeft();
+  return{kcal:Math.max(0,Math.round(t.kcal-f.kcal)),
+    protein:Math.max(0,Math.round(t.protein-f.protein)),
+    carbs:Math.max(0,Math.round(t.carbs-f.carbs)),
+    fat:Math.max(0,Math.round(t.fat-f.fat)),
     kcalPct:Math.min(100,Math.round(f.kcal/t.kcal*100)),
-    proteinPct:Math.min(100,Math.round(f.protein/t.protein*100))};
+    proteinPct:Math.min(100,Math.round(f.protein/t.protein*100)),
+    aterioita:left,
+    perAteria:left?Math.round(Math.max(0,t.kcal-f.kcal)/left):0,
+    protPerAteria:left?Math.round(Math.max(0,t.protein-f.protein)/left):0};
 }
 
 /* HUD-paneeli: päivän ravinto yhdellä vilkaisulla, ilman välilehden avaamista */
@@ -2631,7 +2692,10 @@ function renderNutriHud(){
       +'<div style="display:flex;justify-content:space-between"><span>PROTEIINI</span>'
       +'<span style="color:var(--cyan);font-family:\'Share Tech Mono\'">'+Math.round(f.protein)+' / '+t.protein+' g</span></div>'
       +bar(r.proteinPct,r.proteinPct>=95?'green':'cyan')
-      +'<div style="color:var(--txt);margin-top:6px">Jäljellä <b style="color:var(--gold)">'+r.kcal+' kcal</b>, <b style="color:var(--gold)">'+r.protein+' g</b> proteiinia.</div>';
+      +'<div style="color:var(--txt);margin-top:6px">Jäljellä <b style="color:var(--gold)">'+r.kcal+' kcal</b>, <b style="color:var(--gold)">'+r.protein+' g</b> proteiinia'
+      +' (hiilari '+r.carbs+' g, rasva '+r.fat+' g).</div>'
+      +(r.aterioita?'<div style="margin-top:4px">Edessä '+r.aterioita+' ateriaa · noin <b>'+r.perAteria+' kcal</b> ja <b>'+r.protPerAteria+' g</b> kutakin.</div>':'')
+      +(pt.targets.deficit?'<div style="margin-top:4px;font-size:10px;color:var(--txt-dim)">Vaje '+pt.targets.deficit+' kcal/vrk → '+pt.targets.rate+' kg/vk</div>':'');
     if(nxt){
       const o=(nxt.options||[])[0];
       html+='<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:7px">'
@@ -2894,16 +2958,21 @@ function ptFoodHtml(){
   if(!pt.targets)return `<div class="pt-hero"><div class="pt-tag">RAVINTO</div><h2>Lasketaan tavoitteet</h2>
     <div class="pt-sub">Anna perustiedot kerran — energia- ja proteiinitavoite lasketaan niistä (Mifflin–St Jeor) ja päivittyy jos paino muuttuu.</div></div>
     ${ptProfileFormHtml()}`;
-  const t=pt.targets,f=ptFoodSum(),items=ptFoodToday();
-  return `<div class="pt-hero"><div class="pt-tag">RAVINTO · ${esc(ptFmtDate(ptToday()))}</div>
+  const t=pt.targets,f=ptFoodSum(),items=ptFoodToday(),r=ptRemaining();
+  return `${ptGoalHtml()}
+  <div class="pt-hero"><div class="pt-tag">RAVINTO · ${esc(ptFmtDate(ptToday()))}</div>
     <h2>${Math.round(f.kcal)} / ${t.kcal} kcal</h2>
     ${ptBarRow('Energia',f.kcal,t.kcal,'kcal')}
     ${ptBarRow('Proteiini',f.protein,t.protein,'g')}
     <div class="pt-macros">
-      <div class="pt-macro"><span class="v">${Math.round(f.protein)}</span><span class="l">PROT g</span></div>
-      <div class="pt-macro"><span class="v">${Math.round(f.carbs)}</span><span class="l">HIILARI g</span></div>
-      <div class="pt-macro"><span class="v">${Math.round(f.fat)}</span><span class="l">RASVA g</span></div>
-    </div></div>
+      <div class="pt-macro"><span class="v">${r.protein}</span><span class="l">PROT g JÄLJ</span></div>
+      <div class="pt-macro"><span class="v">${r.carbs}</span><span class="l">HIILARI g JÄLJ</span></div>
+      <div class="pt-macro"><span class="v">${r.fat}</span><span class="l">RASVA g JÄLJ</span></div>
+    </div>
+    <div class="pt-hint" style="margin-top:12px"><b>JÄLJELLÄ TÄNÄÄN</b>${r.kcal} kcal ja ${r.protein} g proteiinia.${
+      r.aterioita?` Edessä ${r.aterioita} ateriaa — noin ${r.perAteria} kcal ja ${r.protPerAteria} g proteiinia kutakin kohden.`
+                 :' Päivän ateriat on syöty.'}</div>
+  </div>
   ${ptMealsHtml()}
   <div class="pt-hero"><div class="pt-tag">KIRJAA SYÖMISET</div>
     <textarea class="pt-input" id="ptFoodIn" rows="2" placeholder="esim. kaurapuuro 1 dl, 3 kananmunaa, banaani"></textarea>
@@ -2918,12 +2987,34 @@ function ptFoodHtml(){
     <button class="btn ghost" onclick="ptMealPlan()">${pt.meals?'⟳ UUSI RUOKAVALIO':'⊕ RUOKAVALIO VAIHTOEHTOINEEN'}</button>
     <button class="btn ghost" onclick="pt.targets=null;renderPt()">MUOKKAA TIETOJA</button></div>`;
 }
+/* Painotavoite: mistä vaje tulee ja mihin se johtaa.
+   Näytetään laskenta auki, koska pelkkä kaloriluku ei kerro miksi. */
+function ptGoalHtml(){
+  const p=pt.profile||{},t=pt.targets;
+  if(!t||!p.goalWeight||!t.jaljella)return'';
+  const kk=Math.round(t.viikkoja/4.33*10)/10;
+  const recomp=p.dietGoal==='recomp';
+  return `<div class="pt-hero" style="border-left-color:var(--gold)">
+    <div class="pt-tag" style="color:var(--gold)">TAVOITE</div>
+    <h2>${p.weight} kg → ${p.goalWeight} kg</h2>
+    <div class="pt-readout">
+      <div>PUDOTETTAVAA<b>${t.jaljella} kg</b></div>
+      <div>VAUHTI<b>${t.rate} kg/vk</b></div>
+      <div>ARVIO<b>${t.viikkoja} vk</b></div>
+    </div>
+    <div class="pt-sub">Ylläpitosi on noin <b>${t.tdee} kcal</b> päivässä. Tavoite ${t.kcal} kcal
+      jättää <b style="color:var(--gold)">${t.deficit} kcal vajeen</b> — se on ${t.rate} kg viikossa,
+      eli noin ${kk} kuukautta.</div>
+    ${recomp?`<div class="pt-hint" style="margin-top:12px"><b>MIKSI MALTILLISESTI</b>Rasvan pudotus ja lihaksen kasvatus vetävät eri suuntiin: ensimmäinen vaatii energiavajeen, jälkimmäinen ylijäämän. Molempia saa silti samaan aikaan, kun vaje on maltillinen, proteiinia tulee ${t.protein} g päivässä ja nostat salilla progressiivisesti. Sinä olet tähän parhaassa mahdollisessa tilanteessa: aloittelija ylipainosta liikkeelle. Jyrkempi vaje pudottaisi nopeammin mutta söisi lihasta — se on juuri se mitä et halua.</div>`:''}
+  </div>`;
+}
 function ptProfileFormHtml(){
   const p=pt.profile||{};
   return `<div class="pt-hero"><div class="pt-tag">PERUSTIEDOT</div>
     <div class="pt-grid">
-      <div class="pt-field"><label>PAINO (KG)</label><input class="pt-input" id="ptfW" type="text" inputmode="decimal" value="${p.weight||''}"></div>
-      <div class="pt-field"><label>PITUUS (CM)</label><input class="pt-input" id="ptfH" type="number" inputmode="numeric" value="${p.height||''}"></div>
+      <div class="pt-field"><label>PAINO NYT (KG)</label><input class="pt-input" id="ptfW" type="text" inputmode="decimal" value="${p.weight||''}"></div>
+      <div class="pt-field"><label>TAVOITEPAINO (KG)</label><input class="pt-input" id="ptfGW" type="text" inputmode="decimal" value="${p.goalWeight||''}"></div>
+      <div class="pt-field"><label>PITUUS (CM)</label><input class="pt-input" id="ptfH" type="text" inputmode="numeric" value="${p.height||''}"></div>
       <div class="pt-field"><label>IKÄ</label><input class="pt-input" id="ptfA" type="number" inputmode="numeric" value="${p.age||''}"></div>
       <div class="pt-field"><label>SUKUPUOLI</label><select class="pt-input" id="ptfS">
         <option value="mies"${p.sex!=='nainen'?' selected':''}>Mies</option>
@@ -2933,15 +3024,57 @@ function ptProfileFormHtml(){
         <option value="keski"${(p.activity||'keski')==='keski'?' selected':''}>Keskitaso</option>
         <option value="kova"${p.activity==='kova'?' selected':''}>Aktiivinen</option></select></div>
       <div class="pt-field"><label>TAVOITE</label><select class="pt-input" id="ptfG">
-        <option value="massa"${(p.dietGoal||'massa')==='massa'?' selected':''}>Lihasmassa</option>
-        <option value="yllapito"${p.dietGoal==='yllapito'?' selected':''}>Ylläpito</option>
-        <option value="rasva"${p.dietGoal==='rasva'?' selected':''}>Rasvanpudotus</option></select></div>
+        <option value="recomp"${(p.dietGoal||'recomp')==='recomp'?' selected':''}>Rasva alas + lihasta (maltillinen)</option>
+        <option value="rasva"${p.dietGoal==='rasva'?' selected':''}>Rasvanpudotus (nopeampi)</option>
+        <option value="massa"${p.dietGoal==='massa'?' selected':''}>Lihasmassa (ylijäämä)</option>
+        <option value="yllapito"${p.dietGoal==='yllapito'?' selected':''}>Ylläpito</option></select></div>
     </div>
     <div class="learn-btns" style="margin-top:12px"><button class="btn" onclick="ptSaveProfile()">✓ LASKE TAVOITTEET</button></div></div>`;
 }
 
+/* Ravintohistoria KEHITYS-välilehdelle. Päivän rivin napautus avaa sen
+   aterialistan — muuten näkymä täyttyisi yksittäisistä ruoista. */
+let ptFoodDayOpen={};
+function ptToggleFoodDay(d){ptFoodDayOpen[d]=!ptFoodDayOpen[d];renderPt()}
+function ptFoodHistoryHtml(){
+  const days=ptFoodByDay();
+  if(!days.length)return'';
+  const t=pt.targets,show=days.slice(0,14);
+  const avg7=ptFoodAvg(7);
+  const maxK=Math.max(1,...show.map(d=>d.kcal),t?t.kcal:0);
+  // Palkin väri kertoo osuiko päivä tavoitteeseen: vihreä osuma, kulta yli
+  const bar=d=>{
+    const h=Math.round(d.kcal/maxK*100);
+    const col=!t?'cyan':(d.kcal>t.kcal*1.05?'gold':(d.kcal>=t.kcal*0.9?'green':'cyan'));
+    return `<i style="height:${h}%;background:var(--${col})" title="${esc(ptFmtDate(d.date))} ${Math.round(d.kcal)} kcal"></i>`;
+  };
+  return `<div class="pt-hero"><div class="pt-tag">RAVINTOHISTORIA</div>
+    ${avg7?`<div class="pt-readout">
+      <div>KESKIARVO ${avg7.paivia} PV<b>${avg7.kcal} kcal</b></div>
+      <div>PROTEIINI<b>${avg7.protein} g</b></div>
+      ${t?`<div>TAVOITE<b>${t.kcal} kcal</b></div>`:''}
+    </div>`:''}
+    <div class="pt-spark" style="height:52px">${show.slice().reverse().map(bar).join('')}</div>
+    <div style="font-size:11px;color:var(--txt-dim);margin-top:4px">Viimeiset ${show.length} päivää, vanhin vasemmalla</div>
+    <div style="margin-top:10px">
+    ${show.map(d=>`<div class="pt-row" style="cursor:pointer" onclick="ptToggleFoodDay(${ptAttr(d.date)})">
+      <span>${esc(ptFmtDate(d.date))}${d.date===ptToday()?' · tänään':''}</span>
+      <span class="val">${Math.round(d.kcal)}${t?' / '+t.kcal:''} kcal · ${Math.round(d.protein)} g
+        <span style="color:var(--txt-dim);margin-left:6px">${ptFoodDayOpen[d.date]?'▴':'▾'}</span></span>
+    </div>${ptFoodDayOpen[d.date]?`<div style="padding:6px 0 10px 10px;border-left:2px solid var(--line);margin-bottom:6px">
+      ${d.items.map(it=>`<div class="pt-row" style="border:none;padding:5px 0;font-size:13px">
+        <span style="color:var(--txt-dim)">${esc(it.name||'')}</span>
+        <span class="val" style="font-size:13px">${Math.round(it.kcal||0)} kcal · ${Math.round(it.protein||0)} g</span></div>`).join('')}
+      <div style="font-family:'Share Tech Mono';font-size:12px;color:var(--txt-dim);margin-top:4px">
+        Hiilari ${Math.round(d.carbs)} g · Rasva ${Math.round(d.fat)} g</div>
+    </div>`:''}`).join('')}
+    </div>
+  </div>`;
+}
 function ptStatsHtml(){
-  if(!pt.log.length)return `<div class="learn-placeholder">Ei kirjattuja treenejä vielä.\n\nEnsimmäinen treeni näkyy täällä heti kun tallennat sen.</div>`;
+  // Ravintohistoria näkyy vaikka treenejä ei olisi vielä yhtään
+  if(!pt.log.length)return ptFoodHistoryHtml()
+    +`<div class="learn-placeholder">Ei kirjattuja treenejä vielä.\n\nEnsimmäinen treeni näkyy täällä heti kun tallennat sen.</div>`;
   const names=[...new Set(pt.log.flatMap(l=>(l.exercises||[]).map(e=>e.name)))];
   const prog=names.map(n=>{
     const first=(()=>{for(const l of pt.log){const e=(l.exercises||[]).find(x=>x.name===n);
@@ -2974,7 +3107,8 @@ function ptStatsHtml(){
       <input class="pt-input" id="ptWIn" type="text" inputmode="decimal" placeholder="kg" style="flex:1">
       <button class="btn ghost" style="font-size:11px" onclick="ptLogWeight()">KIRJAA</button></div>
   </div>
-  <div class="pt-hero"><div class="pt-tag">HISTORIA</div>
+  ${ptFoodHistoryHtml()}
+  <div class="pt-hero"><div class="pt-tag">TREENIHISTORIA</div>
     ${pt.log.slice(-10).reverse().map(l=>`<div class="pt-row"><span>${esc(ptFmtDate(l.date))} · ${esc(l.dayName||'')}</span>
       <span class="val">${l.dur?l.dur+' min · ':''}${(l.exercises||[]).reduce((a,e)=>a+(e.sets||[]).length,0)} sarjaa
       <button class="btn ghost" style="font-size:9px;height:22px;padding:0 7px;margin-left:6px" onclick="ptDeleteLog(${ptAttr(l.id)})" title="Poista treeni">✕</button></span></div>`).join('')}
@@ -3133,8 +3267,9 @@ async function ptSaveProfile(){
   const g=id=>document.getElementById(id);
   const p={...(pt.profile||{}),
     weight:ptNum(g('ptfW')&&g('ptfW').value),height:ptNum(g('ptfH')&&g('ptfH').value),
+    goalWeight:ptNum(g('ptfGW')&&g('ptfGW').value),
     age:ptNum(g('ptfA')&&g('ptfA').value),sex:g('ptfS')?g('ptfS').value:'mies',
-    activity:g('ptfAct')?g('ptfAct').value:'keski',dietGoal:g('ptfG')?g('ptfG').value:'massa'};
+    activity:g('ptfAct')?g('ptfAct').value:'keski',dietGoal:g('ptfG')?g('ptfG').value:'recomp'};
   if(!p.weight||!p.height||!p.age){toast('Täytä paino, pituus ja ikä');return}
   pt.profile=p;
   pt.targets=ptCalcTargets(p);
@@ -3273,9 +3408,11 @@ async function ptMealPlan(){
       const sys=`Olet ravitsemusvalmentaja. Ehdota Lassille KOLME vaihtoehtoa yhdelle aterialle.
 Ateria: ${nimi}. Mitoita jokainen vaihtoehto noin ${kcal} kcal ja ${prot} g proteiinia.${tavoite}
 Suomalaista arkiruokaa, tavallisia kaupan raaka-aineita, ei erikoistuotteita eikä lisäravinteita.
-Kirjoita annos konkreettisesti määrineen, esim. "Kaurapuuro 1 dl, 2 dl maitoa, 150 g raejuustoa, kourallinen mustikoita".
+TÄRKEÄÄ: kerro JOKAISEN raaka-aineen määrä grammoina tai desilitroina — Lassi punnitsee ne.
+Älä kirjoita "kourallinen", "hieman" tai "sopivasti". Esimerkki hyvästä muotoilusta:
+"Kaurahiutale 80 g, maito 2 dl, raejuusto 200 g, mustikat 100 g"
 Palauta VAIN JSON, ei muuta tekstiä:
-{"options":[{"name":"...","kcal":${kcal},"protein":${prot},"carbs":60,"fat":12}]}`;
+{"options":[{"name":"Kaurahiutale 80 g, maito 2 dl, raejuusto 200 g","kcal":${kcal},"protein":${prot},"carbs":60,"fat":12}]}`;
       let opts=null;
       for(let yr=0;yr<2&&!opts;yr++){
         try{
