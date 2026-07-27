@@ -985,6 +985,10 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
           <div id="m-garminBox" style="font-size:13px;display:flex;flex-direction:column;gap:4px;color:var(--txt-dim)">Ladataan…</div>
         </div>
         <div class="m-card">
+          <div class="m-card-title">RAVINTO · TÄNÄÄN</div>
+          <div id="m-nutriBox" style="font-size:13px;color:var(--txt-dim)">Ladataan…</div>
+        </div>
+        <div class="m-card">
           <div class="m-card-title">JÄRJESTELMÄ</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
             <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">AKKU<br></span><span id="m-bat" style="color:var(--cyan)">--</span></div>
@@ -1064,6 +1068,10 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
         <div style="font-family:'Orbitron';font-size:10px;letter-spacing:.15em;color:var(--txt-dim);margin-bottom:5px">KEHO · GARMIN</div>
         <div id="garminBox" style="font-size:11px;display:flex;flex-direction:column;gap:3px;color:var(--txt-dim)">Ladataan…</div>
       </div>
+      <div style="border-top:1px solid var(--line);margin:6px 13px;padding-top:8px;padding-bottom:10px">
+        <div style="font-family:'Orbitron';font-size:10px;letter-spacing:.15em;color:var(--txt-dim);margin-bottom:5px">RAVINTO · TÄNÄÄN</div>
+        <div id="nutriBox" style="font-size:11px;color:var(--txt-dim)">Ladataan…</div>
+      </div>
     </div>
   </aside>
 </main>
@@ -1125,7 +1133,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="4.3";
+const VERSION="4.4";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -2554,9 +2562,80 @@ function ptFoodSum(){
     carbs:a.carbs+(f.carbs||0),fat:a.fat+(f.fat||0)}),{kcal:0,protein:0,carbs:0,fat:0});
 }
 
+/* ---- Päivän ateria-aikataulu ----
+   Ruokavaliossa ateriat ovat nimillä, ei kellonajoilla. Nimestä päätellään
+   tavanomainen aika, jotta sovellus voi kertoa mitä pitäisi syödä NYT eikä
+   vain listata viittä vaihtoehtoa joista käyttäjä päättelee itse. */
+const PT_MEAL_TIMES=[
+  [/aamiai|aamupal/i,7*60+30],[/lounas/i,11*60+30],[/välipal|valipal/i,14*60+30],
+  [/päivälli|paivalli|illalli/i,17*60+30],[/iltapal|iltasyö|iltasyo/i,20*60+30]
+];
+function ptMealMinutes(name,idx){
+  const n=String(name||'');
+  for(const [re,m] of PT_MEAL_TIMES) if(re.test(n)) return m;
+  return 8*60+idx*3*60; // tuntematon nimi: jaa päivä tasavälein
+}
+function ptSchedule(){
+  const ms=pt&&pt.meals&&Array.isArray(pt.meals.meals)?pt.meals.meals:[];
+  return ms.map((m,i)=>({...m,min:ptMealMinutes(m.name,i)})).sort((a,b)=>a.min-b.min);
+}
+function ptClock(min){return String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0')}
+function ptNowMin(){const d=new Date();return d.getHours()*60+d.getMinutes()}
+// Seuraava ateria = ensimmäinen jonka aika ei ole vielä mennyt (30 min armoa)
+function ptNextMeal(){
+  const s=ptSchedule(),now=ptNowMin();
+  return s.find(m=>m.min+30>=now)||null;
+}
+function ptRemaining(){
+  const t=pt&&pt.targets,f=ptFoodSum();
+  if(!t)return null;
+  return{kcal:Math.max(0,Math.round(t.kcal-f.kcal)),protein:Math.max(0,Math.round(t.protein-f.protein)),
+    kcalPct:Math.min(100,Math.round(f.kcal/t.kcal*100)),
+    proteinPct:Math.min(100,Math.round(f.protein/t.protein*100))};
+}
+
+/* HUD-paneeli: päivän ravinto yhdellä vilkaisulla, ilman välilehden avaamista */
+function renderNutriHud(){
+  const el=document.getElementById('nutriBox'),em=document.getElementById('m-nutriBox');
+  if(!el&&!em)return;
+  let html;
+  if(!pt||!pt.targets){
+    html='<div style="line-height:1.6">Tavoitteita ei ole vielä laskettu.<br>'
+      +'<span style="color:var(--cyan);cursor:pointer" onclick="mobileSwitch(\'pt\');switchPtTab(\'food\')">Anna perustiedot →</span></div>';
+  }else{
+    const r=ptRemaining(),nxt=ptNextMeal(),t=pt.targets,f=ptFoodSum();
+    const bar=(pct,col)=>'<div style="height:4px;background:rgba(var(--accent-rgb),.1);border-radius:2px;margin:3px 0 7px">'
+      +'<div style="height:100%;width:'+pct+'%;background:var(--'+col+');border-radius:2px"></div></div>';
+    html='<div style="display:flex;justify-content:space-between"><span>SYÖTY</span>'
+      +'<span style="color:var(--cyan);font-family:\'Share Tech Mono\'">'+Math.round(f.kcal)+' / '+t.kcal+' kcal</span></div>'
+      +bar(r.kcalPct,r.kcalPct>=95?'green':'cyan')
+      +'<div style="display:flex;justify-content:space-between"><span>PROTEIINI</span>'
+      +'<span style="color:var(--cyan);font-family:\'Share Tech Mono\'">'+Math.round(f.protein)+' / '+t.protein+' g</span></div>'
+      +bar(r.proteinPct,r.proteinPct>=95?'green':'cyan')
+      +'<div style="color:var(--txt);margin-top:6px">Jäljellä <b style="color:var(--gold)">'+r.kcal+' kcal</b>, <b style="color:var(--gold)">'+r.protein+' g</b> proteiinia.</div>';
+    if(nxt){
+      const o=(nxt.options||[])[0];
+      html+='<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:7px">'
+        +'<div style="font-family:\'Orbitron\';font-size:9px;letter-spacing:.15em;color:var(--gold)">SEURAAVAKSI '+ptClock(nxt.min)+' · '+esc(nxt.name||'')+'</div>'
+        +(o?'<div style="color:var(--txt);line-height:1.55;margin-top:4px">'+esc(o.name||'')+'</div>'
+           +'<div style="font-family:\'Share Tech Mono\';margin-top:3px">'+Math.round(o.kcal||0)+' kcal · '+Math.round(o.protein||0)+' g</div>':'')
+        +'</div>';
+    }else if(pt.meals){
+      html+='<div style="margin-top:8px;color:var(--txt-dim)">Päivän ateriat syöty.</div>';
+    }else{
+      html+='<div style="margin-top:8px"><span style="color:var(--cyan);cursor:pointer" onclick="mobileSwitch(\'pt\');switchPtTab(\'food\')">Kokoa päivän ruokavalio →</span></div>';
+    }
+  }
+  if(el)el.innerHTML=html;
+  if(em)em.innerHTML=html;
+}
+// Kello liikkuu, joten "seuraavaksi" päivittyy itsestään
+setInterval(()=>{if(pt&&pt.targets)renderNutriHud()},300000);
+
 /* ===== RENDER ===== */
 let ptLastView='';
 function renderPt(){
+  renderNutriHud();
   if(!pt)pt=ptDefault();
   const el=document.getElementById('ptBody');if(!el)return;
   // Käynnissä oleva treeni elää TÄNÄÄN-välilehdellä. Muut välilehdet pysyvät
@@ -2648,7 +2727,7 @@ function ptProgHtml(){
     <div class="pt-sub">${esc(p.idea||'')}</div></div>
   ${(p.days||[]).map((d,i)=>`<div class="pt-day${i===idx?' next':''}">
     <h4>${esc(d.name)}${i===idx?' · SEURAAVA':''}</h4>
-    <ul>${(d.exercises||[]).map(e=>`<li>${esc(e.name)} <i>${e.sets||3} × ${esc(e.reps||'8-10')}</i>${ptExLinks(e.name)}${e.note?`<br><i>${esc(e.note)}</i>`:''}${ptTechHtml(e.name)}</li>`).join('')}</ul>
+    <ul>${(d.exercises||[]).map((e,ei)=>`<li>${esc(e.name)} <i>${e.sets||3} × ${esc(e.reps||'8-10')}</i>${ptExLinks(e.name,i,ei)}${e.note?`<br><i>${esc(e.note)}</i>`:''}${ptTechHtml(e.name)}</li>`).join('')}</ul>
     <div class="learn-btns" style="margin-top:10px"><button class="btn ghost" style="font-size:10px" onclick="ptStartSession(${i})">▶ ALOITA TÄMÄ</button></div>
   </div>`).join('')}
   ${p.progression?`<div class="pt-coach"><div class="pt-tag">PROGRESSIO</div>${esc(p.progression)}</div>`:''}
@@ -2662,9 +2741,50 @@ function ptProgHtml(){
 let ptTechOpen={};
 function ptVideoUrl(name){return 'https://www.youtube.com/results?search_query='+encodeURIComponent(name+' tekniikka kuntosali')}
 function ptAttr(s){return JSON.stringify(String(s)).replace(/'/g,'&#39;')}
-function ptExLinks(name){
+function ptExLinks(name,di,ei){
   return `<a class="pt-lnk" href="${esc(ptVideoUrl(name))}" target="_blank" rel="noopener">▶ VIDEO</a>`+
-    `<button class="pt-lnk" onclick='ptTechnique(${ptAttr(name)})'>ⓘ TEKNIIKKA</button>`;
+    `<button class="pt-lnk" onclick='ptTechnique(${ptAttr(name)})'>ⓘ TEKNIIKKA</button>`+
+    (di!=null?`<button class="pt-lnk" style="color:var(--gold)" onclick="ptSwapExercise(${di},${ei})">⇄ VAIHDA</button>`:'');
+}
+/* ---- Liikkeen vaihto ----
+   Ohjelma ei saa olla kiveen hakattu: laite voi olla varattu, liike voi
+   tuntua nivelissä väärältä tai sitä ei yksinkertaisesti huvita tehdä.
+   Claude ehdottaa korvaajan joka kuormittaa samoja lihaksia, ja vaihto
+   tallentuu ohjelmaan — myös progressio seuraa uutta liikettä nimen mukaan. */
+async function ptSwapExercise(di,ei){
+  const day=(pt.program&&pt.program.days||[])[di];
+  const ex=day&&(day.exercises||[])[ei];
+  if(!ex)return;
+  const syy=prompt('Miksi vaihdetaan liike "'+ex.name+'"?\n\nEsim. "penkki on varattu", "olkapää on kipeä", "ei huvita" tai jätä tyhjäksi.','');
+  if(syy===null)return; // peruttiin
+  const el=document.getElementById('ptBody');
+  if(el)el.innerHTML='<div class="learn-placeholder">Valmentaja etsii korvaavaa liikettä…</div>';
+  try{
+    const muut=(day.exercises||[]).map(e=>e.name).join(', ');
+    const sys=`Olet voimavalmentaja. Lassi haluaa korvata yhden liikkeen kuntosaliohjelmastaan.
+Korvattava liike: ${ex.name} (${ex.sets}×${ex.reps})
+Saman treenin muut liikkeet: ${muut}
+${syy.trim()?'Syy vaihtoon: '+syy.trim():'Syytä ei kerrottu.'}
+Valitse korvaaja joka kuormittaa samoja lihaksia ja sopii aloittelijalle.
+Älä ehdota liikettä joka on jo tässä treenissä. Jos syy on kipu, valitse liike joka
+kiertää ongelman eikä pahenna sitä.
+Palauta VAIN JSON: {"name":"Liikkeen nimi","sets":3,"reps":"8-10","start":"aloituspaino tai -tapa","note":"lyhyt perustelu miksi tämä korvaa hyvin"}`;
+    const r=ptParseJson(await askClaudeRetry(sys,[{role:'user',content:'Ehdota korvaava liike.'}],700));
+    if(!r||!r.name)throw new Error('korvaajaa ei saatu');
+    const uusi=ptNormalizeProgram({days:[{name:'x',exercises:[r]}]}).days[0].exercises[0];
+    if(!uusi)throw new Error('korvaajaa ei saatu jäsennettyä');
+    // Säilytä alkuperäinen sarja-/toistomäärä jos malli muutti niitä turhaan
+    uusi.sets=ex.sets;uusi.reps=ex.reps;
+    if(!confirm('Korvataanko "'+ex.name+'" liikkeellä "'+uusi.name+'"?\n\n'+(uusi.note||'')))
+      { renderPt(); return; }
+    day.exercises[ei]=uusi;
+    await ptSave();sSave();
+    toast(ex.name+' → '+uusi.name);
+  }catch(e){
+    console.warn('ptSwapExercise:',e);
+    toast('Vaihto ei onnistunut: '+String(e.message||e).slice(0,70),5000);
+  }
+  renderPt();
 }
 function ptTechHtml(name){
   if(!ptTechOpen[name])return'';
@@ -2765,6 +2885,7 @@ function ptFoodHtml(){
       <div class="pt-macro"><span class="v">${Math.round(f.carbs)}</span><span class="l">HIILARI g</span></div>
       <div class="pt-macro"><span class="v">${Math.round(f.fat)}</span><span class="l">RASVA g</span></div>
     </div></div>
+  ${ptMealsHtml()}
   <div class="pt-hero"><div class="pt-tag">KIRJAA SYÖMISET</div>
     <textarea class="pt-input" id="ptFoodIn" rows="2" placeholder="esim. kaurapuuro 1 dl, 3 kananmunaa, banaani"></textarea>
     <div class="learn-btns" style="margin-top:9px"><button class="btn" id="ptFoodBtn" onclick="ptLogFood()">⊕ LISÄÄ</button></div>
@@ -2774,7 +2895,6 @@ function ptFoodHtml(){
       <span class="val">${Math.round(it.kcal||0)} kcal · ${Math.round(it.protein||0)} g
       <button class="btn ghost" style="font-size:9px;height:22px;padding:0 7px;margin-left:6px" onclick="ptDelFood(${pt.food.indexOf(it)})">✕</button></span></div>`).join('')}
     </div>`:''}
-  ${ptMealsHtml()}
   <div class="learn-btns">
     <button class="btn ghost" onclick="ptMealPlan()">${pt.meals?'⟳ UUSI RUOKAVALIO':'⊕ RUOKAVALIO VAIHTOEHTOINEEN'}</button>
     <button class="btn ghost" onclick="pt.targets=null;renderPt()">MUOKKAA TIETOJA</button></div>`;
@@ -3024,24 +3144,28 @@ kerrota ("pari teelusikkaa" ≈ 10 g, "pieni löräys" ≈ 15 g). Älä jätä m
   // Kaksi yritystä: ensimmäinen normaalisti, toinen tiukennetulla ohjeella.
   // Malli lipsahtaa toisinaan selittämään JSONin ympärille, jolloin jäsennys
   // kaatuu — silloin kannattaa pyytää uudestaan eikä hylätä käyttäjän syötettä.
+  // HUOM: EI assistant-prefilliä. Claude Sonnet 5 hylkää sen
+  // ("invalid_request_error: This model does not support assistant..."),
+  // joten tiukennus tehdään lisäohjeella käyttäjäviestissä.
   const yrita=async(tiukka)=>{
-    const msgs=[{role:'user',content:txt}];
-    if(tiukka)msgs.push({role:'assistant',content:'{"items":['});
-    const raw=await askClaude(sys,msgs,1400);
-    return ptParseJson(tiukka?'{"items":['+raw:raw);
+    const msgs=[{role:'user',content:tiukka
+      ? txt+'\n\nVastaa PELKÄLLÄ JSON-objektilla. Aloita merkillä { ja lopeta merkkiin }. Älä kirjoita mitään muuta.'
+      : txt}];
+    return ptParseJson(await askClaude(sys,msgs,1400));
   };
-  let virhe=null;
+  let e1=null,e2=null;
   try{
     let r=null;
     try{ r=await yrita(false); }
-    catch(e){ virhe=e; console.warn('ptLogFood yritys 1:',e); }
+    catch(e){ e1=e; console.warn('ptLogFood yritys 1:',e); }
     if(!r||!Array.isArray(r.items)||!r.items.length){
       try{ r=await yrita(true); }
-      catch(e){ virhe=e; console.warn('ptLogFood yritys 2:',e); }
+      catch(e){ e2=e; console.warn('ptLogFood yritys 2:',e); }
     }
     if(!r||!Array.isArray(r.items)||!r.items.length){
-      throw new Error(virhe?('yhteys- tai palvelinvirhe ('+String(virhe.message||virhe).slice(0,60)+')')
-                           :'malli ei palauttanut kelvollista arviota');
+      const syy=e1||e2;
+      throw new Error(syy?String(syy.message||syy).slice(0,150)
+                         :'malli ei palauttanut kelvollista arviota');
     }
     const d=ptToday();
     let lisatty=0;
@@ -3079,12 +3203,21 @@ function ptDelFood(i){
 function ptMealsHtml(){
   const ms=pt.meals&&Array.isArray(pt.meals.meals)?pt.meals.meals:null;
   if(!ms||!ms.length)return pt.mealPlan?`<div class="pt-coach"><div class="pt-tag">ESIMERKKIPÄIVÄ</div>${esc(pt.mealPlan)}</div>`:'';
-  return ms.map((m,mi)=>`<div class="pt-hero"><div class="pt-tag">${esc(m.name||'Ateria')}</div>
-    ${(m.options||[]).map((o,oi)=>`<div class="pt-opt">
-      <div><div class="pt-opt-name">${esc(o.name||'')}</div>
-        <div class="pt-opt-macros">${Math.round(o.kcal||0)} kcal · ${Math.round(o.protein||0)} g proteiinia</div></div>
-      <button class="btn ghost" onclick="ptLogMealOption(${mi},${oi})">+ KIRJAA</button></div>`).join('')}
-  </div>`).join('');
+  const nxt=ptNextMeal();
+  const s=ptSchedule();
+  // Aikataulu järjestyksessä ja seuraava ateria korostettuna: näin näkymä
+  // kertoo mitä syödä nyt, ei vain mitä voisi syödä joskus.
+  return s.map(m=>{
+    const mi=ms.indexOf(ms.find(x=>x.name===m.name));
+    const on=nxt&&nxt.name===m.name;
+    return `<div class="pt-hero"${on?' style="border-left-color:var(--gold)"':''}>
+      <div class="pt-tag"${on?' style="color:var(--gold)"':''}>${ptClock(m.min)} · ${esc(m.name||'Ateria')}${on?' · NYT VUOROSSA':''}</div>
+      ${(m.options||[]).map((o,oi)=>`<div class="pt-opt">
+        <div><div class="pt-opt-name">${esc(o.name||'')}</div>
+          <div class="pt-opt-macros">${Math.round(o.kcal||0)} kcal · ${Math.round(o.protein||0)} g proteiinia</div></div>
+        <button class="btn ghost" onclick="ptLogMealOption(${mi},${oi})">+ KIRJAA</button></div>`).join('')}
+    </div>`;
+  }).join('');
 }
 async function ptLogMealOption(mi,oi){
   const m=pt.meals&&pt.meals.meals&&pt.meals.meals[mi];
@@ -3113,20 +3246,22 @@ Palauta VAIN JSON, ei muuta tekstiä:
     // JSONin ympärille, pyydetään uudestaan valmiiksi aloitetulla vastauksella.
     // Token-katto on reilu, koska 5 ateriaa × 3 vaihtoehtoa on pitkä vastaus
     // ja katkennut JSON näyttäisi samalta kuin täysi epäonnistuminen.
+    // EI assistant-prefilliä — Sonnet 5 hylkää sen. Tiukennus lisäohjeena.
     const yrita=async(tiukka)=>{
-      const msgs=[{role:'user',content:'Kokoa ruokavalio vaihtoehtoineen.'}];
-      if(tiukka)msgs.push({role:'assistant',content:'{"meals":['});
-      const raw=await askClaudeRetry(sys,msgs,4000);
-      return ptParseJson(tiukka?'{"meals":['+raw:raw);
+      const msgs=[{role:'user',content:tiukka
+        ? 'Kokoa ruokavalio vaihtoehtoineen. Vastaa PELKÄLLÄ JSON-objektilla: aloita merkillä { ja lopeta merkkiin }. Älä kirjoita mitään muuta.'
+        : 'Kokoa ruokavalio vaihtoehtoineen.'}];
+      return ptParseJson(await askClaudeRetry(sys,msgs,4000));
     };
-    let r=null,virhe=null;
-    try{ r=await yrita(false); }catch(e){ virhe=e; console.warn('ptMealPlan yritys 1:',e); }
+    let r=null,e1=null,e2=null;
+    try{ r=await yrita(false); }catch(e){ e1=e; console.warn('ptMealPlan yritys 1:',e); }
     if(!r||!Array.isArray(r.meals)||!r.meals.length){
-      try{ r=await yrita(true); }catch(e){ virhe=e; console.warn('ptMealPlan yritys 2:',e); }
+      try{ r=await yrita(true); }catch(e){ e2=e; console.warn('ptMealPlan yritys 2:',e); }
     }
     if(!r||!Array.isArray(r.meals)||!r.meals.length){
-      throw new Error(virhe?('yhteys- tai palvelinvirhe ('+String(virhe.message||virhe).slice(0,80)+')')
-                           :'malli ei palauttanut kelvollista ruokavaliota');
+      const syy=e1||e2;
+      throw new Error(syy?String(syy.message||syy).slice(0,150)
+                         :'malli ei palauttanut kelvollista ruokavaliota');
     }
     pt.meals={created:Date.now(),meals:r.meals};
     pt.mealPlan=''; // vanha vapaamuotoinen teksti korvautuu rakenteisella
