@@ -68,11 +68,25 @@ Kokonaisaika: ~30–40 min. Kaikki ilmaista.
 
 Ilman tätä luennot luetaan laitteen omalla puheäänellä (kelaus ei toimi).
 Tällä saat luonnollisen neuroäänen + kelattavan soittimen + offline-MP3:t.
-Ilmaiskiintiö ~1 milj. merkkiä/kk ≈ kymmeniä luentoja ilmaiseksi.
+
+**Kustannuksista — lue tämä ennen kuin generoit kymmenen luentoa.**
+Ilmaiskiintiö EI ole sama kaikille äänille: Standard- ja WaveNet-äänillä on
+oma kuukausittainen ilmaiskiintiönsä, mutta laadukkaammat perheet (Chirp,
+Studio, Neural2) laskutetaan eri taksalla ja voivat jäädä kokonaan
+ilmaiskiintiön ulkopuolelle. Sovelluksen oletusääni on Chirp3-HD, eli se
+ei välttämättä ole ilmainen. Tarkista voimassa olevat hinnat ja kiintiöt:
+https://cloud.google.com/text-to-speech/pricing
+
+Mittakaava: yksi normaalipituinen luento on noin 20 000 merkkiä, joten
+maksullisillakin taksoilla puhutaan senteistä per luento — ei kympeistä.
+Aseta silti **budjettihälytys** (Billing → Budgets & alerts, esim. 5 €/kk),
+niin yllätyksiä ei tule. Jos haluat pysyä varmasti ilmaisessa, valitse
+sovelluksessa ääneksi `fi-FI-Wavenet-A` tai `fi-FI-Standard-A`
+(LUENNOT → SÄÄDÄ).
 
 1. Mene: https://console.cloud.google.com — kirjaudu Google-tilillä ja luo
-   projekti (esim. `jarvis-tts`). Huom: Google vaatii laskutustilin
-   aktivoinnin, mutta ilmaiskiintiön sisällä ei veloiteta mitään.
+   projekti (esim. `jarvis-tts`). Google vaatii laskutustilin aktivoinnin
+   myös ilmaiskiintiön käyttöön.
 2. Ylähaku: "Cloud Text-to-Speech API" → **Enable**.
 3. Vasen valikko: "APIs & Services" → "Credentials" → "Create Credentials"
    → **API key**. Kopioi avain talteen.
@@ -84,10 +98,17 @@ Ilmaiskiintiö ~1 milj. merkkiä/kk ≈ kymmeniä luentoja ilmaiseksi.
    - Value: äsken kopioitu avain → **Deploy**.
 6. Muista myös päivittää Workerin koodi ("Edit code" → liitä uusin
    `worker.js` → Deploy), jos siinä ei vielä ole `/api/gtts`-reittiä.
-7. Sovelluksessa: uusille luennoille HQ-ääni ladataan automaattisesti heti
+7. Testaa heti: sovellus → OPPI → **LUENNOT** → **SÄÄDÄ** →
+   **▶ KUUNTELE NÄYTE**. Näyte kertoo myös mitä ääntä oikeasti käytettiin,
+   joten näet suoraan jos valitsemasi ääni ei ollut saatavilla.
+8. Sovelluksessa: uusille luennoille HQ-ääni ladataan automaattisesti heti
    generoinnin perään. Vanhoille luennoille: avaa luento → paina
    **⭳ LATAA HQ-ÄÄNI**. Ääni tallentuu laitteelle ja toimii sen jälkeen
    offline-tilassa kelattavana.
+
+Jos näyte sanoo "GOOGLE_TTS_API_KEY puuttuu workerista", secret ei ole
+perillä: tarkista nimen kirjoitusasu (tasan `GOOGLE_TTS_API_KEY`) ja se
+että painoit Cloudflaressa **Deploy** tallennuksen jälkeen.
 
 ### 2e — (Vapaaehtoinen) Garmin-synkkaus käskystä: ⚡ SYNKKAA -nappi
 
