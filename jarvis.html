@@ -1125,7 +1125,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="4.0";
+const VERSION="4.1";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -2693,10 +2693,19 @@ function ptSetCounts(){
   const all=ptSession.exercises.reduce((a,e)=>a+e.sets.length,0);
   return{done,all,pct:all?Math.round(done/all*100):0};
 }
+// Kulunut aika päivittyy sarjan kuittauksesta — ei omaa sekuntikelloa,
+// koska ylimääräinen ajastin veisi virtaa eikä lisäisi mitään olennaista.
+function ptElapsedMin(){
+  return ptSession&&ptSession.started?Math.max(0,Math.round((Date.now()-ptSession.started)/60000)):0;
+}
+function ptProgText(){
+  const c=ptSetCounts(),m=ptElapsedMin();
+  return (m>0?m+' min · ':'')+c.done+' / '+c.all+' sarjaa';
+}
 function ptSessionHtml(){
   const s=ptSession,c=ptSetCounts(),act=ptActiveIdx();
   return `<div class="pt-prog">
-      <div class="top"><h3>${esc(s.dayName)}</h3><span class="cnt" id="ptProgCnt">${c.done} / ${c.all} sarjaa</span></div>
+      <div class="top"><h3>${esc(s.dayName)}</h3><span class="cnt" id="ptProgCnt">${esc(ptProgText())}</span></div>
       <div class="pt-bar"><i id="ptProgBar" class="${c.pct>=100?'hit':''}" style="width:${c.pct}%"></i></div></div>
     <div class="pt-timer" id="ptTimer" style="display:${ptRestT>0?'flex':'none'}">
       <span class="l">LEPO</span><span class="t" id="ptTimerT">0:00</span>
@@ -2707,9 +2716,9 @@ function ptSessionHtml(){
       ${ptTechHtml(ex.name)}
       <div class="pt-sets" style="margin-top:11px">${ex.sets.map((st,j)=>`<div class="pt-set${st.done?' done':''}">
         <span class="n">${j+1}.</span>
-        <input type="number" inputmode="decimal" step="0.5" placeholder="kg" value="${st.w!==''&&st.w!=null?st.w:''}" oninput="ptSetVal(${i},${j},'w',this.value)">
+        <input type="text" inputmode="decimal" placeholder="kg" value="${st.w!==''&&st.w!=null?st.w:''}" oninput="ptSetVal(${i},${j},'w',this.value)">
         <span class="u">kg</span>
-        <input type="number" inputmode="numeric" placeholder="toistot" value="${st.r!==''&&st.r!=null?st.r:''}" oninput="ptSetVal(${i},${j},'r',this.value)">
+        <input type="text" inputmode="numeric" placeholder="toistot" value="${st.r!==''&&st.r!=null?st.r:''}" oninput="ptSetVal(${i},${j},'r',this.value)">
         <span class="u">×</span>
         <button class="ok" onclick="ptSetDone(${i},${j},this)">✓</button></div>`).join('')}</div>
       ${ex.hint?`<div class="pt-hint"><b>VIIMEKSI</b>${esc(ex.hint)}</div>`:''}
@@ -2724,7 +2733,7 @@ function ptSessionHtml(){
 function ptUpdateProgress(){
   if(!ptSession)return;
   const c=ptSetCounts(),act=ptActiveIdx();
-  const cnt=document.getElementById('ptProgCnt');if(cnt)cnt.textContent=c.done+' / '+c.all+' sarjaa';
+  const cnt=document.getElementById('ptProgCnt');if(cnt)cnt.textContent=ptProgText();
   const bar=document.getElementById('ptProgBar');
   if(bar){bar.style.width=c.pct+'%';bar.classList.toggle('hit',c.pct>=100)}
   ptSession.exercises.forEach((ex,i)=>{
@@ -2768,7 +2777,7 @@ function ptProfileFormHtml(){
   const p=pt.profile||{};
   return `<div class="pt-hero"><div class="pt-tag">PERUSTIEDOT</div>
     <div class="pt-grid">
-      <div class="pt-field"><label>PAINO (KG)</label><input class="pt-input" id="ptfW" type="number" inputmode="decimal" step="0.1" value="${p.weight||''}"></div>
+      <div class="pt-field"><label>PAINO (KG)</label><input class="pt-input" id="ptfW" type="text" inputmode="decimal" value="${p.weight||''}"></div>
       <div class="pt-field"><label>PITUUS (CM)</label><input class="pt-input" id="ptfH" type="number" inputmode="numeric" value="${p.height||''}"></div>
       <div class="pt-field"><label>IKÄ</label><input class="pt-input" id="ptfA" type="number" inputmode="numeric" value="${p.age||''}"></div>
       <div class="pt-field"><label>SUKUPUOLI</label><select class="pt-input" id="ptfS">
@@ -2817,16 +2826,42 @@ function ptStatsHtml(){
     ${w.length?`<div class="pt-row"><span class="lbl">Viimeisin</span><span class="val">${w[w.length-1].kg} kg</span></div>
       ${w.length>1?`<div class="pt-spark">${w.map((x,i)=>`<i class="${i===w.length-1?'last':''}" style="height:${maxW>minW?Math.round(((x.kg-minW)/(maxW-minW))*90+10):50}%"></i>`).join('')}</div>`:''}`:''}
     <div style="display:flex;gap:8px;margin-top:10px">
-      <input class="pt-input" id="ptWIn" type="number" inputmode="decimal" step="0.1" placeholder="kg" style="flex:1">
+      <input class="pt-input" id="ptWIn" type="text" inputmode="decimal" placeholder="kg" style="flex:1">
       <button class="btn ghost" style="font-size:11px" onclick="ptLogWeight()">KIRJAA</button></div>
   </div>
   <div class="pt-hero"><div class="pt-tag">HISTORIA</div>
     ${pt.log.slice(-10).reverse().map(l=>`<div class="pt-row"><span>${esc(ptFmtDate(l.date))} · ${esc(l.dayName||'')}</span>
-      <span class="val">${(l.exercises||[]).reduce((a,e)=>a+(e.sets||[]).length,0)} sarjaa</span></div>`).join('')}
+      <span class="val">${l.dur?l.dur+' min · ':''}${(l.exercises||[]).reduce((a,e)=>a+(e.sets||[]).length,0)} sarjaa
+      <button class="btn ghost" style="font-size:9px;height:22px;padding:0 7px;margin-left:6px" onclick="ptDeleteLog(${ptAttr(l.id)})" title="Poista treeni">✕</button></span></div>`).join('')}
+    <div class="pt-sub" style="font-size:12px;color:var(--txt-dim);margin-top:9px">Väärin kirjattu treeni kannattaa poistaa — muuten se jää vääristämään painoehdotuksia.</div>
   </div>`;
 }
 
 /* ===== TOIMINNOT ===== */
+// Malli palauttaa JSONia, mutta ei aina tismalleen pyydetyssä muodossa:
+// sets voi tulla merkkijonona, reps numerona, liikelista puuttua. Ilman
+// siivousta yksi outo kenttä rikkoisi koko treeninäkymän — siksi ohjelma
+// normalisoidaan kerran tallennuksen yhteydessä eikä joka renderöinnissä.
+function ptNormalizeProgram(r){
+  const days=(Array.isArray(r.days)?r.days:[]).map((d,di)=>({
+    name:String(d&&d.name||('Treeni '+(di+1))).slice(0,60),
+    exercises:(Array.isArray(d&&d.exercises)?d.exercises:[])
+      .filter(e=>e&&(e.name||'').toString().trim())
+      .map(e=>{
+        const n=parseInt(e.sets,10);
+        return{
+          name:String(e.name).trim().slice(0,60),
+          sets:Math.min(8,Math.max(1,isFinite(n)?n:3)),
+          reps:String(e.reps==null?'8-10':e.reps).trim().slice(0,20),
+          start:e.start?String(e.start).trim().slice(0,120):'',
+          note:e.note?String(e.note).trim().slice(0,160):''
+        };
+      })
+  })).filter(d=>d.exercises.length);
+  return{name:String(r.name||'Ohjelma').slice(0,80),
+    idea:String(r.idea||'').slice(0,400),
+    progression:String(r.progression||'').slice(0,400),days};
+}
 async function ptGenerateProgram(replace){
   if(replace&&!confirm('Luodaanko uusi ohjelma? Vanha korvataan (treenihistoria säilyy).'))return;
   const el=document.getElementById('ptBody');
@@ -2847,7 +2882,8 @@ Säännöt:
     const raw=await askClaudeRetry(sys,[{role:'user',content:'Laadi ohjelma.'}],2200);
     const r=ptParseJson(raw);
     if(!r||!Array.isArray(r.days)||!r.days.length)throw new Error('ohjelmaa ei saatu jäsennettyä');
-    pt.program=r;
+    pt.program=ptNormalizeProgram(r);
+    if(!pt.program.days.length)throw new Error('ohjelmassa ei ollut yhtään liikettä');
     pt.profile={...(pt.profile||{}),days,level:'aloittelija',place:'sali'};
     await ptSave();sSave();
     ptTab='today';switchPtTab('today');
@@ -2912,10 +2948,11 @@ async function ptFinishSession(){
   const note=document.getElementById('ptSessionNote');
   if(note)ptSession.note=note.value;
   const entry={id:'s'+Date.now(),date:ptSession.date,dayName:ptSession.dayName,note:ptSession.note||'',
+    dur:ptElapsedMin(),
     exercises:ptSession.exercises.map(ex=>({name:ex.name,
       sets:ex.sets.filter(s=>ptNum(s.w)!=null||ptNum(s.r)!=null).map(s=>({w:ptNum(s.w),r:ptNum(s.r)}))}))
       .filter(ex=>ex.sets.length)};
-  if(!entry.exercises.length){alert('Kirjaa vähintään yksi sarja ennen tallennusta.');return}
+  if(!entry.exercises.length){toast('Kirjaa vähintään yksi sarja ennen tallennusta');return}
   pt.log.push(entry);
   ptSession=null;ptStopRest();ptSaveSession();
   await ptSave();sSave();
@@ -2938,13 +2975,22 @@ Kommentoi juuri päättynyttä treeniä LYHYESTI: 2-3 lausetta. Kehu konkreettis
   }catch(e){console.warn('ptCoachFeedback:',e)}
 }
 
+async function ptDeleteLog(id){
+  const i=pt.log.findIndex(l=>l.id===id);
+  if(i<0)return;
+  const l=pt.log[i];
+  if(!confirm('Poistetaanko treeni '+ptFmtDate(l.date)+' ('+(l.dayName||'')+')? Tätä ei voi perua.'))return;
+  pt.log.splice(i,1);
+  await ptSave();sSave();renderPt();
+  toast('Treeni poistettu');
+}
 async function ptSaveProfile(){
   const g=id=>document.getElementById(id);
   const p={...(pt.profile||{}),
     weight:ptNum(g('ptfW')&&g('ptfW').value),height:ptNum(g('ptfH')&&g('ptfH').value),
     age:ptNum(g('ptfA')&&g('ptfA').value),sex:g('ptfS')?g('ptfS').value:'mies',
     activity:g('ptfAct')?g('ptfAct').value:'keski',dietGoal:g('ptfG')?g('ptfG').value:'massa'};
-  if(!p.weight||!p.height||!p.age){alert('Täytä paino, pituus ja ikä.');return}
+  if(!p.weight||!p.height||!p.age){toast('Täytä paino, pituus ja ikä');return}
   pt.profile=p;
   pt.targets=ptCalcTargets(p);
   const last=pt.weights[pt.weights.length-1];

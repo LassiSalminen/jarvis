@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v4.0). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v4.1). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -27,7 +27,7 @@ Malli: Claude Sonnet 5, automaattinen fallback Sonnet 4.6:een (`API_MODEL`).
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v4.0)
+## Toiminnot (v4.1)
 - **Chat**: persoonamoodit, markdown-renderöinti (mdRender, XSS-suojattu),
   historia säilyy localStoragessa yli latausten, yritä uudelleen -nappi,
   pikatoiminto-chipit (tilanne/treeni/sää/sähkö/uutiset). 👍-nosto → rawLog.
@@ -72,6 +72,17 @@ PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
   ja CDN-resurssit (fontit, pdf.js).
 - **PT (Treeni)**: oma välilehti, alavälilehdet TÄNÄÄN / OHJELMA / RUOKA /
   KEHITYS. Claude generoi kuntosaliohjelman (aloittelija, 3× vk, perusliikkeet);
+  **HUOM lukusyötteet**: painot ja toistot ovat `type="text"` +
+  `inputmode="decimal"`, EIVÄT `type="number"`. Numerokenttä hylkää
+  desimaalipilkun, joten suomalaisella näppäimistöllä kirjoitettu "42,5"
+  muuttui tyhjäksi ja paino katosi hiljaa (korjattu v4.1). `ptNum()` hoitaa
+  pilkun. Älä palauta `type="number"`ia.
+  Mallin palauttama ohjelma normalisoidaan `ptNormalizeProgram()`illa
+  (sets merkkijonona, reps numerona, nimetön päivä, tyhjä liikelista) —
+  yksi outo kenttä rikkoisi muuten koko treeninäkymän.
+  Väärin kirjatun treenin voi poistaa KEHITYS-välilehden historiasta;
+  ilman sitä lipsahdus jäisi vääristämään painoehdotuksia pysyvästi.
+  Treenin kesto tallentuu (`dur`) ja näkyy historiassa.
   treenin kirjaus prefiltteröi painot edellisestä kerrasta ja ehdottaa
   +1,25/2,5 kg kun kaikki toistot menivät ylärajaan; lepokello sarjan
   kuittauksesta; kesken oleva treeni säilyy localStoragessa (`jarvis:ptSession`)
