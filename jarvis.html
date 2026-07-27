@@ -1133,7 +1133,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="4.5";
+const VERSION="4.6";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1174,6 +1174,12 @@ if(document.body)document.body.setAttribute('data-mode',MODE);
 else document.addEventListener('DOMContentLoaded',()=>document.body.setAttribute('data-mode',MODE));
 const API_MODEL="claude-sonnet-5";          // ensisijainen malli
 const API_MODEL_FALLBACK="claude-sonnet-4-6"; // varamalli jos ensisijainen ei vastaa
+// Mekaanisiin JSON-tehtäviin (makroarvio, ateriavaihtoehdot, tekniikkaohje)
+// riittää pienempi malli. Syy ei ole hinta vaan nopeus ja luotettavuus:
+// vastaus tulee salilla noin puolet nopeammin, ja yksinkertaisempi malli
+// lipsuu harvemmin selittämään JSONin ympärille. Persoona, luennot ja
+// ohjelman suunnittelu pidetään Sonnetilla — siellä laatu on koko pointti.
+const API_MODEL_FAST="claude-haiku-4-5";
 const MODEL_LABEL="CLAUDE SONNET 5";
 const $=s=>document.querySelector(s);
 const WORKER_URL="https://jarvis.lassi-salminen3.workers.dev";
@@ -1928,14 +1934,15 @@ function mobileSwitch(v){
 }
 
 /* ===== CLAUDE ===== */
-async function askClaude(system,messages,max=1000){
-  const call=async(model)=>{
-    const res=await apiFetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model,max_tokens:max,system,messages})});
+async function askClaude(system,messages,max=1000,model){
+  const primary=model||API_MODEL;
+  const call=async(m)=>{
+    const res=await apiFetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:m,max_tokens:max,system,messages})});
     return res.json();
   };
-  let data=await call(API_MODEL);
-  // Jos ensisijainen malli ei kelpaa (esim. poistunut käytöstä), kokeile varamallia
-  if((!data||!Array.isArray(data.content))&&API_MODEL!==API_MODEL_FALLBACK) data=await call(API_MODEL_FALLBACK);
+  let data=await call(primary);
+  // Jos malli ei kelpaa (esim. poistunut käytöstä), kokeile varamallia
+  if((!data||!Array.isArray(data.content))&&primary!==API_MODEL_FALLBACK) data=await call(API_MODEL_FALLBACK);
   if(!data||!Array.isArray(data.content)){
     // API:n oma virheilmoitus kertoo suoraan onko kyse mallista, avaimesta,
     // kiintiöstä vai ruuhkasta — geneerinen "worker virhe" ei kertonut mitään
@@ -2812,7 +2819,7 @@ async function ptTechnique(name){
     const sys=`Olet voimavalmentaja. Kerro liikkeen "${name}" suoritustekniikka aloittelijalle.
 Muoto: 3-4 lyhyttä ranskalaista viivaa (aloita "• "), yksi rivi kukin, sekä viimeisenä rivinä "Yleisin virhe: ...".
 Enintään 60 sanaa yhteensä. Pelkkä teksti, ei markdownia, ei otsikkoa. Suomeksi.`;
-    const txt=await askClaude(sys,[{role:'user',content:name}],400);
+    const txt=await askClaude(sys,[{role:'user',content:name}],400,API_MODEL_FAST);
     if(!pt.tech)pt.tech={};
     pt.tech[name]=txt.trim();
     await ptSave();
@@ -3163,7 +3170,7 @@ kerrota ("pari teelusikkaa" ≈ 10 g, "pieni löräys" ≈ 15 g). Älä jätä m
     const msgs=[{role:'user',content:tiukka
       ? txt+'\n\nVastaa PELKÄLLÄ JSON-objektilla. Aloita merkillä { ja lopeta merkkiin }. Älä kirjoita mitään muuta.'
       : txt}];
-    return ptParseJson(await askClaude(sys,msgs,1400));
+    return ptParseJson(await askClaude(sys,msgs,1400,API_MODEL_FAST));
   };
   let e1=null,e2=null;
   try{
@@ -3275,7 +3282,7 @@ Palauta VAIN JSON, ei muuta tekstiä:
           const r=ptParseJson(await askClaudeRetry(sys,[{role:'user',content:
             yr===0?('Ehdota kolme vaihtoehtoa: '+nimi)
                   :('Ehdota kolme vaihtoehtoa: '+nimi+'. Vastaa PELKÄLLÄ JSON-objektilla, aloita merkillä { ja lopeta merkkiin }.')
-          }],1200));
+          }],1200,API_MODEL_FAST));
           const lista=r&&(Array.isArray(r.options)?r.options:(Array.isArray(r)?r:null));
           if(lista&&lista.length)opts=lista;
         }catch(e){viimeVirhe=e;console.warn('ptMealPlan '+nimi+' yritys '+(yr+1)+':',e)}
@@ -3819,9 +3826,9 @@ async function askClaudeLong(system,messages){
 }
 
 // Yritä uudelleen kerran — yksittäisen luvun verkkovirhe ei kaada koko luentoa
-async function askClaudeRetry(system,messages,max){
-  try{return await askClaude(system,messages,max)}
-  catch(e){await new Promise(r=>setTimeout(r,2000));return askClaude(system,messages,max)}
+async function askClaudeRetry(system,messages,max,model){
+  try{return await askClaude(system,messages,max,model)}
+  catch(e){await new Promise(r=>setTimeout(r,2000));return askClaude(system,messages,max,model)}
 }
 
 // Pituuspresetit: lukumäärä + sanamäärä/luku + token-katto

@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v4.4). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v4.6). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -24,10 +24,17 @@ Kaksi persoonaa: U.L.T.R.O.N. (oletus, synkkä sarkasmi) ja J.A.R.V.I.S.
 ## Arkkitehtuuri
 UI (GitHub Pages) → Cloudflare Worker → Claude API + KV-muisti.
 Malli: Claude Sonnet 5, automaattinen fallback Sonnet 4.6:een (`API_MODEL`).
+**Mallivalinta tehtävän mukaan**: mekaaniset JSON-kutsut (ruoan makroarvio,
+ateriavaihtoehdot, tekniikkaohje) ajetaan `API_MODEL_FAST`illa
+(Claude Haiku 4.5) — syy ei ole hinta vaan nopeus ja se että pienempi malli
+lipsuu harvemmin selittämään JSONin ympärille. Persoona, luennot, ohjelman
+generointi ja valmentajan kommentit pysyvät Sonnetilla, koska siellä laatu on
+koko pointti. `askClaude(system,messages,max,model)` — neljäs parametri
+valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v4.5)
+## Toiminnot (v4.6)
 - **HUOM isot JSON-vastaukset**: älä pyydä yhtä jättimäistä JSONia. Ruokavalio
   (5 ateriaa × 3 vaihtoehtoa) katkesi token-kattoon ja katkennut JSON näytti
   samalta kuin täysi epäonnistuminen. Se pyydetään nyt **ateria kerrallaan**
