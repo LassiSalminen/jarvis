@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v4.7). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v4.8). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -34,7 +34,15 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v4.7)
+## Toiminnot (v4.8)
+- **HUOM tavoitteen ristiriita**: painotavoite (`goalWeight`) ja ruokavalion
+  tavoite (`dietGoal`) ovat eri kenttiä ja voivat sotia keskenään — esim.
+  tavoite pudottaa 12 kg mutta `dietGoal:'massa'` eli ylijäämä. Ennen v4.8
+  TAVOITE-osio tulosti tästä nollia ("0 kg viikossa, 0 kuukautta") kertomatta
+  mitään. `ptGoalHtml` käsittelee nyt neljä tapausta: normaali pudotus,
+  **ristiriita** (punainen varoitus + korjausnapit `ptSetGoalMode`),
+  lihominen (ylijäämä on tarkoitus) ja tavoitteessa. Älä palauta tilaa jossa
+  nollat renderöityvät kuin ne olisivat oikea vastaus.
 - **HUOM painotavoite ja vaje**: `ptCalcTargets` laskee kalorivajeen
   **viikkovauhtina kehonpainosta**, ei kiinteänä prosenttina: recomp 0,5 %/vko,
   rasvanpudotus 0,75 %/vko, rasvakilo = 7700 kcal. Turvaraja estää menemästä

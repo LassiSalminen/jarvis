@@ -1133,7 +1133,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="4.7";
+const VERSION="4.8";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -2989,9 +2989,57 @@ function ptFoodHtml(){
 }
 /* Painotavoite: mistä vaje tulee ja mihin se johtaa.
    Näytetään laskenta auki, koska pelkkä kaloriluku ei kerro miksi. */
+// Vaihda tavoitetila yhdellä napautuksella ja laske luvut uusiksi
+async function ptSetGoalMode(mode){
+  if(!pt.profile)return;
+  pt.profile.dietGoal=mode;
+  pt.targets=ptCalcTargets(pt.profile);
+  await ptSave();sSave();renderPt();
+  toast('Tavoite päivitetty');
+}
 function ptGoalHtml(){
   const p=pt.profile||{},t=pt.targets;
-  if(!t||!p.goalWeight||!t.jaljella)return'';
+  if(!t||!p.goalWeight||!p.weight)return'';
+  const ero=Math.round((p.weight-p.goalWeight)*10)/10;
+  if(!ero)return `<div class="pt-hero" style="border-left-color:var(--green)">
+    <div class="pt-tag" style="color:var(--green)">TAVOITE</div>
+    <h2>${p.weight} kg — tavoitteessa</h2>
+    <div class="pt-sub">Olet tavoitepainossasi. Ravinto on nyt ylläpitoa; aseta uusi tavoitepaino jos haluat jatkaa suuntaan tai toiseen.</div></div>`;
+
+  // Ristiriita: tavoite on pudottaa, mutta ruokavaliossa ei ole vajetta.
+  // Tätä ei saa esittää nollina ("0 kg viikossa, 0 kuukautta") vaan kertoa
+  // suoraan mikä on pielessä ja tarjota korjaus.
+  if(ero>0&&!t.deficit){
+    const yli=t.kcal-t.tdee;
+    return `<div class="pt-hero" style="border-left-color:var(--red)">
+      <div class="pt-tag" style="color:var(--red)">TAVOITE — RISTIRIITA</div>
+      <h2>${p.weight} kg → ${p.goalWeight} kg</h2>
+      <div class="pt-sub">Haluat pudottaa <b>${ero} kg</b>, mutta ruokavalio on
+        ${yli>0?`<b style="color:var(--red)">${yli} kcal ylijäämällä</b>`:'ylläpidolla'}:
+        ylläpitosi on ${t.tdee} kcal ja tavoite ${t.kcal} kcal.
+        <b>Paino ei laske näillä luvuilla.</b></div>
+      <div class="pt-hint" style="margin-top:12px"><b>SYY</b>Ruokavalion tavoitteeksi on valittu
+        "${p.dietGoal==='massa'?'Lihasmassa (ylijäämä)':'Ylläpito'}". Vaihda se, niin vaje lasketaan
+        painotavoitteestasi.</div>
+      <div class="learn-btns" style="margin-top:12px">
+        <button class="btn" onclick="ptSetGoalMode('recomp')">RASVA ALAS + LIHASTA</button>
+        <button class="btn ghost" onclick="ptSetGoalMode('rasva')">NOPEAMPI PUDOTUS</button>
+      </div></div>`;
+  }
+
+  // Tavoitteena lihoa: ylijäämä on oikein, kehystetään sen mukaan
+  if(ero<0){
+    const yli=Math.max(0,t.kcal-t.tdee);
+    return `<div class="pt-hero" style="border-left-color:var(--gold)">
+      <div class="pt-tag" style="color:var(--gold)">TAVOITE</div>
+      <h2>${p.weight} kg → ${p.goalWeight} kg</h2>
+      <div class="pt-readout"><div>LISÄTTÄVÄÄ<b>${Math.abs(ero)} kg</b></div>
+        <div>YLIJÄÄMÄ<b>${yli} kcal</b></div></div>
+      <div class="pt-sub">Ylläpitosi on noin <b>${t.tdee} kcal</b>. Tavoite ${t.kcal} kcal
+        ${yli?`jättää ${yli} kcal ylijäämän — se rakentaa massaa, mutta osa noususta on aina myös rasvaa.`
+             :'on ylläpidon tasolla, joten paino ei nouse. Valitse tavoitteeksi Lihasmassa.'}</div></div>`;
+  }
+
   const kk=Math.round(t.viikkoja/4.33*10)/10;
   const recomp=p.dietGoal==='recomp';
   return `<div class="pt-hero" style="border-left-color:var(--gold)">
