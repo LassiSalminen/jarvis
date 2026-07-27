@@ -27,7 +27,12 @@ Malli: Claude Sonnet 5, automaattinen fallback Sonnet 4.6:een (`API_MODEL`).
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v4.4)
+## Toiminnot (v4.5)
+- **HUOM isot JSON-vastaukset**: älä pyydä yhtä jättimäistä JSONia. Ruokavalio
+  (5 ateriaa × 3 vaihtoehtoa) katkesi token-kattoon ja katkennut JSON näytti
+  samalta kuin täysi epäonnistuminen. Se pyydetään nyt **ateria kerrallaan**
+  (5 pientä kutsua), jolloin yhden kaatuminen ei vie muita ja edistyminen
+  näkyy. `ptParseJson` osaa myös korjata katkenneen vastauksen.
 - **HUOM Claude-kutsut**: assistant-prefill EI toimi (Sonnet 5 palauttaa
   `invalid_request_error: This model does not support assistant...`).
   JSON-vastauksen tiukennus tehdään lisäohjeella käyttäjäviestissä.

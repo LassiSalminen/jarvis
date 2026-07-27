@@ -1133,7 +1133,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="4.4";
+const VERSION="4.5";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -2484,6 +2484,18 @@ function ptParseJson(raw){
   try{return JSON.parse(s)}catch(e){}
   const a=s.indexOf('{'),b=s.lastIndexOf('}');
   if(a>=0&&b>a){try{return JSON.parse(s.slice(a,b+1))}catch(e){}}
+  // Katkennut vastaus (token-katto tuli vastaan): leikkaa viimeisen ehjän
+  // objektin kohdalta ja kokeile sulkea rakenne. Puolikas lista on
+  // käyttökelpoisempi kuin ei mitään.
+  if(a>=0){
+    const t=s.slice(a),cut=t.lastIndexOf('}');
+    if(cut>0){
+      const base=t.slice(0,cut+1);
+      for(const tail of [']}','}',']}}',']',']}]}']){
+        try{return JSON.parse(base+tail)}catch(e){}
+      }
+    }
+  }
   return null;
 }
 
@@ -3233,40 +3245,58 @@ async function ptMealPlan(){
   if(el)el.innerHTML='<div class="learn-placeholder">Valmentaja kokoaa ruokavaliota vaihtoehtoineen…</div>';
   try{
     const t=pt.targets,p=pt.profile||{};
-    const sys=`Olet ravitsemusvalmentaja. Kokoa Lassille päivän ruokavalio VAIHTOEHTOINEEN.
-Päivän tavoite: ${t.kcal} kcal, ${t.protein} g proteiinia, ${t.carbs} g hiilihydraattia, ${t.fat} g rasvaa.${p.dietGoal==='massa'?' Tavoitteena lihasmassan kasvu.':p.dietGoal==='rasva'?' Tavoitteena rasvanpudotus, proteiini pidettävä korkealla.':''}
-Anna viisi ateriaa: Aamiainen, Lounas, Välipala, Päivällinen, Iltapala.
-Anna JOKAISEEN ateriaan 3 eri vaihtoehtoa, jotta on varaa valita mielialan ja jääkaapin mukaan.
-Mitoita niin että kun jokaisesta ateriasta valitaan yksi vaihtoehto, päivä osuu tavoitteeseen noin ±5 %.
+    // Yksi ateria kerrallaan, ei koko päivää yhdellä kutsulla.
+    // 5 ateriaa × 3 vaihtoehtoa oli niin pitkä vastaus että se katkesi
+    // token-kattoon, ja katkennut JSON näytti samalta kuin täysi
+    // epäonnistuminen. Pieni kutsu onnistuu luotettavasti, edistyminen
+    // näkyy käyttäjälle, ja yhden aterian kaatuminen ei vie muita mukanaan.
+    const ATERIAT=[
+      ['Aamiainen',0.25],['Lounas',0.30],['Välipala',0.10],
+      ['Päivällinen',0.25],['Iltapala',0.10]
+    ];
+    const tavoite=p.dietGoal==='massa'?' Tavoitteena lihasmassan kasvu.'
+      :p.dietGoal==='rasva'?' Tavoitteena rasvanpudotus, proteiini korkealla.':'';
+    const meals=[];const epaonnistui=[];
+    let viimeVirhe=null;
+    for(let i=0;i<ATERIAT.length;i++){
+      const [nimi,osuus]=ATERIAT[i];
+      if(el)el.innerHTML='<div class="learn-placeholder">Valmentaja kokoaa ruokavaliota…\n\n'
+        +nimi+' ('+(i+1)+'/'+ATERIAT.length+')</div>';
+      const kcal=Math.round(t.kcal*osuus),prot=Math.round(t.protein*osuus);
+      const sys=`Olet ravitsemusvalmentaja. Ehdota Lassille KOLME vaihtoehtoa yhdelle aterialle.
+Ateria: ${nimi}. Mitoita jokainen vaihtoehto noin ${kcal} kcal ja ${prot} g proteiinia.${tavoite}
 Suomalaista arkiruokaa, tavallisia kaupan raaka-aineita, ei erikoistuotteita eikä lisäravinteita.
 Kirjoita annos konkreettisesti määrineen, esim. "Kaurapuuro 1 dl, 2 dl maitoa, 150 g raejuustoa, kourallinen mustikoita".
 Palauta VAIN JSON, ei muuta tekstiä:
-{"meals":[{"name":"Aamiainen","options":[{"name":"...","kcal":520,"protein":34,"carbs":70,"fat":11}]}]}`;
-    // Sama kaksivaiheinen kuria kuin ruoan kirjauksessa: jos malli selittää
-    // JSONin ympärille, pyydetään uudestaan valmiiksi aloitetulla vastauksella.
-    // Token-katto on reilu, koska 5 ateriaa × 3 vaihtoehtoa on pitkä vastaus
-    // ja katkennut JSON näyttäisi samalta kuin täysi epäonnistuminen.
-    // EI assistant-prefilliä — Sonnet 5 hylkää sen. Tiukennus lisäohjeena.
-    const yrita=async(tiukka)=>{
-      const msgs=[{role:'user',content:tiukka
-        ? 'Kokoa ruokavalio vaihtoehtoineen. Vastaa PELKÄLLÄ JSON-objektilla: aloita merkillä { ja lopeta merkkiin }. Älä kirjoita mitään muuta.'
-        : 'Kokoa ruokavalio vaihtoehtoineen.'}];
-      return ptParseJson(await askClaudeRetry(sys,msgs,4000));
-    };
-    let r=null,e1=null,e2=null;
-    try{ r=await yrita(false); }catch(e){ e1=e; console.warn('ptMealPlan yritys 1:',e); }
-    if(!r||!Array.isArray(r.meals)||!r.meals.length){
-      try{ r=await yrita(true); }catch(e){ e2=e; console.warn('ptMealPlan yritys 2:',e); }
+{"options":[{"name":"...","kcal":${kcal},"protein":${prot},"carbs":60,"fat":12}]}`;
+      let opts=null;
+      for(let yr=0;yr<2&&!opts;yr++){
+        try{
+          const r=ptParseJson(await askClaudeRetry(sys,[{role:'user',content:
+            yr===0?('Ehdota kolme vaihtoehtoa: '+nimi)
+                  :('Ehdota kolme vaihtoehtoa: '+nimi+'. Vastaa PELKÄLLÄ JSON-objektilla, aloita merkillä { ja lopeta merkkiin }.')
+          }],1200));
+          const lista=r&&(Array.isArray(r.options)?r.options:(Array.isArray(r)?r:null));
+          if(lista&&lista.length)opts=lista;
+        }catch(e){viimeVirhe=e;console.warn('ptMealPlan '+nimi+' yritys '+(yr+1)+':',e)}
+      }
+      if(opts){
+        meals.push({name:nimi,options:opts.slice(0,3).map(o=>({
+          name:String(o.name||'').slice(0,160),kcal:+o.kcal||0,protein:+o.protein||0,
+          carbs:+o.carbs||0,fat:+o.fat||0})).filter(o=>o.name)});
+      }else epaonnistui.push(nimi);
     }
-    if(!r||!Array.isArray(r.meals)||!r.meals.length){
-      const syy=e1||e2;
-      throw new Error(syy?String(syy.message||syy).slice(0,150)
-                         :'malli ei palauttanut kelvollista ruokavaliota');
+    if(!meals.length){
+      throw new Error(viimeVirhe?String(viimeVirhe.message||viimeVirhe).slice(0,150)
+                                :'malli ei palauttanut yhtään kelvollista ateriaa');
     }
-    pt.meals={created:Date.now(),meals:r.meals};
+    pt.meals={created:Date.now(),meals};
     pt.mealPlan=''; // vanha vapaamuotoinen teksti korvautuu rakenteisella
     await ptSave();sSave();
-    toast('Ruokavalio koottu');
+    // Osittainenkin tulos on käyttökelpoinen — kerrotaan rehellisesti mikä puuttuu
+    toast(epaonnistui.length
+      ? 'Ruokavalio koottu, mutta '+epaonnistui.join(' ja ')+' jäi puuttumaan'
+      : 'Ruokavalio koottu',epaonnistui.length?5000:2800);
   }catch(e){
     console.warn('ptMealPlan:',e);
     toast('Ruokavalion kokoaminen ei onnistunut: '+String(e.message||e).slice(0,80),6000);
