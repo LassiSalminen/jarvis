@@ -1125,7 +1125,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="4.2";
+const VERSION="4.3";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1928,7 +1928,13 @@ async function askClaude(system,messages,max=1000){
   let data=await call(API_MODEL);
   // Jos ensisijainen malli ei kelpaa (esim. poistunut käytöstä), kokeile varamallia
   if((!data||!Array.isArray(data.content))&&API_MODEL!==API_MODEL_FALLBACK) data=await call(API_MODEL_FALLBACK);
-  if(!data||!Array.isArray(data.content)) throw new Error('worker virhe: '+JSON.stringify(data).slice(0,200));
+  if(!data||!Array.isArray(data.content)){
+    // API:n oma virheilmoitus kertoo suoraan onko kyse mallista, avaimesta,
+    // kiintiöstä vai ruuhkasta — geneerinen "worker virhe" ei kertonut mitään
+    const e=data&&data.error;
+    throw new Error(e&&e.message?((e.type||'virhe')+': '+String(e.message).slice(0,140))
+                                :'ei vastausta ('+JSON.stringify(data).slice(0,140)+')');
+  }
   return data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
 }
 /* PERSONA tulee aktiivisesta moodista — AI.persona */
@@ -2047,12 +2053,12 @@ function buildContext(text){
   }).map(([,n])=>n);
   if(unused_f.length) lines.push(`Ominaisuuksia joita Lassi ei ole käyttänyt 3+ päivään: ${unused_f.join(', ')}`);
 
-  // Tänään kirjattu?
-  const today=new Date().toISOString().slice(0,10);
-  const hasFood=wiki.some(w=>w.id===`ruokapaivakirja-${today}`);
-  const hasEx=wiki.some(w=>w.id===`harjoitus-${today}`);
-  if(!hasFood) lines.push('Tänään ei ole kirjattu ruokailuja.');
-  if(!hasEx) lines.push('Tänään ei ole kirjattu harjoitusta.');
+  // Tänään kirjattu? Lähde on PT-tila, ei vanhat päiväkirjasivut — muuten
+  // chat väittäisi "ei kirjattu" vaikka PT-välilehdellä on juuri kirjattu.
+  if(pt){
+    if(!ptFoodToday().length) lines.push('Tänään ei ole vielä kirjattu ruokailuja.');
+    if(!pt.log.some(l=>l.date===ptToday())) lines.push('Tänään ei ole vielä kirjattu treeniä.');
+  }
 
   // Garmin-kellodata — treenivalmius, palautuminen ym.
   if(garminData){
@@ -2889,7 +2895,7 @@ Säännöt:
     ptTab='today';switchPtTab('today');
   }catch(e){
     console.warn('ptGenerateProgram:',e);
-    if(el)el.innerHTML=`<div class="learn-placeholder">Ohjelman luonti epäonnistui.\n\n${esc(String(e.message||e))}\n\nYritä uudelleen.</div>
+    if(el)el.innerHTML=`<div class="learn-placeholder">Ohjelman luonti epäonnistui.\n\nSyy: ${esc(String(e.message||e)).slice(0,160)}\n\nJos chat ei myöskään vastaa, vika on workerissa tai Claude-avaimessa — ei tässä toiminnossa.</div>
       <div class="learn-btns"><button class="btn" onclick="ptGenerateProgram()">⟳ YRITÄ UUDELLEEN</button></div>`;
   }
 }
@@ -3010,24 +3016,56 @@ async function ptLogFood(){
   const txt=(el&&el.value||'').trim();
   if(!txt)return;
   if(btn){btn.disabled=true;btn.textContent='ARVIOIDAAN…'}
+  const sys=`Olet ravitsemusasiantuntija. Arvioi annetun suomalaisen ruokakuvauksen energia ja makrot.
+Palauta VAIN JSON, ei selityksiä, ei koodiaitoja:
+{"items":[{"name":"kaurapuuro 80 g","kcal":300,"protein":11,"carbs":52,"fat":6}]}
+Yksi rivi per ruoka-aine. Käytä realistisia suomalaisia annoskokoja jos määrää ei
+kerrota ("pari teelusikkaa" ≈ 10 g, "pieni löräys" ≈ 15 g). Älä jätä mitään pois.`;
+  // Kaksi yritystä: ensimmäinen normaalisti, toinen tiukennetulla ohjeella.
+  // Malli lipsahtaa toisinaan selittämään JSONin ympärille, jolloin jäsennys
+  // kaatuu — silloin kannattaa pyytää uudestaan eikä hylätä käyttäjän syötettä.
+  const yrita=async(tiukka)=>{
+    const msgs=[{role:'user',content:txt}];
+    if(tiukka)msgs.push({role:'assistant',content:'{"items":['});
+    const raw=await askClaude(sys,msgs,1400);
+    return ptParseJson(tiukka?'{"items":['+raw:raw);
+  };
+  let virhe=null;
   try{
-    const sys=`Olet ravitsemusasiantuntija. Arvioi annetun suomalaisen ruokakuvauksen energia ja makrot.
-Palauta VAIN JSON: {"items":[{"name":"kaurapuuro 1 dl","kcal":180,"protein":6,"carbs":30,"fat":3}]}
-Käytä realistisia suomalaisia annoskokoja jos määrää ei kerrota. Älä selitä mitään.`;
-    const raw=await askClaude(sys,[{role:'user',content:txt}],700);
-    const r=ptParseJson(raw);
-    if(!r||!Array.isArray(r.items)||!r.items.length)throw new Error('arviota ei saatu');
+    let r=null;
+    try{ r=await yrita(false); }
+    catch(e){ virhe=e; console.warn('ptLogFood yritys 1:',e); }
+    if(!r||!Array.isArray(r.items)||!r.items.length){
+      try{ r=await yrita(true); }
+      catch(e){ virhe=e; console.warn('ptLogFood yritys 2:',e); }
+    }
+    if(!r||!Array.isArray(r.items)||!r.items.length){
+      throw new Error(virhe?('yhteys- tai palvelinvirhe ('+String(virhe.message||virhe).slice(0,60)+')')
+                           :'malli ei palauttanut kelvollista arviota');
+    }
     const d=ptToday();
-    r.items.forEach(it=>pt.food.push({date:d,name:it.name||txt,kcal:+it.kcal||0,
-      protein:+it.protein||0,carbs:+it.carbs||0,fat:+it.fat||0,ts:Date.now()}));
+    let lisatty=0;
+    r.items.forEach(it=>{
+      const kcal=+it.kcal||0;
+      if(!it||(!it.name&&!kcal))return;
+      pt.food.push({date:d,name:String(it.name||txt).slice(0,120),kcal,
+        protein:+it.protein||0,carbs:+it.carbs||0,fat:+it.fat||0,ts:Date.now()});
+      lisatty++;
+    });
+    if(!lisatty)throw new Error('arviosta ei saatu yhtään ruokaa');
     if(el)el.value='';
-    await ptSave();sSave();
+    sSave();
+    toast(lisatty+' ruokaa kirjattu');
+    await ptSave();
+    renderPt();
   }catch(e){
     console.warn('ptLogFood:',e);
-    alert('Ruoan arviointi epäonnistui. Yritä uudelleen.');
+    // EI uudelleenpiirtoa: se rakentaisi tekstikentän tyhjänä uusiksi ja
+    // hukkaisi juuri kirjoitetun syötteen. Epäonnistuessa ei ole mitään
+    // uutta näytettävääkään — vain nappi palautetaan käyttökuntoon.
+    toast('Arviointi ei onnistunut: '+String(e.message||e).slice(0,70),5000);
   }finally{
     if(btn){btn.disabled=false;btn.textContent='⊕ LISÄÄ'}
-    renderPt();
   }
 }
 function ptDelFood(i){
@@ -3071,17 +3109,34 @@ Suomalaista arkiruokaa, tavallisia kaupan raaka-aineita, ei erikoistuotteita eik
 Kirjoita annos konkreettisesti määrineen, esim. "Kaurapuuro 1 dl, 2 dl maitoa, 150 g raejuustoa, kourallinen mustikoita".
 Palauta VAIN JSON, ei muuta tekstiä:
 {"meals":[{"name":"Aamiainen","options":[{"name":"...","kcal":520,"protein":34,"carbs":70,"fat":11}]}]}`;
-    const raw=await askClaudeRetry(sys,[{role:'user',content:'Kokoa ruokavalio vaihtoehtoineen.'}],2600);
-    const r=ptParseJson(raw);
-    if(!r||!Array.isArray(r.meals)||!r.meals.length)throw new Error('ruokavaliota ei saatu jäsennettyä');
+    // Sama kaksivaiheinen kuria kuin ruoan kirjauksessa: jos malli selittää
+    // JSONin ympärille, pyydetään uudestaan valmiiksi aloitetulla vastauksella.
+    // Token-katto on reilu, koska 5 ateriaa × 3 vaihtoehtoa on pitkä vastaus
+    // ja katkennut JSON näyttäisi samalta kuin täysi epäonnistuminen.
+    const yrita=async(tiukka)=>{
+      const msgs=[{role:'user',content:'Kokoa ruokavalio vaihtoehtoineen.'}];
+      if(tiukka)msgs.push({role:'assistant',content:'{"meals":['});
+      const raw=await askClaudeRetry(sys,msgs,4000);
+      return ptParseJson(tiukka?'{"meals":['+raw:raw);
+    };
+    let r=null,virhe=null;
+    try{ r=await yrita(false); }catch(e){ virhe=e; console.warn('ptMealPlan yritys 1:',e); }
+    if(!r||!Array.isArray(r.meals)||!r.meals.length){
+      try{ r=await yrita(true); }catch(e){ virhe=e; console.warn('ptMealPlan yritys 2:',e); }
+    }
+    if(!r||!Array.isArray(r.meals)||!r.meals.length){
+      throw new Error(virhe?('yhteys- tai palvelinvirhe ('+String(virhe.message||virhe).slice(0,80)+')')
+                           :'malli ei palauttanut kelvollista ruokavaliota');
+    }
     pt.meals={created:Date.now(),meals:r.meals};
     pt.mealPlan=''; // vanha vapaamuotoinen teksti korvautuu rakenteisella
     await ptSave();sSave();
+    toast('Ruokavalio koottu');
   }catch(e){
     console.warn('ptMealPlan:',e);
-    alert('Ruokavalion kokoaminen epäonnistui. Yritä uudelleen.');
+    toast('Ruokavalion kokoaminen ei onnistunut: '+String(e.message||e).slice(0,80),6000);
   }
-  renderPt();
+  renderPt(); // palauttaa näkymän aina — ei jätetä "kokoaa…"-tekstiä jumiin
 }
 
 /* ===== SIJOITUS ===== */
