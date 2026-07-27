@@ -1133,7 +1133,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="4.8";
+const VERSION="4.9";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -2621,6 +2621,17 @@ function ptFoodAvg(days){
     kcal:Math.round(d.reduce((a,x)=>a+x.kcal,0)/d.length),
     protein:Math.round(d.reduce((a,x)=>a+x.protein,0)/d.length)};
 }
+/* Onko ruokavalio vanhentunut? Se on mitoitettu tiettyyn kalori- ja
+   proteiinitavoitteeseen; jos tavoite muuttuu, vanhat annokset johtavat
+   harhaan. Pieni heitto sallitaan, jottei päivittäinen punnitus laukaise
+   uudelleenkokoamista turhaan. */
+function ptMealsStale(){
+  const m=pt&&pt.meals,t=pt&&pt.targets;
+  if(!m||!t)return false;
+  if(m.stalePrefs)return true;
+  if(m.forKcal==null)return false; // vanha tallennus, ei tiedetä
+  return Math.abs(m.forKcal-t.kcal)>100||Math.abs((m.forProtein||0)-t.protein)>10;
+}
 // Montako ateriaa on vielä edessä — jäljellä oleva energia jaetaan niille
 function ptMealsLeft(){
   const s=ptSchedule(),now=ptNowMin();
@@ -2973,6 +2984,10 @@ function ptFoodHtml(){
       r.aterioita?` Edessä ${r.aterioita} ateriaa — noin ${r.perAteria} kcal ja ${r.protPerAteria} g proteiinia kutakin kohden.`
                  :' Päivän ateriat on syöty.'}</div>
   </div>
+  ${ptMealsStale()?`<div class="pt-hero" style="border-left-color:var(--gold)">
+    <div class="pt-tag" style="color:var(--gold)">RUOKAVALIO VANHENTUNUT</div>
+    <div class="pt-sub">Tämä ruokavalio on mitoitettu ${pt.meals.forKcal||'?'} kaloriin, mutta tavoitteesi on nyt <b>${t.kcal} kcal</b>. Annokset johtavat harhaan kunnes se kootaan uusiksi.</div>
+    <div class="learn-btns" style="margin-top:12px"><button class="btn" onclick="ptMealPlan()">⟳ KOKOA UUSIKSI</button></div></div>`:''}
   ${ptMealsHtml()}
   <div class="pt-hero"><div class="pt-tag">KIRJAA SYÖMISET</div>
     <textarea class="pt-input" id="ptFoodIn" rows="2" placeholder="esim. kaurapuuro 1 dl, 3 kananmunaa, banaani"></textarea>
@@ -2983,8 +2998,10 @@ function ptFoodHtml(){
       <span class="val">${Math.round(it.kcal||0)} kcal · ${Math.round(it.protein||0)} g
       <button class="btn ghost" style="font-size:9px;height:22px;padding:0 7px;margin-left:6px" onclick="ptDelFood(${pt.food.indexOf(it)})">✕</button></span></div>`).join('')}
     </div>`:''}
+  ${ptPrefsOpen?ptPrefsFormHtml():''}
   <div class="learn-btns">
     <button class="btn ghost" onclick="ptMealPlan()">${pt.meals?'⟳ UUSI RUOKAVALIO':'⊕ RUOKAVALIO VAIHTOEHTOINEEN'}</button>
+    <button class="btn ghost" onclick="ptPrefsOpen=!ptPrefsOpen;renderPt()">${ptPrefsOpen?'SULJE':'🍽 MIELTYMYKSET'}</button>
     <button class="btn ghost" onclick="pt.targets=null;renderPt()">MUOKKAA TIETOJA</button></div>`;
 }
 /* Painotavoite: mistä vaje tulee ja mihin se johtaa.
@@ -2996,6 +3013,15 @@ async function ptSetGoalMode(mode){
   pt.targets=ptCalcTargets(pt.profile);
   await ptSave();sSave();renderPt();
   toast('Tavoite päivitetty');
+  await ptRefreshMealsIfStale();
+}
+/* Tavoite muuttui → ruokavalio mitoitetaan uusiksi automaattisesti.
+   Vanha ruokavalio vääriin kaloreihin on pahempi kuin ei ruokavaliota
+   lainkaan: se näyttää oikealta ja ohjaa väärään suuntaan. */
+async function ptRefreshMealsIfStale(){
+  if(!pt.meals||!ptMealsStale())return;
+  toast('Tavoite muuttui — kootaan ruokavalio uusiksi',4000);
+  await ptMealPlan();
 }
 function ptGoalHtml(){
   const p=pt.profile||{},t=pt.targets;
@@ -3077,7 +3103,54 @@ function ptProfileFormHtml(){
         <option value="massa"${p.dietGoal==='massa'?' selected':''}>Lihasmassa (ylijäämä)</option>
         <option value="yllapito"${p.dietGoal==='yllapito'?' selected':''}>Ylläpito</option></select></div>
     </div>
-    <div class="learn-btns" style="margin-top:12px"><button class="btn" onclick="ptSaveProfile()">✓ LASKE TAVOITTEET</button></div></div>`;
+    <div class="learn-btns" style="margin-top:12px"><button class="btn" onclick="ptSaveProfile()">✓ LASKE TAVOITTEET</button></div></div>
+    ${ptPrefsFormHtml()}`;
+}
+/* Mieltymykset. Ilman näitä ruokavalio on geneeristä "broileria ja riisiä" —
+   näillä se on ruokaa jota Lassi oikeasti syö. Vapaat tekstikentät, koska
+   valmis lista ei osaa arvata mitä yksi ihminen inhoaa. */
+let ptPrefsOpen=false;
+function ptPrefsFormHtml(){
+  const p=pt.profile||{};
+  const sel='background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--txt);'
+    +'font-family:inherit;font-size:15px;padding:10px;border-radius:2px;width:100%;box-sizing:border-box';
+  return `<div class="pt-hero"><div class="pt-tag">MITÄ HALUAT SYÖDÄ</div>
+    <div class="pt-sub" style="margin-bottom:12px">Nämä ohjaavat ruokavalion kokoamista. Mitä tarkemmin vastaat, sitä vähemmän joudut vaihtamaan ehdotuksia.</div>
+    <div class="pt-grid">
+      <div class="pt-field"><label>ERITYISRUOKAVALIO</label><select style="${sel}" id="ptfDiet">
+        ${[['','Ei rajoituksia'],['kasvis','Kasvisruoka'],['vegaani','Vegaaninen'],
+           ['laktoositon','Laktoositon'],['gluteeniton','Gluteeniton'],
+           ['laktoositon-gluteeniton','Laktoositon + gluteeniton']]
+          .map(o=>`<option value="${o[0]}"${(p.diet||'')===o[0]?' selected':''}>${o[1]}</option>`).join('')}
+      </select></div>
+      <div class="pt-field"><label>KUINKA PALJON JAKSAT KOKATA</label><select style="${sel}" id="ptfCook">
+        ${[['nopea','Mahdollisimman vähän — nopeat ja valmiit'],
+           ['normaali','Normaalisti — perusruokaa arkeen'],
+           ['mielellaan','Kokkaan mielelläni — saa nähdä vaivaa']]
+          .map(o=>`<option value="${o[0]}"${(p.cooking||'normaali')===o[0]?' selected':''}>${o[1]}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="pt-field" style="margin-top:11px"><label>MITÄ SYÖT MIELELLÄSI</label>
+      <textarea class="pt-input" id="ptfLikes" rows="2" placeholder="esim. kana, lohi, riisi, raejuusto, kaurapuuro, banaani">${esc(p.likes||'')}</textarea></div>
+    <div class="pt-field" style="margin-top:11px"><label>MITÄ ET SYÖ</label>
+      <textarea class="pt-input" id="ptfDislikes" rows="2" placeholder="esim. sienet, maksa, tofu, kalakeitto">${esc(p.dislikes||'')}</textarea></div>
+    <div class="pt-field" style="margin-top:11px"><label>MUUTA HUOMIOITAVAA</label>
+      <textarea class="pt-input" id="ptfNotes" rows="2" placeholder="esim. lounas syödään työpaikan ruokalassa, aamulla ei maistu iso ateria">${esc(p.foodNotes||'')}</textarea></div>
+    <div class="learn-btns" style="margin-top:12px"><button class="btn" onclick="ptSavePrefs()">✓ TALLENNA MIELTYMYKSET</button></div></div>`;
+}
+async function ptSavePrefs(){
+  if(!pt.profile)pt.profile={};
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():''};
+  pt.profile.diet=g('ptfDiet');
+  pt.profile.cooking=g('ptfCook')||'normaali';
+  pt.profile.likes=g('ptfLikes').slice(0,300);
+  pt.profile.dislikes=g('ptfDislikes').slice(0,300);
+  pt.profile.foodNotes=g('ptfNotes').slice(0,300);
+  await ptSave();sSave();
+  toast('Mieltymykset tallennettu');
+  // Ruokavalio on koottu vanhoilla mieltymyksillä → merkitään vanhentuneeksi
+  if(pt.meals)pt.meals.stalePrefs=true;
+  renderPt();
 }
 
 /* Ravintohistoria KEHITYS-välilehdelle. Päivän rivin napautus avaa sen
@@ -3324,6 +3397,7 @@ async function ptSaveProfile(){
   const last=pt.weights[pt.weights.length-1];
   if(!last||last.kg!==p.weight)pt.weights.push({date:ptToday(),kg:p.weight});
   await ptSave();sSave();renderPt();
+  await ptRefreshMealsIfStale();
 }
 async function ptLogWeight(){
   const el=document.getElementById('ptWIn');
@@ -3445,7 +3519,21 @@ async function ptMealPlan(){
       ['Päivällinen',0.25],['Iltapala',0.10]
     ];
     const tavoite=p.dietGoal==='massa'?' Tavoitteena lihasmassan kasvu.'
-      :p.dietGoal==='rasva'?' Tavoitteena rasvanpudotus, proteiini korkealla.':'';
+      :p.dietGoal==='rasva'?' Tavoitteena rasvanpudotus, proteiini korkealla.'
+      :p.dietGoal==='recomp'?' Tavoitteena rasvanpudotus lihasmassa säilyttäen — proteiini on tärkein.':'';
+    // Mieltymykset promptiin: ilman näitä ehdotukset ovat geneeristä perusruokaa
+    const DIETIT={kasvis:'Kasvisruokavalio: ei lihaa eikä kalaa.',vegaani:'Vegaaninen: ei mitään eläinperäistä.',
+      laktoositon:'Laktoositon.',gluteeniton:'Gluteeniton.','laktoositon-gluteeniton':'Laktoositon JA gluteeniton.'};
+    const KOKKAUS={nopea:'Suosi nopeita ja valmiita ruokia — enintään 15 min valmistus.',
+      normaali:'Tavallista arkiruokaa, kohtuullinen valmistusaika.',
+      mielellaan:'Saa vaatia kokkaamista, Lassi tekee ruokaa mielellään.'};
+    const mielt=[
+      p.diet&&DIETIT[p.diet],
+      p.likes&&('Lassi syö mielellään: '+p.likes+'. Suosi näitä raaka-aineita.'),
+      p.dislikes&&('Lassi EI syö: '+p.dislikes+'. Älä ehdota näitä missään muodossa.'),
+      p.foodNotes&&('Huomioitavaa: '+p.foodNotes),
+      KOKKAUS[p.cooking||'normaali']
+    ].filter(Boolean).join('\n');
     const meals=[];const epaonnistui=[];
     let viimeVirhe=null;
     for(let i=0;i<ATERIAT.length;i++){
@@ -3456,6 +3544,7 @@ async function ptMealPlan(){
       const sys=`Olet ravitsemusvalmentaja. Ehdota Lassille KOLME vaihtoehtoa yhdelle aterialle.
 Ateria: ${nimi}. Mitoita jokainen vaihtoehto noin ${kcal} kcal ja ${prot} g proteiinia.${tavoite}
 Suomalaista arkiruokaa, tavallisia kaupan raaka-aineita, ei erikoistuotteita eikä lisäravinteita.
+${mielt}
 TÄRKEÄÄ: kerro JOKAISEN raaka-aineen määrä grammoina tai desilitroina — Lassi punnitsee ne.
 Älä kirjoita "kourallinen", "hieman" tai "sopivasti". Esimerkki hyvästä muotoilusta:
 "Kaurahiutale 80 g, maito 2 dl, raejuusto 200 g, mustikat 100 g"
@@ -3482,7 +3571,8 @@ Palauta VAIN JSON, ei muuta tekstiä:
       throw new Error(viimeVirhe?String(viimeVirhe.message||viimeVirhe).slice(0,150)
                                 :'malli ei palauttanut yhtään kelvollista ateriaa');
     }
-    pt.meals={created:Date.now(),meals};
+    // Talteen mille tavoitteille tämä koottiin — näin vanhentuminen huomataan
+    pt.meals={created:Date.now(),meals,forKcal:t.kcal,forProtein:t.protein};
     pt.mealPlan=''; // vanha vapaamuotoinen teksti korvautuu rakenteisella
     await ptSave();sSave();
     // Osittainenkin tulos on käyttökelpoinen — kerrotaan rehellisesti mikä puuttuu

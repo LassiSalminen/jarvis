@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v4.8). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v4.9). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -34,7 +34,19 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v4.8)
+## Toiminnot (v4.9)
+- **Ruokamieltymykset** (`profile.diet/likes/dislikes/foodNotes/cooking`):
+  erityisruokavalio, mitä syö mielellään, mitä ei syö, kokkausinto ja vapaat
+  huomiot menevät ruokavalion promptiin. Ilman näitä ehdotukset ovat
+  geneeristä broileria ja riisiä. Muokataan RUOKA → 🍽 MIELTYMYKSET.
+- **Ruokavalion vanhentuminen**: `pt.meals` tallentaa mille tavoitteelle se
+  koottiin (`forKcal`/`forProtein`). `ptMealsStale()` vertaa nykyiseen; yli
+  100 kcal / 10 g heitto tai muuttuneet mieltymykset merkitsevät sen
+  vanhentuneeksi. Tavoitteen vaihto (`ptSetGoalMode`, `ptSaveProfile`) kokoaa
+  ruokavalion **automaattisesti uusiksi** — vanha ruokavalio vääriin
+  kaloreihin on pahempi kuin ei ruokavaliota, koska se näyttää oikealta.
+  Pieni heitto ei laukaise uudelleenkokoamista, jottei päivittäinen punnitus
+  tee sitä turhaan.
 - **HUOM tavoitteen ristiriita**: painotavoite (`goalWeight`) ja ruokavalion
   tavoite (`dietGoal`) ovat eri kenttiä ja voivat sotia keskenään — esim.
   tavoite pudottaa 12 kg mutta `dietGoal:'massa'` eli ylijäämä. Ennen v4.8
