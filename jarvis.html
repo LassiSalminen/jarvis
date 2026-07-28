@@ -659,6 +659,23 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 .pt-opt-name{font-size:15px;color:var(--txt);line-height:1.5}
 .pt-opt-macros{font-family:'Share Tech Mono';font-size:13px;color:var(--txt-dim);margin-top:5px}
 .pt-opt .btn{flex-shrink:0}
+.pt-opt-in{flex:1;min-width:0}
+.pt-opt-toggle{display:block;background:none;border:none;padding:0;margin-top:7px;cursor:pointer;
+  font-family:'Share Tech Mono';font-size:11px;letter-spacing:.08em;color:var(--txt-dim)}
+.pt-opt-items{margin-top:8px;padding-left:11px;border-left:2px solid var(--line)}
+.pt-opt-items div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  font-size:13px;line-height:1.6;color:var(--txt-dim)}
+.pt-opt-items b{font-family:'Share Tech Mono';font-weight:400;color:var(--txt);flex-shrink:0}
+.pt-mults{display:flex;gap:6px;margin-bottom:10px}
+.pt-mults button{flex:1;background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--txt-dim);
+  font-family:'Share Tech Mono';font-size:13px;padding:7px 0;cursor:pointer;border-radius:2px}
+.pt-mults button.on{border-color:var(--cyan);color:var(--txt);background:rgba(var(--accent-rgb),.1)}
+.pt-favs{display:flex;flex-direction:column;gap:6px}
+.pt-fav{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;
+  background:rgba(0,0,0,.4);border:1px solid var(--line);border-left:2px solid var(--cyan);
+  color:var(--txt);text-align:left;padding:10px 11px;cursor:pointer;border-radius:2px}
+.pt-fav .fn{font-size:14px;line-height:1.4;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pt-fav .fm{font-family:'Share Tech Mono';font-size:12px;color:var(--txt-dim);flex-shrink:0}
 
 /* ===== MOBILE BOTTOM NAV ===== */
 #mobileNav{
@@ -1133,7 +1150,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="4.9";
+const VERSION="5.0";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1835,41 +1852,76 @@ function renderGarmin(){
 /* ===== UUTISET ===== */
 let newsCache=null, newsCacheTs=0;
 
+// Lähde otsikon osoitteesta: fallback-listassa ei ole mallin antamaa
+// source-kenttää, ja pelkkä otsikko ilman lähdettä on huonompi kuin domain.
+function newsSource(link){
+  try{return new URL(link).hostname.replace(/^www\.|\.(fi|com|org)$/g,'')}catch(e){return''}
+}
+/* Tekoälysuodatus on parannus, ei ehto. Aiemmin sen kaatuminen tyhjensi koko
+   näkymän tekstiin "Uutisten haku epäonnistui." vaikka otsikot olivat jo
+   haettuna — ja koska virhe niellään, syytä ei näkynyt missään. */
+async function newsPick(items){
+  const interests='teknologia, musiikki, akateemiset julkaisut, paikalliset uutiset Nastola/Lahti-alueelta';
+  const wikiCtx=wiki.slice(0,10).map(w=>w.title).join(', ');
+  const sys=`Olet ${AI.name}. Suodata nämä uutisotsikot Lassin kiinnostusten perusteella.
+Kiinnostukset: ${interests}.
+Wiki-konteksti (Lassin nykyiset projektit/aiheet): ${wikiCtx||'ei vielä'}.
+Palauta VAIN JSON-array, max 6 parasta, järjestettynä relevanteimmasta:
+[{"title":"otsikko","reason":"1 lause miksi tämä sopii Lassille","link":"url","source":"Yle/HN/muu"}]`;
+  const payload=JSON.stringify(items.map(i=>({title:i.title,link:i.link,desc:i.desc})));
+  // Mekaaninen JSON-kutsu → nopea malli, ja toinen yritys tiukemmalla ohjeella
+  for(let yr=0;yr<2;yr++){
+    const raw=await askClaude(sys,[{role:'user',content:yr===0?payload
+      :payload+'\n\nVastaa PELKÄLLÄ JSON-arrayllä, aloita merkillä [ ja lopeta merkkiin ].'}],1200,API_MODEL_FAST);
+    const m=raw.match(/\[[\s\S]*\]/);
+    if(m){try{
+      const arr=JSON.parse(m[0]);
+      if(Array.isArray(arr)&&arr.length)return arr.filter(x=>x&&x.title).slice(0,6);
+    }catch(e){console.warn('newsPick jäsennys yritys '+(yr+1)+':',e)}}
+  }
+  return null;
+}
 async function fetchNews(force=false){
   const feed=$('#newsFeed');
   const AGE=30*60*1000; // 30 min cache
   if(!force && newsCache && Date.now()-newsCacheTs<AGE){ renderNews(newsCache); return; }
   feed.innerHTML='<div style="font-size:11px;color:var(--txt-dim);padding:8px 0">Haetaan uutisia…</div>';
+  let items;
   try{
     const r=await apiFetch('/api/news');
     const d=await r.json();
-    if(!d.items?.length) throw new Error('ei uutisia');
-
-    // Claude suodattaa ja pisteyttää
-    const interests='teknologia, musiikki, akateemiset julkaisut, paikalliset uutiset Nastola/Lahti-alueelta';
-    const wikiCtx=wiki.slice(0,10).map(w=>w.title).join(', ');
-    const sys=`Olet ${AI.name}. Suodata nämä uutisotsikot Lassin kiinnostusten perusteella.
-Kiinnostukset: ${interests}.
-Wiki-konteksti (Lassin nykyiset projektit/aiheet): ${wikiCtx||'ei vielä'}.
-Palauta VAIN JSON-array, max 6 parasta, järjestettynä relevanteimmasta:
-[{"title":"otsikko","reason":"1 lause miksi tämä sopii Lassille","link":"url","source":"Yle/HN/muu"}]`;
-    const raw=await askClaude(sys,[{role:'user',content:JSON.stringify(d.items.map(i=>({title:i.title,link:i.link,desc:i.desc})))}]);
-    const match=raw.match(/\[[\s\S]*\]/);
-    if(!match) throw new Error('parse fail');
-    const picked=JSON.parse(match[0]);
-    newsCache=picked; newsCacheTs=Date.now();
-    renderNews(picked);
+    items=(Array.isArray(d.items)?d.items:[]).filter(i=>i&&i.title);
+    if(!items.length)throw new Error(d&&d.error?String(d.error).slice(0,120)
+      :'yksikään uutislähde ei palauttanut otsikoita');
   }catch(e){
-    feed.innerHTML='<div style="font-size:11px;color:var(--txt-dim);padding:8px 0">Uutisten haku epäonnistui.</div>';
+    // Kerrotaan syy: "epäonnistui" ilman syytä ei kerro onko vika verkossa,
+    // PIN:ssä vai lähteessä, eikä anna mitään mihin tarttua
+    console.warn('fetchNews haku:',e);
+    feed.innerHTML='<div style="font-size:11px;color:var(--txt-dim);padding:8px 0">Uutisten haku epäonnistui: '
+      +esc(String(e.message||e).slice(0,140))+'</div>';
+    return;
   }
+  let picked=null;
+  try{picked=await newsPick(items)}
+  catch(e){console.warn('fetchNews suodatus:',e)}
+  const list=picked||items.slice(0,8).map(i=>({title:i.title,link:i.link,
+    source:newsSource(i.link),reason:(i.desc||'').slice(0,120)}));
+  newsCache=list;newsCacheTs=Date.now();
+  renderNews(list,picked?'':'Tekoälysuodatus ei vastannut — tuoreimmat otsikot sellaisenaan.');
 }
 
-function buildNewsFeed(container, items){
+function buildNewsFeed(container, items, note){
   container.innerHTML='';
   const ts=document.createElement('div');
   ts.style.cssText='font-size:9px;color:var(--txt-dim);opacity:.5;margin-bottom:4px;font-family:Share Tech Mono';
   ts.textContent='PÄIVITETTY '+new Date().toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'});
   container.appendChild(ts);
+  if(note){
+    const n=document.createElement('div');
+    n.style.cssText='font-size:11px;color:var(--txt-dim);line-height:1.4;margin-bottom:5px';
+    n.textContent=note;
+    container.appendChild(n);
+  }
   const readAllBtn=document.createElement('button');
   readAllBtn.style.cssText='width:100%;background:none;border:1px solid var(--line);color:var(--cyan);font-family:Orbitron,sans-serif;font-size:10px;letter-spacing:.1em;padding:5px;cursor:pointer;border-radius:2px;margin-bottom:5px';
   readAllBtn.textContent='◧ LUE KAIKKI UUTISET';
@@ -1889,9 +1941,9 @@ function buildNewsFeed(container, items){
   });
 }
 
-function renderNews(items){
+function renderNews(items,note){
   const feed=$('#newsFeed');
-  if(feed)buildNewsFeed(feed,items);
+  if(feed)buildNewsFeed(feed,items,note);
 }
 
 async function readAllNews(items){
@@ -2461,7 +2513,7 @@ $('#knowInput').onkeydown=e=>{if(e.key==='Enter')$('#sendKnow').click()};
    tarvita mitään uutta. localStorage-peili pitää kesken olevan treenin
    hengissä myös ilman verkkoa (salin kellarissa ei ole kenttää). */
 const PT_ID='pt-data';
-let pt=null,ptTab='today',ptSession=null,ptRestT=0,ptRestIv=null;
+let pt=null,ptTab='today',ptSession=null,ptRestEnd=0,ptRestIv=null;
 
 // PT-sivu on konepeltiä: se ei kuulu tietopankin listaan, siivoukseen,
 // yhteenvetoon eikä chatin wiki-hakuun — muuten iso JSON söisi kontekstin.
@@ -2543,6 +2595,26 @@ function ptLastFor(name){
   }
   return null;
 }
+/* Montako treeniä peräkkäin sama paino on ollut liikkeessä. Ilman tätä
+   ehdotus oli ikuisesti "pidä sama paino ja hae toistot loppuun", vaikka se
+   olisi epäonnistunut jo neljästi — jumissa oleva paino ei aukea toistamalla
+   samaa, vaan keventämällä ja rakentamalla takaisin. */
+function ptStallCount(name,w){
+  let n=0;
+  for(let i=pt.log.length-1;i>=0;i--){
+    const e=(pt.log[i].exercises||[]).find(x=>x.name===name);
+    const sets=e&&(e.sets||[]).filter(s=>ptNum(s.w)!=null);
+    if(!sets||!sets.length)continue;
+    if(Math.max(...sets.map(s=>ptNum(s.w)))!==w)break;
+    n++;
+  }
+  return n;
+}
+function ptDaysBetween(a,b){
+  return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/864e5);
+}
+// Pyöristä lähimpään 1,25 kg:aan — salilla ei ole muunlaisia levyjä
+function ptRound(kg){return Math.max(1.25,Math.round(kg/1.25)*1.25)}
 function ptSuggest(ex){
   const last=ptLastFor(ex.name);
   if(!last)return{w:'',hint:ex.start?('Aloitus: '+ex.start):'Ensimmäinen kerta — hae sopiva paino tuntumalla, jätä 2 toistoa varastoon.'};
@@ -2552,9 +2624,26 @@ function ptSuggest(ex){
   const allHit=atTop.length>=(ex.sets||atTop.length)&&atTop.every(s=>ptNum(s.r)>=top);
   const inc=maxW>=40?2.5:1.25;
   const prev=ptFmtDate(last.date)+' '+maxW+' kg × '+atTop.map(s=>ptNum(s.r)).join('/');
-  return allHit
-    ? {w:maxW+inc,hint:prev+' — kaikki toistot täynnä, nostetaan '+inc+' kg.'}
-    : {w:maxW,hint:prev+' — pidä sama paino ja hae toistot loppuun.'};
+  // Pitkä tauko: edellinen paino ei ole enää oikea lähtökohta
+  const tauko=ptDaysBetween(last.date,ptToday());
+  if(tauko>=21){
+    const w=ptRound(maxW*0.9);
+    return{w,hint:prev+' — siitä on '+tauko+' päivää. Aloita '+w+' kg:sta ja rakenna takaisin parissa treenissä.'};
+  }
+  if(allHit)return{w:maxW+inc,hint:prev+' — kaikki toistot täynnä, nostetaan '+inc+' kg.'};
+  const jumi=ptStallCount(ex.name,maxW);
+  if(jumi>=3){
+    const w=ptRound(maxW*0.9);
+    return{w,hint:prev+' — sama paino on jumittanut '+jumi+' treeniä. Kevennetään '+w+' kg:aan ja rakennetaan takaisin; se aukeaa nopeammin kuin samaa toistamalla.'};
+  }
+  return{w:maxW,hint:prev+(jumi>=2?' — toinen kerta samalla painolla. Hae toistot loppuun, muuten kevennetään ensi kerralla.'
+                              :' — pidä sama paino ja hae toistot loppuun.')};
+}
+// Päiviä viimeisimmästä treenistä. Aloittelijalla käyntien loppuminen on se
+// mikä kaataa homman, ei ohjelmointi — siksi tauko täytyy näkyä.
+function ptDaysSinceWorkout(){
+  const l=pt.log[pt.log.length-1];
+  return l?ptDaysBetween(l.date,ptToday()):null;
 }
 
 /* ---- Garmin-palautuminen ohjaa päivän suositusta ---- */
@@ -2574,15 +2663,34 @@ function ptReadiness(){
    pudottaa nopeammin. Rasvakiloa vastaa noin 7700 kcal.
    Turvaraja estää menemästä perusaineenvaihdunnan alle — liian jyrkkä vaje
    syö lihasta, mikä on juuri päinvastoin kuin tavoitteena. */
+/* Trendipaino: 7 päivän liukuva keskiarvo punnituksista.
+   Päivittäinen paino heittelee vedenpidätyksen mukana yli kilon suuntaansa,
+   joten yksittäinen aamu on huono pohja kalorilaskennalle: yksi suolainen
+   ilta siirtäisi koko tavoitetta ja voisi merkitä ruokavalion vanhentuneeksi
+   ilman että mikään oikeasti muuttui. Sama periaate kuin ravintohistorian
+   7 pv keskiarvossa — trendi kertoo suunnan, yksittäinen luku ei.
+   Alle kahdella tuoreella punnituksella palataan viimeisimpiin lukemiin,
+   jottei tyhjä otos tuota nollaa. */
+function ptTrendWeight(){
+  const w=(pt&&pt.weights||[]).filter(x=>x&&isFinite(x.kg));
+  if(!w.length)return null;
+  const raja=Date.now()-7*864e5;
+  const tuoreet=w.filter(x=>new Date(x.date+'T12:00:00').getTime()>=raja);
+  const otos=tuoreet.length>=2?tuoreet:w.slice(-7);
+  return Math.round(otos.reduce((a,x)=>a+x.kg,0)/otos.length*10)/10;
+}
 function ptCalcTargets(p){
   if(!p||!p.weight||!p.height||!p.age)return null;
-  const bmr=10*p.weight+6.25*p.height-5*p.age+(p.sex==='nainen'?-161:5);
+  // Laskentapaino on trendi, ei tämän aamun lukema. profile.weight pysyy
+  // viimeisimpänä punnituksena, koska se on se mitä lomakkeessa halutaan nähdä.
+  const w=ptTrendWeight()||p.weight;
+  const bmr=10*w+6.25*p.height-5*p.age+(p.sex==='nainen'?-161:5);
   const act={kevyt:1.375,keski:1.55,kova:1.725}[p.activity||'keski']||1.55;
   const tdee=bmr*act;
   let kcal=tdee,deficit=0,rate=0;
   if(p.dietGoal==='massa'){kcal=tdee*1.10}
   else if(p.dietGoal==='recomp'||p.dietGoal==='rasva'){
-    rate=p.weight*(p.dietGoal==='recomp'?0.005:0.0075); // kg/vko
+    rate=w*(p.dietGoal==='recomp'?0.005:0.0075); // kg/vko
     deficit=Math.round(rate*7700/7);
     kcal=tdee-deficit;
   }
@@ -2590,12 +2698,12 @@ function ptCalcTargets(p){
   if(kcal<floor){kcal=floor;deficit=Math.max(0,Math.round(tdee-kcal));rate=deficit*7/7700}
   kcal=Math.round(kcal/10)*10;
   // Vajeella proteiini ylös: se on se mikä säilyttää lihaksen kun energiaa on niukasti
-  const protein=Math.round(p.weight*(deficit>0?2.1:1.8));
-  const fat=Math.round(p.weight*(deficit>0?0.8:0.9));
+  const protein=Math.round(w*(deficit>0?2.1:1.8));
+  const fat=Math.round(w*(deficit>0?0.8:0.9));
   const carbs=Math.max(0,Math.round((kcal-protein*4-fat*9)/4));
-  const jaljella=p.goalWeight?Math.max(0,Math.round((p.weight-p.goalWeight)*10)/10):0;
+  const jaljella=p.goalWeight?Math.max(0,Math.round((w-p.goalWeight)*10)/10):0;
   const viikkoja=(jaljella&&rate>0)?Math.ceil(jaljella/rate):0;
-  return{kcal,protein,fat,carbs,tdee:Math.round(tdee),bmr:Math.round(bmr),
+  return{kcal,protein,fat,carbs,tdee:Math.round(tdee),bmr:Math.round(bmr),weight:w,
     deficit:Math.round(deficit),rate:Math.round(rate*100)/100,jaljella,viikkoja};
 }
 /* Ravintohistoria. Kirjaukset ovat aina sisältäneet päivämäärän, mutta
@@ -2640,6 +2748,60 @@ function ptMealsLeft(){
 function ptFoodToday(){
   const d=ptToday();
   return pt.food.filter(f=>f.date===d);
+}
+/* ---- Usein syödyt ----
+   Sama aamupuuro kirjataan satoja kertoja vuodessa, ja tähän asti jokainen
+   kerta odotti tekoälyn makroarviota. Historiasta koottu suosikkilista
+   kirjaa yhdellä napautuksella ilman verkkoa — kirjaaminen on ravinnon
+   seurannassa se kohta joka jää tekemättä jos se on hidasta.
+   Makrot keskiarvoistetaan, koska sama ruoka on arvioitu eri kerroilla
+   hieman eri tavalla eikä mikään yksittäinen arvio ole "se oikea". */
+function ptFavFoods(n=6){
+  const map={};
+  (pt&&pt.food||[]).forEach(f=>{
+    const key=String(f.name||'').trim().toLowerCase();
+    if(!key)return;
+    if(!map[key])map[key]={name:f.name,kcal:0,protein:0,carbs:0,fat:0,count:0,items:null};
+    const m=map[key];
+    m.count++;m.kcal+=f.kcal||0;m.protein+=f.protein||0;m.carbs+=f.carbs||0;m.fat+=f.fat||0;
+    if(f.items&&f.items.length)m.items=f.items;
+  });
+  return Object.values(map).filter(m=>m.count>=2)
+    .map(m=>({name:m.name,count:m.count,items:m.items,
+      kcal:Math.round(m.kcal/m.count),protein:Math.round(m.protein/m.count),
+      carbs:Math.round(m.carbs/m.count),fat:Math.round(m.fat/m.count)}))
+    .sort((a,b)=>b.count-a.count).slice(0,n);
+}
+// Annoskerroin koskee seuraavaa pikakirjausta ja palautuu ykköseen sen jälkeen:
+// pysyvä kerroin unohtuisi päälle ja vääristäisi kirjaukset huomaamatta.
+let ptFoodMult=1;
+const PT_MULTS=[[0.5,'½'],[1,'1'],[1.5,'1½'],[2,'2']];
+function ptSetMult(m){ptFoodMult=m;renderPt()}
+function ptFavHtml(){
+  const favs=ptFavFoods();
+  if(!favs.length)return'';
+  return `<div class="pt-hero"><div class="pt-tag">USEIN SYÖDYT</div>
+    <div class="pt-sub" style="margin-bottom:10px">Yksi napautus kirjaa annoksen ilman tekoälykutsua — toimii myös offline.</div>
+    <div class="pt-mults">${PT_MULTS.map(([v,l])=>
+      `<button class="${ptFoodMult===v?'on':''}" onclick="ptSetMult(${v})">${l}×</button>`).join('')}</div>
+    <div class="pt-favs">${favs.map((f,i)=>
+      `<button class="pt-fav" onclick="ptLogFav(${i})">
+        <span class="fn">${esc(f.name)}</span>
+        <span class="fm">${Math.round(f.kcal*ptFoodMult)} kcal · ${Math.round(f.protein*ptFoodMult)} g</span>
+      </button>`).join('')}</div></div>`;
+}
+async function ptLogFav(i){
+  const f=ptFavFoods()[i];
+  if(!f)return;
+  const k=ptFoodMult;
+  pt.food.push({date:ptToday(),name:k===1?f.name:f.name+' ('+(PT_MULTS.find(m=>m[0]===k)||[,k])[1]+'×)',
+    kcal:Math.round(f.kcal*k),protein:Math.round(f.protein*k),
+    carbs:Math.round(f.carbs*k),fat:Math.round(f.fat*k),ts:Date.now(),
+    // Raaka-ainemäärät pätevät vain täydelle annokselle — puolikkaan kohdalla
+    // ne valehtelisivat, joten ne jätetään pois kertoimen kanssa
+    ...(k===1&&f.items&&f.items.length?{items:f.items}:{})});
+  ptFoodMult=1;
+  await ptSave();sSave();renderPt();
 }
 function ptFoodSum(){
   return ptFoodToday().reduce((a,f)=>({kcal:a.kcal+(f.kcal||0),protein:a.protein+(f.protein||0),
@@ -2772,6 +2934,7 @@ function ptTodayHtml(){
   const day=days[idx]||days[0];
   const r=ptReadiness();
   const wk=ptWeekCount();
+  const tauko=ptDaysSinceWorkout();
   const t=pt.targets,f=ptFoodSum();
   return `<div class="pt-hero">
     <div class="pt-tag">SEURAAVA TREENI</div>
@@ -2779,9 +2942,13 @@ function ptTodayHtml(){
     <div class="pt-readout">
       <div>VALMIUS<b>${r.score!=null?r.score+'/100':'—'}</b></div>
       <div>TÄLLÄ VIIKOLLA<b>${wk} / ${(pt.profile&&pt.profile.days)||3}</b></div>
-      <div>TREENEJÄ<b>${pt.log.length}</b></div>
+      <div>EDELLISESTÄ<b>${tauko==null?'—':(tauko===0?'tänään':tauko+' pv')}</b></div>
     </div>
     <div class="pt-sub">${esc(r.advice)}</div>
+    ${tauko!=null&&tauko>=5?`<div class="pt-hint" style="margin-top:12px;border-left-color:var(--gold)">
+      <b>TAUKOA ${tauko} PÄIVÄÄ</b>${tauko>=21
+        ? 'Painoehdotukset on kevennetty automaattisesti — aloita maltilla, tuntuma palaa parissa treenissä.'
+        : 'Kunto ei katoa tässä ajassa, mutta rutiini katoaa. Tämä treeni kannattaa tehdä vaikka kevennettynä.'}</div>`:''}
     <div class="learn-btns" style="margin-top:14px">
       <button class="btn" onclick="ptStartSession(${idx})">▶ ALOITA TREENI</button>
       <button class="btn ghost" style="font-size:11px" onclick="switchPtTab('prog')">OHJELMA</button>
@@ -2927,12 +3094,12 @@ function ptSessionHtml(){
   return `<div class="pt-prog">
       <div class="top"><h3>${esc(s.dayName)}</h3><span class="cnt" id="ptProgCnt">${esc(ptProgText())}</span></div>
       <div class="pt-bar"><i id="ptProgBar" class="${c.pct>=100?'hit':''}" style="width:${c.pct}%"></i></div></div>
-    <div class="pt-timer" id="ptTimer" style="display:${ptRestT>0?'flex':'none'}">
+    <div class="pt-timer" id="ptTimer" style="display:${ptRestLeft()>0?'flex':'none'}">
       <span class="l">LEPO</span><span class="t" id="ptTimerT">0:00</span>
       <button class="btn ghost" style="height:30px;padding:0 12px" onclick="ptStopRest()">OHITA</button></div>
     ${s.exercises.map((ex,i)=>`<div class="pt-ex${ptExDone(ex)?' done':(i===act?' active':'')}" id="ptEx${i}">
       <div class="pt-ex-head"><span class="pt-ex-name">${esc(ex.name)}</span><span class="pt-ex-scheme">${esc(ex.scheme||'')}</span></div>
-      <div class="pt-ex-idx">LIIKE ${i+1} / ${s.exercises.length}${ptExLinks(ex.name)}</div>
+      <div class="pt-ex-idx">LIIKE ${i+1} / ${s.exercises.length} · LEPO ${Math.round(ptRestFor(ex)/30)*0.5} MIN${ptExLinks(ex.name)}</div>
       ${ptTechHtml(ex.name)}
       <div class="pt-sets" style="margin-top:11px">${ex.sets.map((st,j)=>`<div class="pt-set${st.done?' done':''}">
         <span class="n">${j+1}.</span>
@@ -2989,12 +3156,14 @@ function ptFoodHtml(){
     <div class="pt-sub">Tämä ruokavalio on mitoitettu ${pt.meals.forKcal||'?'} kaloriin, mutta tavoitteesi on nyt <b>${t.kcal} kcal</b>. Annokset johtavat harhaan kunnes se kootaan uusiksi.</div>
     <div class="learn-btns" style="margin-top:12px"><button class="btn" onclick="ptMealPlan()">⟳ KOKOA UUSIKSI</button></div></div>`:''}
   ${ptMealsHtml()}
+  ${ptFavHtml()}
   <div class="pt-hero"><div class="pt-tag">KIRJAA SYÖMISET</div>
     <textarea class="pt-input" id="ptFoodIn" rows="2" placeholder="esim. kaurapuuro 1 dl, 3 kananmunaa, banaani"></textarea>
     <div class="learn-btns" style="margin-top:9px"><button class="btn" id="ptFoodBtn" onclick="ptLogFood()">⊕ LISÄÄ</button></div>
     <div class="pt-sub" style="margin-top:9px">Kirjoita arkikielellä — ${esc(AI.name)} arvioi energian ja makrot puolestasi.</div></div>
   ${items.length?`<div class="pt-hero"><div class="pt-tag">TÄNÄÄN SYÖTY</div>
-    ${items.map((it,i)=>`<div class="pt-row"><span>${esc(it.name)}</span>
+    ${items.map((it,i)=>`<div class="pt-row"><span>${esc(it.name)}${
+      ptItemsText(it)?`<br><span style="font-size:12px;color:var(--txt-dim)">${esc(ptItemsText(it))}</span>`:''}</span>
       <span class="val">${Math.round(it.kcal||0)} kcal · ${Math.round(it.protein||0)} g
       <button class="btn ghost" style="font-size:9px;height:22px;padding:0 7px;margin-left:6px" onclick="ptDelFood(${pt.food.indexOf(it)})">✕</button></span></div>`).join('')}
     </div>`:''}
@@ -3026,10 +3195,16 @@ async function ptRefreshMealsIfStale(){
 function ptGoalHtml(){
   const p=pt.profile||{},t=pt.targets;
   if(!t||!p.goalWeight||!p.weight)return'';
-  const ero=Math.round((p.weight-p.goalWeight)*10)/10;
+  // Etenemistä mitataan trendipainosta, ei tämän aamun lukemasta
+  const nyt=t.weight||p.weight;
+  const ero=Math.round((nyt-p.goalWeight)*10)/10;
+  const trendi=Math.abs(nyt-p.weight)>=0.3
+    ? `<div class="pt-hint" style="margin-top:12px"><b>LASKENTAPAINO</b>${nyt} kg on 7 päivän trendi;
+       viimeisin punnitus oli ${p.weight} kg. Tavoitteet lasketaan trendistä, koska yksittäinen
+       aamu heittelee vedenpidätyksen mukana yli kilon.</div>` : '';
   if(!ero)return `<div class="pt-hero" style="border-left-color:var(--green)">
     <div class="pt-tag" style="color:var(--green)">TAVOITE</div>
-    <h2>${p.weight} kg — tavoitteessa</h2>
+    <h2>${nyt} kg — tavoitteessa</h2>
     <div class="pt-sub">Olet tavoitepainossasi. Ravinto on nyt ylläpitoa; aseta uusi tavoitepaino jos haluat jatkaa suuntaan tai toiseen.</div></div>`;
 
   // Ristiriita: tavoite on pudottaa, mutta ruokavaliossa ei ole vajetta.
@@ -3039,7 +3214,7 @@ function ptGoalHtml(){
     const yli=t.kcal-t.tdee;
     return `<div class="pt-hero" style="border-left-color:var(--red)">
       <div class="pt-tag" style="color:var(--red)">TAVOITE — RISTIRIITA</div>
-      <h2>${p.weight} kg → ${p.goalWeight} kg</h2>
+      <h2>${nyt} kg → ${p.goalWeight} kg</h2>
       <div class="pt-sub">Haluat pudottaa <b>${ero} kg</b>, mutta ruokavalio on
         ${yli>0?`<b style="color:var(--red)">${yli} kcal ylijäämällä</b>`:'ylläpidolla'}:
         ylläpitosi on ${t.tdee} kcal ja tavoite ${t.kcal} kcal.
@@ -3058,7 +3233,7 @@ function ptGoalHtml(){
     const yli=Math.max(0,t.kcal-t.tdee);
     return `<div class="pt-hero" style="border-left-color:var(--gold)">
       <div class="pt-tag" style="color:var(--gold)">TAVOITE</div>
-      <h2>${p.weight} kg → ${p.goalWeight} kg</h2>
+      <h2>${nyt} kg → ${p.goalWeight} kg</h2>
       <div class="pt-readout"><div>LISÄTTÄVÄÄ<b>${Math.abs(ero)} kg</b></div>
         <div>YLIJÄÄMÄ<b>${yli} kcal</b></div></div>
       <div class="pt-sub">Ylläpitosi on noin <b>${t.tdee} kcal</b>. Tavoite ${t.kcal} kcal
@@ -3070,7 +3245,7 @@ function ptGoalHtml(){
   const recomp=p.dietGoal==='recomp';
   return `<div class="pt-hero" style="border-left-color:var(--gold)">
     <div class="pt-tag" style="color:var(--gold)">TAVOITE</div>
-    <h2>${p.weight} kg → ${p.goalWeight} kg</h2>
+    <h2>${nyt} kg → ${p.goalWeight} kg</h2>
     <div class="pt-readout">
       <div>PUDOTETTAVAA<b>${t.jaljella} kg</b></div>
       <div>VAUHTI<b>${t.rate} kg/vk</b></div>
@@ -3079,6 +3254,7 @@ function ptGoalHtml(){
     <div class="pt-sub">Ylläpitosi on noin <b>${t.tdee} kcal</b> päivässä. Tavoite ${t.kcal} kcal
       jättää <b style="color:var(--gold)">${t.deficit} kcal vajeen</b> — se on ${t.rate} kg viikossa,
       eli noin ${kk} kuukautta.</div>
+    ${trendi}
     ${recomp?`<div class="pt-hint" style="margin-top:12px"><b>MIKSI MALTILLISESTI</b>Rasvan pudotus ja lihaksen kasvatus vetävät eri suuntiin: ensimmäinen vaatii energiavajeen, jälkimmäinen ylijäämän. Molempia saa silti samaan aikaan, kun vaje on maltillinen, proteiinia tulee ${t.protein} g päivässä ja nostat salilla progressiivisesti. Sinä olet tähän parhaassa mahdollisessa tilanteessa: aloittelija ylipainosta liikkeelle. Jyrkempi vaje pudottaisi nopeammin mutta söisi lihasta — se on juuri se mitä et halua.</div>`:''}
   </div>`;
 }
@@ -3178,13 +3354,14 @@ function ptFoodHistoryHtml(){
     <div class="pt-spark" style="height:52px">${show.slice().reverse().map(bar).join('')}</div>
     <div style="font-size:11px;color:var(--txt-dim);margin-top:4px">Viimeiset ${show.length} päivää, vanhin vasemmalla</div>
     <div style="margin-top:10px">
-    ${show.map(d=>`<div class="pt-row" style="cursor:pointer" onclick="ptToggleFoodDay(${ptAttr(d.date)})">
+    ${show.map(d=>`<div class="pt-row" style="cursor:pointer" onclick='ptToggleFoodDay(${ptAttr(d.date)})'>
       <span>${esc(ptFmtDate(d.date))}${d.date===ptToday()?' · tänään':''}</span>
       <span class="val">${Math.round(d.kcal)}${t?' / '+t.kcal:''} kcal · ${Math.round(d.protein)} g
         <span style="color:var(--txt-dim);margin-left:6px">${ptFoodDayOpen[d.date]?'▴':'▾'}</span></span>
     </div>${ptFoodDayOpen[d.date]?`<div style="padding:6px 0 10px 10px;border-left:2px solid var(--line);margin-bottom:6px">
       ${d.items.map(it=>`<div class="pt-row" style="border:none;padding:5px 0;font-size:13px">
-        <span style="color:var(--txt-dim)">${esc(it.name||'')}</span>
+        <span style="color:var(--txt-dim)">${esc(it.name||'')}${
+          ptItemsText(it)?`<br><span style="font-size:12px;opacity:.75">${esc(ptItemsText(it))}</span>`:''}</span>
         <span class="val" style="font-size:13px">${Math.round(it.kcal||0)} kcal · ${Math.round(it.protein||0)} g</span></div>`).join('')}
       <div style="font-family:'Share Tech Mono';font-size:12px;color:var(--txt-dim);margin-top:4px">
         Hiilari ${Math.round(d.carbs)} g · Rasva ${Math.round(d.fat)} g</div>
@@ -3206,6 +3383,7 @@ function ptStatsHtml(){
   }).filter(x=>x.now!=null);
   const w=pt.weights.slice(-14);
   const maxW=w.length?Math.max(...w.map(x=>x.kg)):0,minW=w.length?Math.min(...w.map(x=>x.kg)):0;
+  const trend=ptTrendWeight();
   const vol=pt.log.slice(-8).map(l=>(l.exercises||[]).reduce((a,e)=>a+(e.sets||[]).reduce((b,s)=>b+((ptNum(s.w)||0)*(ptNum(s.r)||0)),0),0));
   const maxV=Math.max(1,...vol);
   return `<div class="pt-hero"><div class="pt-tag">KEHITYS</div>
@@ -3223,7 +3401,9 @@ function ptStatsHtml(){
   </div>
   <div class="pt-hero"><div class="pt-tag">PAINO</div>
     ${w.length?`<div class="pt-row"><span class="lbl">Viimeisin</span><span class="val">${w[w.length-1].kg} kg</span></div>
-      ${w.length>1?`<div class="pt-spark">${w.map((x,i)=>`<i class="${i===w.length-1?'last':''}" style="height:${maxW>minW?Math.round(((x.kg-minW)/(maxW-minW))*90+10):50}%"></i>`).join('')}</div>`:''}`:''}
+      ${trend!=null?`<div class="pt-row"><span class="lbl">Trendi (7 pv)</span><span class="val">${trend} kg</span></div>`:''}
+      ${w.length>1?`<div class="pt-spark">${w.map((x,i)=>`<i class="${i===w.length-1?'last':''}" style="height:${maxW>minW?Math.round(((x.kg-minW)/(maxW-minW))*90+10):50}%"></i>`).join('')}</div>
+      <div style="font-size:11px;color:var(--txt-dim);margin-top:4px">Pylväät ovat yksittäisiä punnituksia — suunnan kertoo trendi, ei yksi aamu.</div>`:''}`:''}
     <div style="display:flex;gap:8px;margin-top:10px">
       <input class="pt-input" id="ptWIn" type="text" inputmode="decimal" placeholder="kg" style="flex:1">
       <button class="btn ghost" style="font-size:11px" onclick="ptLogWeight()">KIRJAA</button></div>
@@ -3232,7 +3412,7 @@ function ptStatsHtml(){
   <div class="pt-hero"><div class="pt-tag">TREENIHISTORIA</div>
     ${pt.log.slice(-10).reverse().map(l=>`<div class="pt-row"><span>${esc(ptFmtDate(l.date))} · ${esc(l.dayName||'')}</span>
       <span class="val">${l.dur?l.dur+' min · ':''}${(l.exercises||[]).reduce((a,e)=>a+(e.sets||[]).length,0)} sarjaa
-      <button class="btn ghost" style="font-size:9px;height:22px;padding:0 7px;margin-left:6px" onclick="ptDeleteLog(${ptAttr(l.id)})" title="Poista treeni">✕</button></span></div>`).join('')}
+      <button class="btn ghost" style="font-size:9px;height:22px;padding:0 7px;margin-left:6px" onclick='ptDeleteLog(${ptAttr(l.id)})' title="Poista treeni">✕</button></span></div>`).join('')}
     <div class="pt-sub" style="font-size:12px;color:var(--txt-dim);margin-top:9px">Väärin kirjattu treeni kannattaa poistaa — muuten se jää vääristämään painoehdotuksia.</div>
   </div>`;
 }
@@ -3253,6 +3433,7 @@ function ptNormalizeProgram(r){
           name:String(e.name).trim().slice(0,60),
           sets:Math.min(8,Math.max(1,isFinite(n)?n:3)),
           reps:String(e.reps==null?'8-10':e.reps).trim().slice(0,20),
+          rest:ptRestFor(e),   // mallin arvo jos järkevä, muuten liikkeen tyypin mukaan
           start:e.start?String(e.start).trim().slice(0,120):'',
           note:e.note?String(e.note).trim().slice(0,160):''
         };
@@ -3271,8 +3452,9 @@ async function ptGenerateProgram(replace){
   const sys=`Olet kokenut suomalainen voimavalmentaja. Laadi kuntosaliohjelma.
 Lähtötiedot: ${days} treeniä viikossa salilla. Taso: aloittelija, joka aloittaa käytännössä nollasta pitkän tauon jälkeen. Tavoite: yleinen lihaskunto ja voima.${p.weight?' Paino '+p.weight+' kg.':''}
 Palauta VAIN JSON, ei muuta tekstiä:
-{"name":"ohjelman nimi","idea":"1-2 lausetta ohjelman ideasta","progression":"2-3 lausetta siitä miten painoja nostetaan","days":[{"name":"A · Kokovartalo","exercises":[{"name":"Jalkakyykky","sets":3,"reps":"8-10","start":"pelkkä tanko, tekniikka edellä","note":"lyhyt vinkki suorituksesta"}]}]}
+{"name":"ohjelman nimi","idea":"1-2 lausetta ohjelman ideasta","progression":"2-3 lausetta siitä miten painoja nostetaan","days":[{"name":"A · Kokovartalo","exercises":[{"name":"Jalkakyykky","sets":3,"reps":"8-10","rest":150,"start":"pelkkä tanko, tekniikka edellä","note":"lyhyt vinkki suorituksesta"}]}]}
 Säännöt:
+- "rest" on sarjapalautus sekunteina: perusliikkeille 120-180, eristäville 60-90.
 - ${days} treenipäivää, kierrätettävä (esim. A/B/A).
 - 5-6 liikettä per treeni, painopiste perusliikkeissä (kyykky, maastaveto, penkkipunnerrus, pystypunnerrus, kulmasoutu, ylätalja).
 - Aloittelijalle 2-3 sarjaa liikettä kohden, ei uupumukseen asti.
@@ -3303,7 +3485,8 @@ function ptStartSession(idx){
   ptSession={date:ptToday(),dayName:day.name,started:Date.now(),note:'',
     exercises:(day.exercises||[]).map(ex=>{
       const s=ptSuggest(ex);
-      return{name:ex.name,scheme:(ex.sets||3)+' × '+(ex.reps||'8-10'),hint:s.hint,
+      const lepo=ptRestFor(ex);
+      return{name:ex.name,scheme:(ex.sets||3)+' × '+(ex.reps||'8-10'),hint:s.hint,rest:lepo,
         sets:Array.from({length:ex.sets||3},()=>({w:s.w===''?'':String(s.w),r:'',done:false}))};
     })};
   ptSaveSession();switchPtTab('today'); // treeni avautuu heti, myös OHJELMA-välilehdeltä aloitettuna
@@ -3315,7 +3498,7 @@ function ptSetDone(i,j,btn){
   s.done=!s.done;
   const row=btn.closest('.pt-set');if(row)row.classList.toggle('done',s.done);
   ptSaveSession();ptUpdateProgress();
-  if(s.done){sSave();ptStartRest()}
+  if(s.done){sSave();ptStartRest(ptRestFor(ptSession.exercises[i]))}
 }
 function ptAddSet(i){
   if(!ptSession)return;
@@ -3323,21 +3506,41 @@ function ptAddSet(i){
   sets.push({w:sets.length?sets[sets.length-1].w:'',r:'',done:false});
   ptSaveSession();renderPt();
 }
+/* ---- Lepokello ----
+   Kello laskee päättymishetkestä eikä tikeistä: salilla puhelin menee taskuun,
+   näyttö sammuu ja selain hyllyttää ajastimet — vähennyslaskuri jäi silloin
+   jälkeen ja näytti väärää aikaa. Aikaleimasta laskettu jäljellä oleva aika
+   on oikein riippumatta siitä montako tikkiä jäi väliin.
+   Värinä lopussa on koko pointti: kelloa ei katsota, sitä odotetaan. */
+function ptRestLeft(){return ptRestEnd?Math.max(0,Math.ceil((ptRestEnd-Date.now())/1000)):0}
+// Perusliikkeet vaativat pidemmän levon kuin eristävät. Ohjelman oma rest-kenttä
+// voittaa, mutta ilman sitäkin oletus on parempi kuin sama 120 s kaikelle.
+const PT_COMPOUND=/kyykky|maastaveto|penkki|punnerrus|soutu|leuanveto|ylätalja|jalkapräss|rinnalleveto|dippi|maastanosto/i;
+function ptRestFor(ex){
+  const r=parseInt(ex&&ex.rest,10);
+  if(isFinite(r)&&r>=30&&r<=300)return r;
+  return PT_COMPOUND.test(String(ex&&ex.name||''))?150:90;
+}
 function ptStartRest(sec){
-  ptRestT=sec||120;
+  ptRestEnd=Date.now()+(sec||120)*1000;
   if(ptRestIv)clearInterval(ptRestIv);
-  ptRestIv=setInterval(()=>{ptRestT--;if(ptRestT<=0)ptStopRest();else ptTickRender()},1000);
+  ptRestIv=setInterval(()=>{if(ptRestLeft()<=0)ptRestDone();else ptTickRender()},500);
   ptTickRender();
 }
+function ptRestDone(){
+  ptStopRest();
+  try{if(navigator.vibrate)navigator.vibrate([180,90,180])}catch(e){}
+}
 function ptStopRest(){
-  ptRestT=0;if(ptRestIv){clearInterval(ptRestIv);ptRestIv=null}
+  ptRestEnd=0;if(ptRestIv){clearInterval(ptRestIv);ptRestIv=null}
   ptTickRender();
 }
 function ptTickRender(){
   const box=document.getElementById('ptTimer'),t=document.getElementById('ptTimerT');
   if(!box||!t)return;
-  box.style.display=ptRestT>0?'flex':'none';
-  t.textContent=Math.floor(ptRestT/60)+':'+String(ptRestT%60).padStart(2,'0');
+  const s=ptRestLeft();
+  box.style.display=s>0?'flex':'none';
+  t.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
 }
 function ptCancelSession(){
   if(!confirm('Hylätäänkö kesken oleva treeni? Kirjatut sarjat menetetään.'))return;
@@ -3393,19 +3596,25 @@ async function ptSaveProfile(){
     activity:g('ptfAct')?g('ptfAct').value:'keski',dietGoal:g('ptfG')?g('ptfG').value:'recomp'};
   if(!p.weight||!p.height||!p.age){toast('Täytä paino, pituus ja ikä');return}
   pt.profile=p;
-  pt.targets=ptCalcTargets(p);
-  const last=pt.weights[pt.weights.length-1];
-  if(!last||last.kg!==p.weight)pt.weights.push({date:ptToday(),kg:p.weight});
+  ptPushWeight(p.weight);          // punnitus talteen ennen laskentaa
+  pt.targets=ptCalcTargets(p);     // …jotta trendi huomioi juuri annetun luvun
   await ptSave();sSave();renderPt();
   await ptRefreshMealsIfStale();
+}
+// Saman päivän punnitus korvaa aiemman: kaksi kirjausta samalta aamulta
+// painottaisi sen päivän kahdesti trendissä
+function ptPushWeight(kg){
+  const d=ptToday(),i=pt.weights.findIndex(x=>x.date===d);
+  if(i>=0)pt.weights[i].kg=kg; else pt.weights.push({date:d,kg});
 }
 async function ptLogWeight(){
   const el=document.getElementById('ptWIn');
   const kg=ptNum(el&&el.value);
   if(!kg)return;
-  pt.weights.push({date:ptToday(),kg});
+  ptPushWeight(kg);
   if(pt.profile){pt.profile.weight=kg;pt.targets=ptCalcTargets(pt.profile)}
   await ptSave();sSave();renderPt();
+  await ptRefreshMealsIfStale();
 }
 async function ptLogFood(){
   const el=document.getElementById('ptFoodIn'),btn=document.getElementById('ptFoodBtn');
@@ -3476,6 +3685,29 @@ function ptDelFood(i){
    on mitoitettu niin että yksi kustakin osuu päivän tavoitteeseen. Makrot
    tulevat valmiiksi mukana → kirjaus ei vaadi uutta tekoälykutsua, ja
    valitseminen onnistuu myös ilman verkkoa. */
+/* ---- Raaka-aineet määrineen ----
+   Annos on käyttökelpoinen vasta kun tietää mitä siihen punnitaan; pelkkä
+   "Puuro ja raejuusto" jättää määrän arvattavaksi ja silloin makrot eivät
+   pidä paikkaansa. Malli palauttaa aineet {n,m}-pareina, mutta ei aina
+   tismalleen: joskus pelkkänä merkkijonona ja joskus eri kenttänimillä.
+   Vanhoissa tallennuksissa listaa ei ole lainkaan (nimi oli silloin itse
+   ainesosaluettelo) — silloin palautetaan tyhjä eikä näytetä mitään. */
+function ptMealItems(o){
+  const raw=o&&Array.isArray(o.items)?o.items:[];
+  return raw.map(it=>typeof it==='string'
+      ? {n:it.trim(),m:''}
+      : {n:String(it&&(it.n||it.name)||'').trim(),
+         m:String(it&&(it.m||it.maara||it.amount)||'').trim()})
+    .filter(x=>x.n).slice(0,14);
+}
+function ptItemsText(o){
+  return ptMealItems(o).map(x=>x.m?x.n+' '+x.m:x.n).join(', ');
+}
+/* Raaka-ainelistat auki/kiinni. Viisi ateriaa × kolme vaihtoehtoa × viisi
+   ainesosaa on 75 riviä — aina auki tekisi listasta selaamiskelvottoman,
+   joten vain vuorossa olevan aterian aineet näkyvät heti. */
+let ptOptOpen={};
+function ptToggleOpt(mi,oi){const k=mi+':'+oi;ptOptOpen[k]=!ptOptOpen[k];renderPt()}
 function ptMealsHtml(){
   const ms=pt.meals&&Array.isArray(pt.meals.meals)?pt.meals.meals:null;
   if(!ms||!ms.length)return pt.mealPlan?`<div class="pt-coach"><div class="pt-tag">ESIMERKKIPÄIVÄ</div>${esc(pt.mealPlan)}</div>`:'';
@@ -3488,10 +3720,20 @@ function ptMealsHtml(){
     const on=nxt&&nxt.name===m.name;
     return `<div class="pt-hero"${on?' style="border-left-color:var(--gold)"':''}>
       <div class="pt-tag"${on?' style="color:var(--gold)"':''}>${ptClock(m.min)} · ${esc(m.name||'Ateria')}${on?' · NYT VUOROSSA':''}</div>
-      ${(m.options||[]).map((o,oi)=>`<div class="pt-opt">
-        <div><div class="pt-opt-name">${esc(o.name||'')}</div>
-          <div class="pt-opt-macros">${Math.round(o.kcal||0)} kcal · ${Math.round(o.protein||0)} g proteiinia</div></div>
-        <button class="btn ghost" onclick="ptLogMealOption(${mi},${oi})">+ KIRJAA</button></div>`).join('')}
+      ${(m.options||[]).map((o,oi)=>{
+        const items=ptMealItems(o);
+        const k=mi+':'+oi;
+        const open=ptOptOpen[k]!=null?ptOptOpen[k]:!!on;
+        return `<div class="pt-opt">
+        <div class="pt-opt-in"><div class="pt-opt-name">${esc(o.name||'')}</div>
+          <div class="pt-opt-macros">${Math.round(o.kcal||0)} kcal · ${Math.round(o.protein||0)} g proteiinia</div>
+          ${items.length?`<button class="pt-opt-toggle" onclick="ptToggleOpt(${mi},${oi})">${
+            open?'▴ PIILOTA RAAKA-AINEET':'▾ RAAKA-AINEET ('+items.length+')'}</button>
+          ${open?`<div class="pt-opt-items">${items.map(x=>
+            `<div><span>${esc(x.n)}</span><b>${esc(x.m||'—')}</b></div>`).join('')}</div>`:''}`:''}
+        </div>
+        <button class="btn ghost" onclick="ptLogMealOption(${mi},${oi})">+ KIRJAA</button></div>`;
+      }).join('')}
     </div>`;
   }).join('');
 }
@@ -3499,8 +3741,11 @@ async function ptLogMealOption(mi,oi){
   const m=pt.meals&&pt.meals.meals&&pt.meals.meals[mi];
   const o=m&&m.options&&m.options[oi];
   if(!o)return;
+  // Raaka-aineet talteen kirjaukseen: nimi on nykyään lyhyt ("Puuro ja
+  // raejuusto"), joten ilman tätä historiasta ei enää näkisi mitä söi.
+  const items=ptMealItems(o);
   pt.food.push({date:ptToday(),name:o.name,kcal:+o.kcal||0,protein:+o.protein||0,
-    carbs:+o.carbs||0,fat:+o.fat||0,ts:Date.now()});
+    carbs:+o.carbs||0,fat:+o.fat||0,ts:Date.now(),...(items.length?{items}:{})});
   await ptSave();sSave();renderPt();
 }
 async function ptMealPlan(){
@@ -3545,26 +3790,30 @@ async function ptMealPlan(){
 Ateria: ${nimi}. Mitoita jokainen vaihtoehto noin ${kcal} kcal ja ${prot} g proteiinia.${tavoite}
 Suomalaista arkiruokaa, tavallisia kaupan raaka-aineita, ei erikoistuotteita eikä lisäravinteita.
 ${mielt}
-TÄRKEÄÄ: kerro JOKAISEN raaka-aineen määrä grammoina tai desilitroina — Lassi punnitsee ne.
-Älä kirjoita "kourallinen", "hieman" tai "sopivasti". Esimerkki hyvästä muotoilusta:
-"Kaurahiutale 80 g, maito 2 dl, raejuusto 200 g, mustikat 100 g"
+Erittele JOKAINEN raaka-aine omaksi riviksi "items"-listaan ja anna sen määrä
+punnittavana lukuna: grammoina, desilitroina tai kappaleina. Lassi punnitsee ne.
+Kielletyt määrät: "kourallinen", "hieman", "sopivasti", "maun mukaan", "annos".
+Kentät: "n" = raaka-aineen nimi, "m" = määrä. "name" on aterian lyhyt nimi.
 Palauta VAIN JSON, ei muuta tekstiä:
-{"options":[{"name":"Kaurahiutale 80 g, maito 2 dl, raejuusto 200 g","kcal":${kcal},"protein":${prot},"carbs":60,"fat":12}]}`;
+{"options":[{"name":"Puuro ja raejuusto","items":[{"n":"Kaurahiutale","m":"80 g"},{"n":"Maito 1,5 %","m":"2 dl"},{"n":"Raejuusto","m":"200 g"},{"n":"Mustikka","m":"100 g"}],"kcal":${kcal},"protein":${prot},"carbs":60,"fat":12}]}`;
       let opts=null;
       for(let yr=0;yr<2&&!opts;yr++){
         try{
           const r=ptParseJson(await askClaudeRetry(sys,[{role:'user',content:
             yr===0?('Ehdota kolme vaihtoehtoa: '+nimi)
                   :('Ehdota kolme vaihtoehtoa: '+nimi+'. Vastaa PELKÄLLÄ JSON-objektilla, aloita merkillä { ja lopeta merkkiin }.')
-          }],1200,API_MODEL_FAST));
+          }],1600,API_MODEL_FAST));
           const lista=r&&(Array.isArray(r.options)?r.options:(Array.isArray(r)?r:null));
           if(lista&&lista.length)opts=lista;
         }catch(e){viimeVirhe=e;console.warn('ptMealPlan '+nimi+' yritys '+(yr+1)+':',e)}
       }
       if(opts){
-        meals.push({name:nimi,options:opts.slice(0,3).map(o=>({
-          name:String(o.name||'').slice(0,160),kcal:+o.kcal||0,protein:+o.protein||0,
-          carbs:+o.carbs||0,fat:+o.fat||0})).filter(o=>o.name)});
+        meals.push({name:nimi,options:opts.slice(0,3).map(o=>{
+          const items=ptMealItems(o);
+          return{name:String(o.name||'').slice(0,160),kcal:+o.kcal||0,protein:+o.protein||0,
+            carbs:+o.carbs||0,fat:+o.fat||0,
+            ...(items.length?{items:items.map(x=>({n:x.n.slice(0,60),m:x.m.slice(0,20)}))}:{})};
+        }).filter(o=>o.name)});
       }else epaonnistui.push(nimi);
     }
     if(!meals.length){

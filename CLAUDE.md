@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v4.9). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v5.0). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -34,7 +34,57 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v4.9)
+## Toiminnot (v5.0)
+- **HUOM merkkijonot onclick-attribuutissa**: `ptAttr()` tuottaa JSON-lainaukset
+  (`"arvo"`), joten se toimii VAIN yksinkertaisilla lainausmerkeillä rajatussa
+  attribuutissa: `onclick='fn(${ptAttr(x)})'`. Kaksinkertaisissa lainausmerkeissä
+  selain katkaisee attribuutin ensimmäiseen sisempään `"`-merkkiin ja onclickistä
+  jää pelkkä `fn(` — nappi näyttää normaalilta mutta ei tee mitään. Näin oli
+  rikki ravintohistorian päivän avaus ja treenin poisto (korjattu v5.0).
+  Numeroargumentit (`fn(${i})`) eivät tarvitse ptAttria lainkaan.
+- **Raaka-aineet grammoina** (`options[].items` = `[{n,m}]`): ateriavaihtoehto
+  kertoo jokaisen raaka-aineen punnittavan määrän. `ptMealItems()` sietää myös
+  merkkijonolistan ja vaihtoehtoiset kenttänimet, ja vanhat tallennukset (joissa
+  aterian nimi oli itse ainesosaluettelo) renderöityvät ennallaan. Listat ovat
+  kiinni oletuksena — 5 ateriaa × 3 vaihtoehtoa × 5 ainesosaa on 75 riviä —
+  paitsi vuorossa olevalla aterialla. Määrät tallentuvat myös kirjaukseen,
+  koska aterian nimi on nykyään lyhyt eikä kertoisi enää mitä söi.
+- **Trendipaino** (`ptTrendWeight`, 7 pv liukuva keskiarvo): `ptCalcTargets`
+  laskee kaiken trendistä, ei tämän aamun lukemasta. `profile.weight` pysyy
+  viimeisimpänä punnituksena (se näkyy lomakkeessa), mutta yksi suolainen ilta
+  ei enää siirrä kalorimäärää eikä merkitse ruokavaliota vanhentuneeksi.
+  Saman päivän punnitus korvaa aiemman (`ptPushWeight`). Sama periaate kuin
+  ravintohistorian 7 pv keskiarvossa: trendi kertoo suunnan, yksi aamu ei.
+- **Usein syödyt** (`ptFavFoods`/`ptLogFav`): ravintohistoriasta kootaan
+  vähintään kahdesti kirjatut ruoat nappilistaksi → kirjaus yhdellä
+  napautuksella ilman tekoälykutsua, toimii offline. Makrot keskiarvoistetaan
+  (sama ruoka on arvioitu eri kerroilla eri tavalla). Annoskerroin ½/1/1½/2
+  koskee seuraavaa kirjausta ja palautuu ykköseen — pysyvä kerroin unohtuisi
+  päälle. Kertoimella raaka-ainemäärät jätetään pois, koska ne pätevät vain
+  täydelle annokselle.
+- **Lepokello**: laskee päättymisaikaleimasta (`ptRestEnd`), ei tikeistä —
+  taskussa näyttö sammuu ja selain hyllyttää ajastimet, jolloin vanha
+  vähennyslaskuri jäi jälkeen. Värinä lopussa (`navigator.vibrate`), koska
+  kelloa ei katsota vaan odotetaan. Lepoaika on liikekohtainen: ohjelman
+  `rest`-kenttä voittaa, muuten `PT_COMPOUND`-nimitunnistus antaa
+  perusliikkeille 150 s ja eristäville 90 s (vanhat ohjelmat saavat järkevän
+  oletuksen ilman uudelleengenerointia).
+- **Jumitus ja tauko painoehdotuksessa**: `ptStallCount` laskee montako treeniä
+  sama paino on ollut jumissa; kolmen jälkeen ehdotus kevenee 10 % sen sijaan
+  että toistaisi ikuisesti "pidä sama paino ja hae toistot loppuun". Yli 21 pv
+  tauko keventää samoin. `ptDaysSinceWorkout` näkyy TÄNÄÄN-näkymässä ja yli
+  5 päivän tauosta tulee huomautus — aloittelijalla käyntien loppuminen kaataa
+  homman, ei ohjelmointi.
+- **Uutiset**: tekoälysuodatus on parannus, ei ehto. Aiemmin sen kaatuminen
+  tyhjensi näkymän tekstiin "Uutisten haku epäonnistui." vaikka otsikot olivat
+  jo haettuna, eikä virhettä näkynyt missään. Nyt suodatus ajetaan
+  `API_MODEL_FAST`illa kahdella yrityksellä, ja jos se ei vastaa, näytetään
+  tuoreimmat otsikot sellaisenaan + kerrotaan miksi. Hakuvirhe kertoo syyn.
+  **worker.js**: `YLE_TEKNOLOGIA` poistui käytöstä (feeds.yle.fi vastaa 400
+  "Invalid publishers") → tilalle Tivi (tekniikka) ja ESS (Lahden seudun
+  paikallisuutiset, joita suodatin pyysi mutta yksikään lähde ei tarjonnut).
+  Per-lähde aikakatkaisu 8 s. **Vaatii workerin päivityksen Cloudflareen** —
+  HTML toimii ilman sitä, vain tekniikkauutiset jäävät HN:n varaan.
 - **Ruokamieltymykset** (`profile.diet/likes/dislikes/foodNotes/cooking`):
   erityisruokavalio, mitä syö mielellään, mitä ei syö, kokkausinto ja vapaat
   huomiot menevät ruokavalion promptiin. Ilman näitä ehdotukset ovat
