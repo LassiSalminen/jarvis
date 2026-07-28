@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v5.0). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v5.1). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -34,7 +34,34 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v5.0)
+## Toiminnot (v5.1)
+- **Muu liikunta kuin sali** (kävely, juoksu, pyöräily, sähköpyörä, uinti):
+  suoritukset luetaan **Garminista automaattisesti** (`activities` + 6 pv
+  `history`) — niitä ei syötetä käsin, koska se olisi juuri sitä kirjanpitoa
+  jota tämä sovellus välttää. `ptActType()` tunnistaa lajin Garminin
+  `typeKey`istä. **Sähköpyörä on oma lajinsa eikä pyöräilyä** (regex ennen
+  pyöräilyä): avustus keventää kuormaa, joten samasta matkasta ei tule samaa
+  kulutusta eikä samaa harjoitusvaikutusta. Sali suodatetaan pois cardio-
+  laskelmista — sen hoitaa treeniloki, ja kahteen kertaan laskettuna viikko
+  näyttäisi kaksi kertaa täydemmältä. Käsinkirjaus (`pt.cardio`) on olemassa
+  vain siltä varalta ettei kello ollut mukana, ja se ohitetaan jos Garminilla
+  on samana päivänä sama laji (muuten sama lenkki olisi listassa kahdesti).
+  Garmin säilyttää vain 6 pv, käsinkirjaukset pidempään — siksi molemmat
+  näkyvät samassa listassa.
+- **Ohjelma kattaa välipäivät**: `pt.program.cardio` = `[{name,times,minutes,
+  effort,note}]` ja `weekIdea` generoidaan salipäivien rinnalla profiilin
+  kentistä `gymDays`/`cardioDays`/`cardioTypes`/`cardioNotes` (RUOKA →
+  perustiedot → MUU LIIKUNTA KUIN SALI). OHJELMA-välilehti näyttää
+  suunnitellun rinnalla **toteuman Garminista**, TÄNÄÄN näyttää viikon
+  liikunnan ja välipäivän suosituksen palautumisen mukaan (valmius ≥75 →
+  pidempi/kovempi, <50 → kevyt kävely tai sähköpyörä).
+- **HUOM kalorien kaksoislaskenta**: Garminin mittaamaa kulutusta EI lisätä
+  ravintotavoitteeseen. Aktiivisuuskerroin (`kevyt/keski/kova`) sisältää jo
+  liikunnan, joten päälle laskeminen laskisi saman lenkin kahdesti.
+  `ptBurnCheckHtml` vertaa mitattua 6 pv keskiarvoa Mifflinin ylläpitoarvioon
+  ja tarjoaa oikean aktiivisuustason kun ero ylittää 12 % — vaje lasketaan
+  ylläpidosta, joten väärä ylläpito tarkoittaa väärää vajetta joka päivä.
+  Tämän päivän kulutus jätetään keskiarvosta pois, koska päivä on kesken.
 - **HUOM merkkijonot onclick-attribuutissa**: `ptAttr()` tuottaa JSON-lainaukset
   (`"arvo"`), joten se toimii VAIN yksinkertaisilla lainausmerkeillä rajatussa
   attribuutissa: `onclick='fn(${ptAttr(x)})'`. Kaksinkertaisissa lainausmerkeissä

@@ -670,6 +670,10 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 .pt-mults button{flex:1;background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--txt-dim);
   font-family:'Share Tech Mono';font-size:13px;padding:7px 0;cursor:pointer;border-radius:2px}
 .pt-mults button.on{border-color:var(--cyan);color:var(--txt);background:rgba(var(--accent-rgb),.1)}
+.pt-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pt-chips button{background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--txt-dim);
+  font-family:inherit;font-size:13px;padding:8px 12px;cursor:pointer;border-radius:2px}
+.pt-chips button.on{border-color:var(--cyan);color:var(--txt);background:rgba(var(--accent-rgb),.1)}
 .pt-favs{display:flex;flex-direction:column;gap:6px}
 .pt-fav{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;
   background:rgba(0,0,0,.4);border:1px solid var(--line);border-left:2px solid var(--cyan);
@@ -1150,7 +1154,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="5.0";
+const VERSION="5.1";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -2144,7 +2148,8 @@ function buildContext(text){
       +'. Käytä tätä dataa kun Lassi kysyy treenaamisesta, palautumisesta tai jaksamisesta — anna konkreettinen suositus.');
     if(Array.isArray(garminData.activities)&&garminData.activities.length){
       lines.push('Tänään kirjatut suoritukset (Garmin): '+garminData.activities.map(a=>
-        (a.name||a.type||'suoritus')+(a.durationMin?' '+a.durationMin+' min':'')+(a.distanceKm?' '+a.distanceKm+' km':'')).join('; '));
+        (a.name||a.type||'suoritus')+(a.durationMin?' '+a.durationMin+' min':'')+(a.distanceKm?' '+a.distanceKm+' km':'')
+        +(a.kcal?' '+a.kcal+' kcal':'')).join('; '));
     }
     if(Array.isArray(garminData.history)&&garminData.history.length){
       lines.push('Edellisten päivien Garmin-tiivistelmä (uusin ensin):\n'+garminData.history.map(h=>
@@ -2162,13 +2167,21 @@ function buildContext(text){
 
   // PT — treeni ja ravinto. Tiivistelmä, ei raakadataa: chatin pitää tietää
   // missä mennään ilman että koko treenipäiväkirja syö kontekstin.
-  if(pt&&(pt.program||pt.log.length)){
+  if(pt&&(pt.program||pt.log.length||pt.cardio.length||pt.targets)){
     const l=[];
     if(pt.program){
-      l.push('Ohjelma: '+pt.program.name+' ('+((pt.profile&&pt.profile.days)||3)+'× viikossa).');
+      l.push('Ohjelma: '+pt.program.name+' ('+((pt.profile&&(pt.profile.gymDays||pt.profile.days))||3)+'× viikossa salilla).');
       const nd=(pt.program.days||[])[ptNextDayIdx()];
       if(nd)l.push('Seuraava treeni: '+nd.name+' — '+(nd.exercises||[]).map(e=>e.name).join(', ')+'.');
+      const cp=pt.program.cardio||[];
+      if(cp.length)l.push('Suunniteltu muu liikunta: '+cp.map(c=>
+        c.name+' '+c.times+'× '+c.minutes+' min'+(c.effort?' ('+c.effort+')':'')).join(', ')+'.');
     }
+    // Muu liikunta kuin sali: chatin pitää tietää myös lenkeistä, muuten se
+    // neuvoo treenaamaan lisää päivänä jolloin takana on jo 20 km pyörällä
+    const cw=ptCardioWeek();
+    if(cw.length)l.push('Muu liikunta tällä viikolla: '+cw.map(x=>
+      x.laji+' '+x.kertoja+'× '+x.min+' min'+(x.km?' / '+x.km+' km':'')).join(', ')+'.');
     if(pt.log.length){
       const last=pt.log[pt.log.length-1];
       l.push('Treenejä kirjattu yhteensä '+pt.log.length+', tällä viikolla '+ptWeekCount()+'. Viimeisin '+ptFmtDate(last.date)+' ('+last.dayName+'): '
@@ -2518,7 +2531,7 @@ let pt=null,ptTab='today',ptSession=null,ptRestEnd=0,ptRestIv=null;
 // PT-sivu on konepeltiä: se ei kuulu tietopankin listaan, siivoukseen,
 // yhteenvetoon eikä chatin wiki-hakuun — muuten iso JSON söisi kontekstin.
 function userWiki(){return wiki.filter(w=>w.id!==PT_ID)}
-function ptDefault(){return{profile:null,program:null,log:[],food:[],weights:[],targets:null,tech:{},updated:0}}
+function ptDefault(){return{profile:null,program:null,log:[],food:[],weights:[],cardio:[],targets:null,tech:{},updated:0}}
 function ptToday(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function ptFmtDate(s){if(!s)return'';const p=s.split('-');return p.length===3?(+p[2])+'.'+(+p[1])+'.':s}
 function ptNum(v){const n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:null}
@@ -2529,7 +2542,7 @@ function ptLoad(){
   if(page&&page.body){try{raw=JSON.parse(page.body)}catch(e){}}
   if(!raw){try{raw=JSON.parse(localStorage.getItem('jarvis:pt')||'null')}catch(e){}}
   pt=(raw&&typeof raw==='object')?{...ptDefault(),...raw}:ptDefault();
-  ['log','food','weights'].forEach(k=>{if(!Array.isArray(pt[k]))pt[k]=[]});
+  ['log','food','weights','cardio'].forEach(k=>{if(!Array.isArray(pt[k]))pt[k]=[]});
   if(!pt.tech||typeof pt.tech!=='object')pt.tech={};
   try{const s=JSON.parse(localStorage.getItem('jarvis:ptSession')||'null');if(s&&Array.isArray(s.exercises))ptSession=s}catch(e){}
   ptMirror();
@@ -2644,6 +2657,79 @@ function ptSuggest(ex){
 function ptDaysSinceWorkout(){
   const l=pt.log[pt.log.length-1];
   return l?ptDaysBetween(l.date,ptToday()):null;
+}
+
+/* ===== MUU LIIKUNTA KUIN SALI =====
+   Kävelyt, juoksut ja pyöräilyt tulevat Garminista valmiina — niitä ei
+   syötetä käsin, koska se olisi juuri sitä kirjanpitoa jota tämä sovellus
+   välttää. Käsinkirjaus on olemassa vain siltä varalta ettei kello ollut
+   mukana. Sali jätetään pois näistä laskelmista: sen hoitaa treeniloki,
+   ja kahteen kertaan laskettuna viikko näyttäisi kaksi kertaa täydemmältä. */
+const PT_ACT=[
+  [/strength|gym_|indoor_cardio|fitness_equipment/i,'sali'],
+  [/e_?bike|sähköpyör|sahkopyor/i,'sähköpyörä'],  // ennen pyöräilyä: eMTB on eri laji
+  [/mountain_bik|cycling|biking|bike|pyöräil|pyorail/i,'pyöräily'],
+  [/run|juoks/i,'juoksu'],
+  [/walk|hik|kävel|kavel/i,'kävely'],
+  [/swim|uinti|ui$/i,'uinti']
+];
+const PT_ACT_NAMES=['kävely','juoksu','pyöräily','sähköpyörä','uinti','muu'];
+function ptActType(a){
+  const k=String(a&&(a.type||a.laji||a.name)||'');
+  for(const [re,nimi] of PT_ACT) if(re.test(k)) return nimi;
+  return 'muu';
+}
+function ptWeekStart(){
+  const now=new Date(),day=(now.getDay()+6)%7;
+  const mon=new Date(now);mon.setDate(now.getDate()-day);mon.setHours(0,0,0,0);
+  return mon;
+}
+/* Kaikki suoritukset: Garminin tämä päivä + 6 pv historia, sekä käsin
+   kirjatut. Käsinkirjaus ohitetaan jos Garminilla on samana päivänä sama
+   laji — muuten kello ja käsi kirjaisivat saman lenkin kahdesti. */
+function ptAllActivities(){
+  const out=[];
+  const g=garminData;
+  if(g){
+    (g.activities||[]).forEach(a=>out.push({...a,date:g.date}));
+    (g.history||[]).forEach(h=>(h.activities||[]).forEach(a=>out.push({...a,date:h.date})));
+  }
+  (pt&&pt.cardio||[]).forEach(a=>{
+    if(out.some(x=>x.date===a.date&&ptActType(x)===ptActType(a)))return;
+    out.push({...a,manual:true});
+  });
+  return out.filter(a=>a.date);
+}
+function ptCardioSince(ms){
+  return ptAllActivities()
+    .filter(a=>new Date(a.date+'T12:00:00').getTime()>=ms)
+    .filter(a=>ptActType(a)!=='sali');
+}
+function ptCardioSum(acts){
+  const map={};
+  acts.forEach(a=>{
+    const t=ptActType(a);
+    if(!map[t])map[t]={laji:t,kertoja:0,min:0,km:0};
+    map[t].kertoja++;map[t].min+=a.durationMin||0;map[t].km+=a.distanceKm||0;
+  });
+  return Object.values(map).sort((a,b)=>b.min-a.min)
+    .map(x=>({...x,km:Math.round(x.km*10)/10}));
+}
+function ptCardioWeek(){return ptCardioSum(ptCardioSince(ptWeekStart().getTime()))}
+function ptCardioCount(){return ptCardioSince(ptWeekStart().getTime()).length}
+function ptActText(a){
+  const t=ptActType(a);
+  return t+(a.durationMin?' '+a.durationMin+' min':'')+(a.distanceKm?' · '+a.distanceKm+' km':'');
+}
+/* Garminin mittaama päivän kokonaiskulutus vs. Mifflinin arvio.
+   Tämän päivän lukua ei oteta mukaan: päivä on kesken ja vetäisi keskiarvon
+   alas. Tarkoitus ei ole korvata laskentaa vaan kertoa jos aktiivisuustaso
+   on valittu väärin — vaje lasketaan ylläpidosta, joten väärä ylläpito
+   tarkoittaa väärää vajetta. */
+function ptBurnAvg(){
+  const h=(garminData&&garminData.history)||[];
+  const vals=h.map(x=>x.totalKilocalories).filter(v=>v>0);
+  return vals.length>=3?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):null;
 }
 
 /* ---- Garmin-palautuminen ohjaa päivän suositusta ---- */
@@ -2941,7 +3027,7 @@ function ptTodayHtml(){
     <h2>${esc(day.name||'Treeni')}</h2>
     <div class="pt-readout">
       <div>VALMIUS<b>${r.score!=null?r.score+'/100':'—'}</b></div>
-      <div>TÄLLÄ VIIKOLLA<b>${wk} / ${(pt.profile&&pt.profile.days)||3}</b></div>
+      <div>SALILLA<b>${wk} / ${(pt.profile&&(pt.profile.gymDays||pt.profile.days))||3}</b></div>
       <div>EDELLISESTÄ<b>${tauko==null?'—':(tauko===0?'tänään':tauko+' pv')}</b></div>
     </div>
     <div class="pt-sub">${esc(r.advice)}</div>
@@ -2956,11 +3042,42 @@ function ptTodayHtml(){
   <div class="pt-day next"><h4>OHJELMASSA TÄNÄÄN</h4><ul>${
     (day.exercises||[]).map(e=>`<li>${esc(e.name)} <i>${e.sets||3} × ${esc(e.reps||'8-10')}</i>${ptExLinks(e.name)}${ptTechHtml(e.name)}</li>`).join('')
   }</ul></div>
+  ${ptCardioTodayHtml()}
   ${t?`<div class="pt-hero"><div class="pt-tag">RAVINTO TÄNÄÄN</div>
     ${ptBarRow('Energia',f.kcal,t.kcal,'kcal')}
     ${ptBarRow('Proteiini',f.protein,t.protein,'g')}
     <div class="learn-btns" style="margin-top:12px"><button class="btn ghost" style="font-size:11px" onclick="switchPtTab('food')">KIRJAA SYÖMISET</button></div></div>`:''}
   ${ptLastCoachHtml()}`;
+}
+/* Viikon liikunta TÄNÄÄN-näkymässä. Kaksi kysymystä joihin tämä vastaa:
+   mitä on jo tullut tehtyä, ja mitä välipäivänä kannattaisi tehdä. Toinen
+   riippuu palautumisesta — kova lenkki väsyneenä ei ole edistystä. */
+function ptCardioTodayHtml(){
+  const viikko=ptCardioWeek();
+  const plan=(pt.program&&pt.program.cardio)||[];
+  const tavoite=(pt.profile&&pt.profile.cardioDays);
+  if(!viikko.length&&!plan.length&&!tavoite)return'';
+  const kertoja=ptCardioCount();
+  const tanaan=ptAllActivities().filter(a=>a.date===ptToday()&&ptActType(a)!=='sali');
+  const r=ptReadiness();
+  // Välipäivän suositus palautumisen mukaan: sama lenkki ei sovi joka päivään
+  const suositus=!plan.length?'':
+    r.score==null?plan[0].name+' '+plan[0].minutes+' min tuntuman mukaan.'
+    :r.score>=75?'Palautuminen on kunnossa — tämä on hyvä päivä pidemmälle tai kovemmalle lenkille.'
+    :r.score>=50?plan[0].name+' '+plan[0].minutes+' min suunnitellusti.'
+    :'Palautuminen on kesken — kevyt kävely tai sähköpyörälenkki palauttaa, kova veto ei.';
+  return `<div class="pt-hero"><div class="pt-tag">MUU LIIKUNTA TÄLLÄ VIIKOLLA</div>
+    <div class="pt-readout">
+      <div>KERTOJA<b>${kertoja}${tavoite?' / '+tavoite:''}</b></div>
+      <div>AIKAA<b>${viikko.reduce((a,x)=>a+x.min,0)} min</b></div>
+      <div>MATKAA<b>${Math.round(viikko.reduce((a,x)=>a+x.km,0)*10)/10} km</b></div>
+    </div>
+    ${viikko.length?`<div style="margin-top:10px">${viikko.map(x=>
+      `<div class="pt-row"><span>${esc(x.laji)}</span><span class="val">${x.kertoja}× · ${x.min} min${x.km?' · '+x.km+' km':''}</span></div>`).join('')}</div>`
+      :`<div class="pt-sub" style="margin-top:10px">Ei suorituksia tällä viikolla. Garmin kirjaa ne itse — jos kello ei ollut mukana, kirjaa lenkki KEHITYS-välilehdeltä.</div>`}
+    ${tanaan.length?`<div class="pt-hint" style="margin-top:11px"><b>TÄNÄÄN</b>${esc(tanaan.map(ptActText).join(' · '))}</div>`
+      :(suositus?`<div class="pt-hint" style="margin-top:11px"><b>VÄLIPÄIVÄNÄ</b>${esc(suositus)}</div>`:'')}
+  </div>`;
 }
 function ptBarRow(label,val,target,unit){
   const pct=target?Math.min(100,Math.round(val/target*100)):0;
@@ -2991,8 +3108,32 @@ function ptProgHtml(){
     <ul>${(d.exercises||[]).map((e,ei)=>`<li>${esc(e.name)} <i>${e.sets||3} × ${esc(e.reps||'8-10')}</i>${ptExLinks(e.name,i,ei)}${e.note?`<br><i>${esc(e.note)}</i>`:''}${ptTechHtml(e.name)}</li>`).join('')}</ul>
     <div class="learn-btns" style="margin-top:10px"><button class="btn ghost" style="font-size:10px" onclick="ptStartSession(${i})">▶ ALOITA TÄMÄ</button></div>
   </div>`).join('')}
+  ${ptCardioPlanHtml()}
   ${p.progression?`<div class="pt-coach"><div class="pt-tag">PROGRESSIO</div>${esc(p.progression)}</div>`:''}
   <div class="learn-btns"><button class="btn ghost" style="font-size:11px" onclick="ptGenerateProgram(true)">⟳ UUSI OHJELMA</button></div>`;
+}
+/* Välipäivien liikunta ohjelmanäkymässä: suunniteltu määrä ja mitä siitä on
+   tällä viikolla toteutunut. Toteuma tulee Garminista, joten rivi kertoo
+   totuuden eikä sitä mitä aiottiin. */
+function ptCardioPlanHtml(){
+  const plan=(pt.program&&pt.program.cardio)||[];
+  if(!plan.length)return'';
+  const tehty=ptCardioWeek();
+  const osui=nimi=>{
+    const t=ptActType({name:nimi});
+    return tehty.find(x=>x.laji===t);
+  };
+  return `<div class="pt-hero"><div class="pt-tag">MUU LIIKUNTA</div>
+    ${pt.program.weekIdea?`<div class="pt-sub" style="margin-bottom:12px">${esc(pt.program.weekIdea)}</div>`:''}
+    ${plan.map(c=>{
+      const t=osui(c.name);
+      return `<div class="pt-row"><span>${esc(c.name)}${c.effort?`<br><span style="font-size:12px;color:var(--txt-dim)">${esc(c.effort)}</span>`:''}</span>
+        <span class="val">${c.times}× ${c.minutes} min
+        <br><span style="font-size:12px;color:var(--${t&&t.kertoja>=c.times?'green':'txt-dim'})">${
+          t?`tällä viikolla ${t.kertoja}×`:'ei vielä tällä viikolla'}</span></span></div>`;
+    }).join('')}
+    ${plan.some(c=>c.note)?`<div class="pt-hint" style="margin-top:11px"><b>HUOMIOITAVAA</b>${
+      esc(plan.filter(c=>c.note).map(c=>c.name+': '+c.note).join(' · '))}</div>`:''}</div>`;
 }
 
 /* ---- "Mikä tämä liike on?" — video + tekniikkaohje ----
@@ -3255,8 +3396,40 @@ function ptGoalHtml(){
       jättää <b style="color:var(--gold)">${t.deficit} kcal vajeen</b> — se on ${t.rate} kg viikossa,
       eli noin ${kk} kuukautta.</div>
     ${trendi}
+    ${ptBurnCheckHtml()}
     ${recomp?`<div class="pt-hint" style="margin-top:12px"><b>MIKSI MALTILLISESTI</b>Rasvan pudotus ja lihaksen kasvatus vetävät eri suuntiin: ensimmäinen vaatii energiavajeen, jälkimmäinen ylijäämän. Molempia saa silti samaan aikaan, kun vaje on maltillinen, proteiinia tulee ${t.protein} g päivässä ja nostat salilla progressiivisesti. Sinä olet tähän parhaassa mahdollisessa tilanteessa: aloittelija ylipainosta liikkeelle. Jyrkempi vaje pudottaisi nopeammin mutta söisi lihasta — se on juuri se mitä et halua.</div>`:''}
   </div>`;
+}
+/* Ylläpitoarvio vs. Garminin mittaama kulutus.
+   Kun lenkkejä tulee salin päälle, kiinteä aktiivisuuskerroin on helposti
+   väärä — ja koska vaje lasketaan ylläpidosta, väärä ylläpito tarkoittaa
+   väärää vajetta koko ajan. Kulutusta EI lisätä tavoitteeseen automaattisesti:
+   aktiivisuuskerroin sisältää jo liikunnan, joten päälle laskeminen laskisi
+   saman treenin kahdesti. Sen sijaan kerrotaan erosta ja tarjotaan oikea taso. */
+function ptBurnCheckHtml(){
+  const t=pt.targets,burn=ptBurnAvg();
+  if(!t||!burn)return'';
+  const ero=burn-t.tdee;
+  const pros=Math.round(ero/t.tdee*100);
+  if(Math.abs(pros)<12)return `<div class="pt-hint" style="margin-top:12px"><b>GARMIN VAHVISTAA</b>Kello mittasi viime päivinä keskimäärin ${burn} kcal/vrk, arvio on ${t.tdee} kcal. Ero ${pros>0?'+':''}${pros} % — aktiivisuustaso on oikein valittu.</div>`;
+  const cur=(pt.profile&&pt.profile.activity)||'keski';
+  const ylos=pros>0, ehdotus=ylos?(cur==='kevyt'?'keski':'kova'):(cur==='kova'?'keski':'kevyt');
+  const nimet={kevyt:'Kevyt — istumatyö',keski:'Keskitaso',kova:'Aktiivinen'};
+  return `<div class="pt-hint" style="margin-top:12px;border-left-color:var(--gold)">
+    <b>ARVIO JA MITTAUS ERIÄVÄT</b>Kello mittasi viime päivinä keskimäärin <b>${burn} kcal/vrk</b>,
+    mutta ylläpitoarvio on <b>${t.tdee} kcal</b> — ero ${pros>0?'+':''}${pros} %.
+    ${ylos?`Liikut enemmän kuin aktiivisuustaso olettaa, joten todellinen vaje on suurempi kuin laskettu ${t.deficit} kcal.`
+          :'Aktiivisuustaso olettaa enemmän liikettä kuin toteutuu, joten vaje jää luultua pienemmäksi.'}
+    ${cur!==ehdotus?`<div class="learn-btns" style="margin-top:10px">
+      <button class="btn ghost" style="font-size:11px" onclick="ptSetActivity('${ehdotus}')">VAIHDA: ${esc(nimet[ehdotus])}</button></div>`
+      :''}</div>`;
+}
+async function ptSetActivity(taso){
+  if(!pt.profile)return;
+  pt.profile.activity=taso;
+  pt.targets=ptCalcTargets(pt.profile);
+  await ptSave();sSave();renderPt();
+  await ptRefreshMealsIfStale();
 }
 function ptProfileFormHtml(){
   const p=pt.profile||{};
@@ -3280,7 +3453,53 @@ function ptProfileFormHtml(){
         <option value="yllapito"${p.dietGoal==='yllapito'?' selected':''}>Ylläpito</option></select></div>
     </div>
     <div class="learn-btns" style="margin-top:12px"><button class="btn" onclick="ptSaveProfile()">✓ LASKE TAVOITTEET</button></div></div>
+    ${ptMoveFormHtml()}
     ${ptPrefsFormHtml()}`;
+}
+/* Liikunta salin ulkopuolella. Ilman näitä ohjelma on pelkkä kolme
+   salitreeniä ja neljä tyhjää päivää, vaikka välipäivien lenkit ovat
+   se mikä kantaa kunnon ja kalorinkulutuksen. Sähköpyörä on oma lajinsa
+   eikä pyöräilyä: avustus tekee samasta matkasta kevyemmän, ja jos sen
+   laskee tavallisena pyöräilynä, kulutusarvio menee reilusti yli. */
+function ptMoveFormHtml(){
+  const p=pt.profile||{};
+  const valitut=Array.isArray(p.cardioTypes)?p.cardioTypes:[];
+  const sel='background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--txt);'
+    +'font-family:inherit;font-size:15px;padding:10px;border-radius:2px;width:100%;box-sizing:border-box';
+  const num=(id,arvo,lo,hi,otsikko)=>`<div class="pt-field"><label>${otsikko}</label>
+    <select style="${sel}" id="${id}">${Array.from({length:hi-lo+1},(_,i)=>lo+i)
+      .map(n=>`<option value="${n}"${arvo===n?' selected':''}>${n}</option>`).join('')}</select></div>`;
+  return `<div class="pt-hero"><div class="pt-tag">MUU LIIKUNTA KUIN SALI</div>
+    <div class="pt-sub" style="margin-bottom:12px">Nämä menevät ohjelmaan: valmentaja suunnittelee salipäivien lisäksi myös välipäivät. Suoritukset luetaan Garminista automaattisesti — tässä kerrot vain mitä tavoittelet.</div>
+    <div class="pt-grid">
+      ${num('ptfGymD',p.gymDays||3,2,5,'SALITREENEJÄ VIIKOSSA')}
+      ${num('ptfCarD',p.cardioDays==null?2:p.cardioDays,0,7,'MUUTA LIIKUNTAA VIIKOSSA')}
+    </div>
+    <div class="pt-field" style="margin-top:11px"><label>LAJIT JOITA HARRASTAT</label>
+      <div class="pt-chips">${PT_ACT_NAMES.map(n=>
+        `<button class="${valitut.includes(n)?'on':''}" onclick='ptToggleAct(${ptAttr(n)})'>${esc(n)}</button>`).join('')}</div></div>
+    <div class="pt-field" style="margin-top:11px"><label>HUOMIOITAVAA</label>
+      <textarea class="pt-input" id="ptfCarNotes" rows="2" placeholder="esim. sähköpyörällä pitkiä lenkkejä viikonloppuisin, juoksu vasta alussa">${esc(p.cardioNotes||'')}</textarea></div>
+    <div class="learn-btns" style="margin-top:12px"><button class="btn" onclick="ptSaveMove()">✓ TALLENNA LIIKUNTA</button></div></div>`;
+}
+function ptToggleAct(nimi){
+  if(!pt.profile)pt.profile={};
+  const cur=Array.isArray(pt.profile.cardioTypes)?pt.profile.cardioTypes.slice():[];
+  const i=cur.indexOf(nimi);
+  if(i>=0)cur.splice(i,1);else cur.push(nimi);
+  pt.profile.cardioTypes=cur;
+  renderPt();
+}
+async function ptSaveMove(){
+  if(!pt.profile)pt.profile={};
+  const g=id=>{const e=document.getElementById(id);return e?e.value:''};
+  pt.profile.gymDays=parseInt(g('ptfGymD'),10)||3;
+  pt.profile.cardioDays=parseInt(g('ptfCarD'),10)||0;
+  pt.profile.days=pt.profile.gymDays;   // ohjelman generointi lukee tätä
+  pt.profile.cardioNotes=String(g('ptfCarNotes')||'').trim().slice(0,300);
+  await ptSave();sSave();
+  toast('Liikunta tallennettu');
+  renderPt();
 }
 /* Mieltymykset. Ilman näitä ruokavalio on geneeristä "broileria ja riisiä" —
    näillä se on ruokaa jota Lassi oikeasti syö. Vapaat tekstikentät, koska
@@ -3369,10 +3588,55 @@ function ptFoodHistoryHtml(){
     </div>
   </div>`;
 }
+/* Liikuntahistoria: Garminin 7 päivän ikkuna + käsin kirjatut. Garmin
+   säilyttää vain kuusi päivää taaksepäin, joten käsinkirjaukset jäävät
+   talteen pidemmäksi aikaa kuin kellon data — siksi molemmat näytetään
+   samassa listassa eikä pelkkää Garminia. */
+function ptCardioHistoryHtml(){
+  const acts=ptCardioSince(Date.now()-14*864e5)
+    .sort((a,b)=>a.date<b.date?1:-1).slice(0,20);
+  const viikko=ptCardioWeek();
+  const sel='background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--txt);'
+    +'font-family:inherit;font-size:14px;padding:9px;border-radius:2px;box-sizing:border-box';
+  return `<div class="pt-hero"><div class="pt-tag">MUU LIIKUNTA</div>
+    ${viikko.length?`<div class="pt-readout">
+      <div>TÄLLÄ VIIKOLLA<b>${ptCardioCount()}×</b></div>
+      <div>AIKAA<b>${viikko.reduce((a,x)=>a+x.min,0)} min</b></div>
+      <div>MATKAA<b>${Math.round(viikko.reduce((a,x)=>a+x.km,0)*10)/10} km</b></div>
+    </div>`:''}
+    ${acts.length?`<div style="margin-top:10px">${acts.map(a=>
+      `<div class="pt-row"><span>${esc(ptFmtDate(a.date))} · ${esc(ptActType(a))}${
+        a.manual?' <span style="font-size:11px;color:var(--txt-dim)">(käsin)</span>':''}</span>
+        <span class="val">${a.durationMin||0} min${a.distanceKm?' · '+a.distanceKm+' km':''}${
+        a.manual?`<button class="btn ghost" style="font-size:9px;height:22px;padding:0 7px;margin-left:6px" onclick='ptDelCardio(${ptAttr(a.ts||"")})' title="Poista">✕</button>`:''}</span></div>`).join('')}</div>`
+      :`<div class="pt-sub" style="margin-top:8px">Ei suorituksia viimeisen kahden viikon ajalta.</div>`}
+    <div class="pt-sub" style="font-size:12px;color:var(--txt-dim);margin-top:10px">Garmin kirjaa lenkit itse. Kirjaa tästä vain jos kello ei ollut mukana.</div>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+      <select style="${sel};flex:2;min-width:110px" id="ptCarLaji">${PT_ACT_NAMES.map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
+      <input class="pt-input" id="ptCarMin" type="text" inputmode="numeric" placeholder="min" style="flex:1;min-width:60px">
+      <input class="pt-input" id="ptCarKm" type="text" inputmode="decimal" placeholder="km" style="flex:1;min-width:60px">
+      <button class="btn ghost" style="font-size:11px" onclick="ptLogCardio()">KIRJAA</button></div>
+  </div>`;
+}
+async function ptLogCardio(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value:''};
+  const min=ptNum(g('ptCarMin'));
+  if(!min){toast('Anna kesto minuutteina');return}
+  pt.cardio.push({date:ptToday(),laji:g('ptCarLaji')||'muu',
+    durationMin:Math.round(min),distanceKm:ptNum(g('ptCarKm'))||null,ts:'c'+Date.now()});
+  await ptSave();sSave();renderPt();
+  toast('Suoritus kirjattu');
+}
+async function ptDelCardio(ts){
+  const i=pt.cardio.findIndex(a=>a.ts===ts);
+  if(i<0)return;
+  pt.cardio.splice(i,1);
+  await ptSave();sSave();renderPt();
+}
 function ptStatsHtml(){
-  // Ravintohistoria näkyy vaikka treenejä ei olisi vielä yhtään
-  if(!pt.log.length)return ptFoodHistoryHtml()
-    +`<div class="learn-placeholder">Ei kirjattuja treenejä vielä.\n\nEnsimmäinen treeni näkyy täällä heti kun tallennat sen.</div>`;
+  // Ravinto- ja liikuntahistoria näkyvät vaikka salitreenejä ei olisi yhtään
+  if(!pt.log.length)return ptCardioHistoryHtml()+ptFoodHistoryHtml()
+    +`<div class="learn-placeholder">Ei kirjattuja salitreenejä vielä.\n\nEnsimmäinen treeni näkyy täällä heti kun tallennat sen.</div>`;
   const names=[...new Set(pt.log.flatMap(l=>(l.exercises||[]).map(e=>e.name)))];
   const prog=names.map(n=>{
     const first=(()=>{for(const l of pt.log){const e=(l.exercises||[]).find(x=>x.name===n);
@@ -3408,6 +3672,7 @@ function ptStatsHtml(){
       <input class="pt-input" id="ptWIn" type="text" inputmode="decimal" placeholder="kg" style="flex:1">
       <button class="btn ghost" style="font-size:11px" onclick="ptLogWeight()">KIRJAA</button></div>
   </div>
+  ${ptCardioHistoryHtml()}
   ${ptFoodHistoryHtml()}
   <div class="pt-hero"><div class="pt-tag">TREENIHISTORIA</div>
     ${pt.log.slice(-10).reverse().map(l=>`<div class="pt-row"><span>${esc(ptFmtDate(l.date))} · ${esc(l.dayName||'')}</span>
@@ -3439,26 +3704,53 @@ function ptNormalizeProgram(r){
         };
       })
   })).filter(d=>d.exercises.length);
+  // Välipäivien liikunta: sama siivous kuin salipäiville — yksi outo kenttä
+  // ei saa kaataa näkymää, ja puuttuva osio tarkoittaa vain tyhjää listaa
+  const cardio=(Array.isArray(r.cardio)?r.cardio:[])
+    .filter(c=>c&&(c.name||'').toString().trim())
+    .map(c=>{
+      const t=parseInt(c.times,10),m=parseInt(c.minutes,10);
+      return{name:String(c.name).trim().slice(0,40),
+        times:Math.min(7,Math.max(1,isFinite(t)?t:1)),
+        minutes:Math.min(300,Math.max(10,isFinite(m)?m:40)),
+        effort:String(c.effort||'').trim().slice(0,60),
+        note:String(c.note||'').trim().slice(0,200)};
+    }).slice(0,5);
   return{name:String(r.name||'Ohjelma').slice(0,80),
     idea:String(r.idea||'').slice(0,400),
-    progression:String(r.progression||'').slice(0,400),days};
+    progression:String(r.progression||'').slice(0,400),
+    weekIdea:String(r.weekIdea||'').slice(0,400),days,cardio};
 }
 async function ptGenerateProgram(replace){
   if(replace&&!confirm('Luodaanko uusi ohjelma? Vanha korvataan (treenihistoria säilyy).'))return;
   const el=document.getElementById('ptBody');
   if(el)el.innerHTML='<div class="learn-placeholder">Valmentaja suunnittelee ohjelmaa…</div>';
   const p=pt.profile||{};
-  const days=p.days||3;
-  const sys=`Olet kokenut suomalainen voimavalmentaja. Laadi kuntosaliohjelma.
-Lähtötiedot: ${days} treeniä viikossa salilla. Taso: aloittelija, joka aloittaa käytännössä nollasta pitkän tauon jälkeen. Tavoite: yleinen lihaskunto ja voima.${p.weight?' Paino '+p.weight+' kg.':''}
+  const days=p.gymDays||p.days||3;
+  // Välipäivien liikunta ohjelmaan: ilman tätä ohjelma on kolme salitreeniä
+  // ja neljä tyhjää päivää, vaikka lenkit ovat osa samaa kokonaisuutta ja
+  // vaikuttavat sekä palautumiseen että kulutukseen.
+  const lajit=Array.isArray(p.cardioTypes)&&p.cardioTypes.length?p.cardioTypes.join(', '):'';
+  const carD=p.cardioDays==null?2:p.cardioDays;
+  const liikunta=carD>0?`
+Salin lisäksi Lassi liikkuu ${carD} kertaa viikossa salin välipäivinä.${
+  lajit?' Lajit joita hän harrastaa: '+lajit+'. Käytä vain näitä.':''}${
+  p.cardioNotes?' Huomioitavaa: '+p.cardioNotes+'.':''}
+Suunnittele näille konkreettinen sisältö "cardio"-osioon: montako kertaa viikossa, kuinka pitkään ja millä teholla.
+Sähköpyörä on oma lajinsa eikä tavallista pyöräilyä: avustus keventää kuormaa, joten sillä haetaan pitkää rauhallista aerobista aikaa ja palauttavaa liikettä, ei kovaa tehoa.
+Aseta lenkit niin etteivät ne syö salitreenien palautumista: kova juoksu ei kuulu jalkatreenin viereen.`:'';
+  const sys=`Olet kokenut suomalainen voimavalmentaja. Laadi kuntosaliohjelma ja sen ympärille viikon liikuntarytmi.
+Lähtötiedot: ${days} treeniä viikossa salilla. Taso: aloittelija, joka aloittaa käytännössä nollasta pitkän tauon jälkeen. Tavoite: yleinen lihaskunto ja voima.${p.weight?' Paino '+p.weight+' kg.':''}${liikunta}
 Palauta VAIN JSON, ei muuta tekstiä:
-{"name":"ohjelman nimi","idea":"1-2 lausetta ohjelman ideasta","progression":"2-3 lausetta siitä miten painoja nostetaan","days":[{"name":"A · Kokovartalo","exercises":[{"name":"Jalkakyykky","sets":3,"reps":"8-10","rest":150,"start":"pelkkä tanko, tekniikka edellä","note":"lyhyt vinkki suorituksesta"}]}]}
+{"name":"ohjelman nimi","idea":"1-2 lausetta ohjelman ideasta","weekIdea":"1-2 lausetta siitä miten salipäivät ja lenkit sijoittuvat viikkoon","progression":"2-3 lausetta siitä miten painoja nostetaan","days":[{"name":"A · Kokovartalo","exercises":[{"name":"Jalkakyykky","sets":3,"reps":"8-10","rest":150,"start":"pelkkä tanko, tekniikka edellä","note":"lyhyt vinkki suorituksesta"}]}],"cardio":[{"name":"Kävely","times":2,"minutes":45,"effort":"rauhallinen, pystyy puhumaan","note":"salin välipäivinä, palauttaa"}]}
 Säännöt:
 - "rest" on sarjapalautus sekunteina: perusliikkeille 120-180, eristäville 60-90.
 - ${days} treenipäivää, kierrätettävä (esim. A/B/A).
 - 5-6 liikettä per treeni, painopiste perusliikkeissä (kyykky, maastaveto, penkkipunnerrus, pystypunnerrus, kulmasoutu, ylätalja).
 - Aloittelijalle 2-3 sarjaa liikettä kohden, ei uupumukseen asti.
 - "start" kertoo konkreettisen aloituspainon tai -tavan ensikertalaiselle.
+- ${carD>0?'"cardio" sisältää 1-3 riviä, yhteensä '+carD+' kertaa viikossa. "effort" kuvaa tehoa arkikielellä, ei sykealueina.'
+          :'"cardio" on tyhjä lista.'}
 - Kaikki suomeksi. Liikenimet suomeksi.`;
   try{
     const raw=await askClaudeRetry(sys,[{role:'user',content:'Laadi ohjelma.'}],2200);
@@ -3571,7 +3863,12 @@ async function ptCoachFeedback(entry){
     const r=ptReadiness();
     const sys=`Olet ${AI.name}, Lassin henkilökohtainen valmentaja. Persoona: ${AI.persona}
 Kommentoi juuri päättynyttä treeniä LYHYESTI: 2-3 lausetta. Kehu konkreettista edistystä jos sitä on, ja anna yksi tarkka neuvo seuraavaan kertaan. Älä listaa dataa uudestaan. Suomeksi.`;
-    const msg=`Tämän päivän treeni (${entry.dayName}):\n${cur}\n${entry.note?'Fiilis: '+entry.note+'\n':''}${prev?'\nAiemmat treenit:\n'+prev:''}${r.score!=null?'\nGarminin treenivalmius tänään: '+r.score+'/100':''}`;
+    // Viikon lenkit mukaan: ilman niitä valmentaja neuvoo lisäämään kuormaa
+    // päivänä jolloin takana on jo kolme juoksulenkkiä
+    const cw=ptCardioWeek();
+    const lenkit=cw.length?'\nMuu liikunta tällä viikolla: '+cw.map(x=>
+      x.laji+' '+x.kertoja+'× '+x.min+' min'+(x.km?' / '+x.km+' km':'')).join(', '):'';
+    const msg=`Tämän päivän treeni (${entry.dayName}):\n${cur}\n${entry.note?'Fiilis: '+entry.note+'\n':''}${prev?'\nAiemmat treenit:\n'+prev:''}${lenkit}${r.score!=null?'\nGarminin treenivalmius tänään: '+r.score+'/100':''}`;
     const txt=await askClaude(sys,[{role:'user',content:msg}],400);
     const i=pt.log.findIndex(l=>l.id===entry.id);
     if(i>=0){pt.log[i].coach=txt.trim();await ptSave();if(ptTab==='today')renderPt()}

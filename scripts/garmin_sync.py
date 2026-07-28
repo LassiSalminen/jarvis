@@ -224,6 +224,7 @@ def main():
                             "name": a.get("activityName"),
                             "durationMin": round((a.get("duration") or 0) / 60),
                             "distanceKm": round((a.get("distance") or 0) / 1000, 1) if a.get("distance") else None,
+                            "kcal": round(a.get("calories")) if a.get("calories") else None,
                         }
                         for a in acts[:4]
                     ]
@@ -240,6 +241,7 @@ def main():
                 "name": a.get("activityName"),
                 "durationMin": round((a.get("duration") or 0) / 60),
                 "distanceKm": round((a.get("distance") or 0) / 1000, 1) if a.get("distance") else None,
+                "kcal": round(a.get("calories")) if a.get("calories") else None,
             }
             for a in acts[:4]
         ] or None
