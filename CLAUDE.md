@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v5.1). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v5.2). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -34,7 +34,33 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v5.1)
+## Toiminnot (v5.2)
+- **Muisti syntyy ilman peukkua** (`convLog`): jokainen chat- ja äänivaihto
+  kirjautuu automaattisesti, ja päivän koonti käyttää **koko päivän
+  keskustelua** raaka-aineena. Ennen v5.2 `compileDay` luki pelkkää
+  `rawLogia` (= 👍-napin tuottamaa listaa) ja klo 21 automaatti ei edes
+  käynnistynyt ilman sitä — painamatta jäänyt peukku tarkoitti ettei
+  päivästä jäänyt mitään, ikinä. Se on kirjastonhoitajan työtä, jota tämän
+  sovelluksen on nimenomaan tarkoitus välttää.
+  Peukku on nyt **korostus**: merkityt vaihdot menevät promptiin
+  `[TÄRKEÄ]`-lipulla ja malli painottaa niitä. `rawLog` säilyy ennallaan
+  (varmuuskopiot ja tuonti eivät rikkoudu).
+  `convLog` on raaka-ainetta eikä arkisto: **3 vrk / 400 riviä**, sitten pois.
+  Se mikä kannattaa muistaa, päätyy koonnissa wiki-sivuksi; muu saa kadota.
+- **HUOM tärkeyssuodatus**: koonnin prompt kieltää täytesivut nimenomaisesti
+  ("tyhjä `pages`-lista on oikea vastaus useammin kuin luulet") ja luettelee
+  mikä EI ole muistamisen arvoista (sää-, sähkö- ja uutiskyselyt,
+  kertaluontoiset haut, jutustelu). Ilman tätä automaattinen louhinta
+  tuottaisi tietopankin joka on täynnä eikä käyttökelpoinen. Samasta syystä
+  päiväkirjasivu syntyy vain jos päivässä oli sivuja tai ≥4 vaihtoa —
+  muuten joka ilta tulisi sivu jossa lukee että Lassi kysyi säätä.
+- **Pitkän keskustelun tiivistys** (`chatSummary`, `maybeFoldChat`): malli
+  näkee `CHAT_WINDOW`=16 viestiä (oli 10). Kun historia ylittää
+  `CHAT_FOLD_AT`=28, alkuosa taitetaan tiivistelmäksi `API_MODEL_FAST`illa
+  ja tiivistelmä kulkee `buildContext`issa mukana — aiemmin viisi kysymystä
+  sitten sanottu katosi jäljettömiin kesken keskustelun. Tiivistys ajetaan
+  vastauksen näyttämisen jälkeen taustalla, ja sen kaatuminen ei kaada
+  chattia. "LOPETA & KOKOA" nollaa myös tiivistelmän.
 - **Muu liikunta kuin sali** (kävely, juoksu, pyöräily, sähköpyörä, uinti):
   suoritukset luetaan **Garminista automaattisesti** (`activities` + 6 pv
   `history`) — niitä ei syötetä käsin, koska se olisi juuri sitä kirjanpitoa

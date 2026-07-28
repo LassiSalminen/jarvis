@@ -1154,7 +1154,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="5.1";
+const VERSION="5.2";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1521,6 +1521,45 @@ async function saveWiki(){
   renderWiki();
 }
 async function saveRaw(){try{localStorage.setItem('jarvis:raw',JSON.stringify(rawLog))}catch(e){}}
+/* convLog = päivän keskustelu automaattisesti. Tämä on päivän koonnin
+   raaka-ainetta, ei arkisto: kolme vuorokautta riittää kattamaan myös
+   väliin jääneen koonnin, ja pidempi historia vain söisi localStoragea
+   ilman että kukaan lukee sitä. Se mikä on muistamisen arvoista päätyy
+   koonnissa wiki-sivuksi, muu saa kadota. */
+let convLog=[];
+try{const v=localStorage.getItem('jarvis:conv');if(v)convLog=JSON.parse(v)}catch(e){}
+function saveConv(){
+  const raja=Date.now()-3*86400000;
+  convLog=convLog.filter(r=>r&&r.ts>=raja).slice(-400);
+  try{localStorage.setItem('jarvis:conv',JSON.stringify(convLog))}catch(e){}
+}
+/* Pitkän keskustelun tiivistys. Malli näkee vain viimeiset viestit, joten
+   ilman tätä kymmenen viestin takainen asia katosi jäljettömiin kesken
+   keskustelun. Nyt vanha osa taittuu tiivistelmäksi joka kulkee mukana. */
+let chatSummary='';
+try{chatSummary=localStorage.getItem('jarvis:chatsum')||''}catch(e){}
+function saveChatSummary(){try{localStorage.setItem('jarvis:chatsum',chatSummary)}catch(e){}}
+const CHAT_WINDOW=16;   // viestiä mallille sellaisenaan
+const CHAT_FOLD_AT=28;  // tämän jälkeen alkuosa taitetaan tiivistelmäksi
+async function maybeFoldChat(){
+  if(chatHistory.length<CHAT_FOLD_AT)return;
+  const vanhat=chatHistory.slice(0,chatHistory.length-CHAT_WINDOW);
+  if(!vanhat.length)return;
+  const teksti=vanhat.map(m=>(m.role==='user'?'Lassi: ':'Sinä: ')+m.content).join('\n');
+  const sys=`Tiivistä keskustelun alkuosa muistiinpanoksi jota käytät myöhemmin saman keskustelun jatkona.
+Säilytä: mistä puhuttiin, mitä päätettiin, mitä Lassi kertoi itsestään tai suunnitelmistaan, avoimet kysymykset.
+Pudota: kohteliaisuudet, toistot, omat selityksesi joissa ei ole uutta tietoa.
+Kirjoita tiiviisti suomeksi, enintään 10 riviä. Pelkkä tiivistelmä, ei johdantoa.`;
+  try{
+    const txt=await askClaude(sys,[{role:'user',content:
+      (chatSummary?'Aiempi tiivistelmä:\n'+chatSummary+'\n\nJatka sitä tällä osuudella:\n':'')+teksti}],700,API_MODEL_FAST);
+    if(txt&&txt.trim()){
+      chatSummary=txt.trim().slice(0,1600);
+      chatHistory=chatHistory.slice(-CHAT_WINDOW);
+      saveChat();saveChatSummary();
+    }
+  }catch(e){console.warn('maybeFoldChat:',e)} // epäonnistuminen ei saa kaataa chattia
+}
 
 /* ===== VERSION & MOODITEKSTIT ===== */
 function applyModeText(){
@@ -2052,9 +2091,22 @@ function addMsg(logId,who,text,cls){
   m.appendChild(span);
   log.appendChild(m);log.scrollTop=log.scrollHeight;return span;
 }
+/* Peukku EI ole enää ehto muistiin päätymiselle vaan korostus.
+   Aiemmin päivän koonti luki pelkkää rawLogia, joten painamatta jäänyt peukku
+   tarkoitti ettei mitään jäänyt muistiin — ikinä. Se on kirjastonhoitajan
+   työtä, ja juuri sitä tämän sovelluksen on tarkoitus välttää. Nyt koko
+   päivän keskustelu on koonnin raaka-ainetta ja peukku kertoo mallille
+   mitä Lassi itse piti tärkeänä. */
 function addFlag(el,q,a){
-  const f=document.createElement('button');f.className='flagbtn';f.textContent='👍 tallenna';
-  f.onclick=()=>{if(f.classList.contains('on'))return;f.classList.add('on');rawLog.push({ts:Date.now(),q,a});saveRaw();sSave();f.textContent='✓ tallennettu'};
+  const f=document.createElement('button');f.className='flagbtn';f.textContent='👍 tärkeä';
+  f.onclick=()=>{
+    if(f.classList.contains('on'))return;
+    f.classList.add('on');
+    rawLog.push({ts:Date.now(),q,a});saveRaw();
+    const c=convLog.find(r=>r.q===q&&r.a===a);
+    if(c){c.flag=true;saveConv()}
+    sSave();f.textContent='✓ merkitty tärkeäksi';
+  };
   el.appendChild(f);
 }
 // Etsii nykyiseen viestiin liittyvät wiki-sivut yksinkertaisella avainsanaosumalla
@@ -2082,6 +2134,11 @@ function buildContext(text){
   const now=Date.now();
   const DAY=86400000;
   const lines=[];
+
+  // Keskustelun alkuosa tiivistelmänä: viestiketjussa kulkee vain viimeiset
+  // CHAT_WINDOW viestiä, joten ilman tätä aiemmin sovittu katoaisi kesken
+  // saman keskustelun.
+  if(chatSummary)lines.push('Aiemmin tässä keskustelussa:\n'+chatSummary);
 
   // NYT-konteksti — kevyt tilannekuva siitä mitä Lassilla on käynnissä.
   // Kulkee mukana jokaisessa viestissä; päivittyy automaattisesti päivän koonnissa.
@@ -2235,12 +2292,15 @@ async function sendChat(text){
     span.textContent='';span.parentElement.classList.add('typing');
     const ctx=buildContext(text);
     try{
-      const reply=await askClaude(AI.persona+ctx,chatHistory.slice(-10));
+      const reply=await askClaude(AI.persona+ctx,chatHistory.slice(-CHAT_WINDOW));
       span.parentElement.classList.remove('typing');sMsg();
       typewrite(span,reply);chatHistory.push({role:'assistant',content:reply});saveChat();
+      // Vaihto talteen päivän koontia varten — ilman peukkua, automaattisesti
+      convLog.push({ts:Date.now(),q:text,a:reply});saveConv();
       addFlag(span.parentElement,text,reply);
       const e=$('#hd-chat');if(e)e.textContent=chatHistory.filter(m=>m.role==='user').length;
       if(wakeMode||convActive) speakTTS(reply);
+      maybeFoldChat(); // taustalla: ei saa viivyttää vastauksen näyttämistä
     }catch(e){
       span.parentElement.classList.remove('typing');
       span.textContent=navigator.onLine?'Pahoittelut, yhteys epäonnistui.':'Ei verkkoyhteyttä — viesti odottaa.';
@@ -2268,7 +2328,9 @@ function restoreChat(){
     if(typeof m.content!=='string')return;
     addMsg('chatlog',m.role==='user'?'user':'jarvis',m.content);
   });
-  addMsg('chatlog','system','[ Edellinen keskustelu palautettu — ✕ LOPETA & KOKOA aloittaa puhtaalta pöydältä ]');
+  addMsg('chatlog','system','[ Edellinen keskustelu palautettu'
+    +(chatSummary?' — alkuosa on tiivistetty muistiin, se kulkee mukana vaikkei näy tässä':'')
+    +' — ✕ LOPETA & KOKOA aloittaa puhtaalta pöydältä ]');
   if(chatHistory.length>=2)$('#endConvBar').classList.add('show');
   const e=$('#hd-chat');if(e)e.textContent=chatHistory.filter(m=>m.role==='user').length;
 }
@@ -4274,25 +4336,49 @@ async function compileDay(auto){
   document.querySelector('.tab[data-view="know"]').click();
   switchKnowTab('dump'); // koonti kirjoittaa knowlogiin joka elää kaatopaikkaosiossa
   const today=new Date();today.setHours(0,0,0,0);
-  const tr=rawLog.filter(r=>r.ts>=today.getTime());
-  if(!tr.length){if(!auto)addMsg('knowlog','jarvis','Tältä päivältä ei ole merkittyjä keskusteluja, Lassi. Nosta chatissa 👍 viesteistä jotka haluat muistiin.');return}
+  const t0=today.getTime();
+  /* Raaka-aineena koko päivän keskustelu, ei vain peukutetut. Peukutetut
+     merkitään [TÄRKEÄ]-lipulla, jotta malli painottaa niitä — mutta niiden
+     puuttuminen ei enää tarkoita ettei päivästä jää mitään. */
+  const conv=convLog.filter(r=>r&&r.ts>=t0);
+  const flag=rawLog.filter(r=>r&&r.ts>=t0);
+  const merkitty=new Set(flag.map(r=>r.q));
+  const aineisto=conv.map(r=>(r.flag||merkitty.has(r.q)?'[TÄRKEÄ] ':'')+`Lassi: ${r.q}\n${AI.name}: ${r.a}`);
+  // Ennen tätä versiota peukutetut eivät ole convLogissa — otetaan ne mukaan
+  flag.filter(r=>!conv.some(c=>c.q===r.q))
+      .forEach(r=>aineisto.push(`[TÄRKEÄ] Lassi: ${r.q}\n${AI.name}: ${r.a}`));
+  if(!aineisto.length){if(!auto)addMsg('knowlog','jarvis','Tältä päivältä ei ole keskusteluja koottavaksi, Lassi.');return}
   const span=addMsg('knowlog','jarvis','');span.parentElement.classList.add('typing');
   const nytPage=wiki.find(w=>w.id==='nyt-konteksti');
   const sys=`Olet ${AI.name} ja kokoat Lassin päivän. Vastaa AINOASTAAN JSON-objektilla (ei koodiblokkeja):
 {"reply":"<päiväyhteenveto suomeksi ${AI.name}-tyylillä ja -sävyllä>","pages":[{"id":"<slug>","title":"...","summary":"...","body":"<markdown>","tags":["..."]}],"nyt":"<päivitetty tilannekuva markdownina, max 10 riviä: aktiiviset projektit ja tekemiset, avoimet asiat, mitä seurataan. Säilytä edellisestä tilannekuvasta se mikä on yhä ajankohtaista, pudota vanhentunut.>"}
+
+Saat syötteenä koko päivän keskustelun. Suurin osa siitä on ohikiitävää — poimi "pages"-listaan VAIN se mikä on yhä merkityksellistä ensi viikolla.
+Muistamisen arvoista: päätökset ja niiden perustelut, suunnitelmat ja aikataulut, Lassin mieltymykset ja tavat, ihmiset ja heidän roolinsa, projektien tilanne ja muutokset, opitut asiat, toistuvat ongelmat.
+EI muistamisen arvoista: sään, sähkön hinnan tai uutisten kyselyt, kertaluontoiset haut, jutustelu, sinun omat selityksesi joissa ei ole uutta tietoa Lassista, asiat jotka ovat jo wiki-sivuilla muuttumattomina.
+Jos päivässä ei ollut mitään muistamisen arvoista, palauta tyhjä "pages"-lista. Tyhjä on oikea vastaus useammin kuin luulet — täytesivut tekevät tietopankista käyttökelvottoman.
+[TÄRKEÄ]-merkinnän saaneet Lassi on itse nostanut esiin: paina niitä selvästi enemmän.
+Päivitä olemassa olevaa sivua (sama id) mieluummin kuin luo uutta samasta aiheesta.
 ${nytPage&&nytPage.body?'Edellinen tilannekuva:\n'+nytPage.body+'\n':''}
 Nykyiset wiki-sivut: ${JSON.stringify(userWiki().map(w=>({id:w.id,title:w.title})))}`;
   try{
-    let out=await askClaude(sys,[{role:'user',content:'Tämän päivän merkityt:\n\n'+tr.map(r=>`Lassi: ${r.q}\n${AI.name}: ${r.a}`).join('\n---\n')}],3000);
+    let out=await askClaude(sys,[{role:'user',content:'Tämän päivän keskustelu:\n\n'+aineisto.join('\n---\n')}],3000);
     out=out.replace(/```json|```/g,'').trim();
     const r=JSON.parse(out);
     span.parentElement.classList.remove('typing');sMsg();
     typewrite(span,r.reply||'Päivä koottu.');
-    const dstr=today.toLocaleDateString('fi-FI'),dayId='paiva-'+today.toISOString().slice(0,10);
-    const di=wiki.findIndex(w=>w.id===dayId);
-    const dp={id:dayId,title:'Päiväkirja '+dstr,summary:r.reply.slice(0,120),body:r.reply,tags:['päiväkirja'],updated:Date.now()};
-    if(di>=0)wiki[di]=dp;else wiki.unshift(dp);
-    (r.pages||[]).forEach(p=>{p.updated=Date.now();const i=wiki.findIndex(w=>w.id===p.id);if(i>=0)wiki[i]={...wiki[i],...p};else wiki.unshift(p)});
+    const sivut=Array.isArray(r.pages)?r.pages:[];
+    /* Päiväkirjasivu vain jos päivässä oli jotain. Koonti ajetaan nyt joka
+       ilta automaattisesti, joten ehdoton päiväkirja tuottaisi 365 sivua
+       vuodessa joista useimmat kertoisivat että Lassi kysyi säätä. */
+    if(sivut.length||aineisto.length>=4){
+      const dstr=today.toLocaleDateString('fi-FI'),dayId='paiva-'+today.toISOString().slice(0,10);
+      const di=wiki.findIndex(w=>w.id===dayId);
+      const dp={id:dayId,title:'Päiväkirja '+dstr,summary:String(r.reply||'').slice(0,120),
+        body:r.reply||'',tags:['päiväkirja'],updated:Date.now()};
+      if(di>=0)wiki[di]=dp;else wiki.unshift(dp);
+    }
+    sivut.forEach(p=>{p.updated=Date.now();const i=wiki.findIndex(w=>w.id===p.id);if(i>=0)wiki[i]={...wiki[i],...p};else wiki.unshift(p)});
     if(r.nyt&&typeof r.nyt==='string'){
       const np={id:'nyt-konteksti',title:'NYT — nykyinen konteksti',summary:'Tilannekuva: mitä Lassilla on käynnissä juuri nyt. Päivittyy päivän koonnissa.',body:r.nyt,tags:['järjestelmä'],updated:Date.now()};
       const ni=wiki.findIndex(w=>w.id==='nyt-konteksti');
@@ -4303,7 +4389,13 @@ Nykyiset wiki-sivut: ${JSON.stringify(userWiki().map(w=>({id:w.id,title:w.title}
   }catch(e){span.parentElement.classList.remove('typing');span.textContent='Päivän koonti epäonnistui.'}
 }
 $('#compileBtn').onclick=()=>compileDay(false);
-setInterval(()=>{const n=new Date(),lc=new Date(lastCompile);if(n.getHours()>=21&&!(lastCompile&&lc.toDateString()===n.toDateString())&&rawLog.length)compileDay(true)},60000);
+// Automaattikoonti klo 21. Ehtona koko päivän keskustelu, ei enää peukutetut:
+// aiemmin päivä jäi kokoamatta aina kun peukkua ei ollut painettu.
+setInterval(()=>{
+  const n=new Date(),lc=new Date(lastCompile),t0=new Date().setHours(0,0,0,0);
+  const onAineistoa=convLog.some(r=>r&&r.ts>=t0)||rawLog.some(r=>r&&r.ts>=t0);
+  if(n.getHours()>=21&&!(lastCompile&&lc.toDateString()===n.toDateString())&&onAineistoa)compileDay(true);
+},60000);
 
 /* ===== WIKI-SIIVOUS (automaattinen unohtaminen) ===== */
 let lastPrune=0;
@@ -5670,8 +5762,10 @@ function handleVoiceInput(txt){
   askClaude(AI.persona+wctx,chatHistory.slice(-12)).then(reply=>{
     span.parentElement.classList.remove('typing');
     typewrite(span,reply);
-    chatHistory.push({role:'assistant',content:reply});
+    chatHistory.push({role:'assistant',content:reply});saveChat();
     voiceConvHistory.push({role:'assistant',content:reply});
+    // Myös puhutut vaihdot päivän koontiin — muuten ääneen puhuttu katoaisi
+    convLog.push({ts:Date.now(),q:txt,a:reply});saveConv();
     addFlag(span.parentElement,txt,reply);
     const e=$('#hd-chat');if(e)e.textContent=chatHistory.filter(m=>m.role==='user').length;
     sMsg();
@@ -5801,6 +5895,7 @@ async function endTextConversation(){
   addMsg('chatlog','system','[ Luodaan yhteenveto… ]');
   await summarizeConv(chatHistory.slice(-20));
   chatHistory=[];saveChat();
+  chatSummary='';saveChatSummary(); // uusi keskustelu alkaa puhtaalta pöydältä
   $('#endConvBar').classList.remove('show');
 }
 
