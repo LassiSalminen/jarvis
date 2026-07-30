@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v5.2). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v5.3). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -34,7 +34,40 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v5.2)
+## Toiminnot (v5.3)
+- **Ohjelma kootaan yhdessä** (`ptBuild`, `ptBuildSys`, `ptBuildRun`):
+  "UUSI OHJELMA" ei enää generoi kerralla vaan avaa kokoamisen.
+  `ptGenerateProgram` on **poistettu** — yhden napautuksen generointi ei voi
+  tietää ettei Lassi halua kyykätä ennen kuin tekniikka on hallussa, että
+  laitteet tuntuvat turvallisemmilta tai että alaselkä kaipaa työtä.
+  Vaihe 1 esitiedot (jako / kalusto / vältettävät liikkeet / painopisteet),
+  vaihe 2 ehdotus jota kommentoidaan vapaasti tai pikachipeillä — kaikki
+  kommentit kulkevat promptissa mukana, joten aiemmin sovittu ei katoa
+  seuraavalla kierroksella. Malli palauttaa `{reply,program}`.
+  Luonnos elää `jarvis:ptBuild`-avaimessa → kesken jäänyt kokoaminen ei
+  katoa sivun latauksessa. Hyväksyntä tallentaa mieltymykset profiiliin
+  (`split`/`splitOma`/`gear`/`avoid`/`focus`), joten niitä ei tarvitse
+  kertoa uudestaan.
+- **Päivän suositus palautumisen mukaan** (`PT_GROUPS`, `ptGroupRest`,
+  `ptRecommendDay`): ohjelmapäivät kertovat lihasryhmänsä (`groups`), ja
+  suositus katsoo koska ryhmä oli viimeksi kuormituksessa. Pelkkä kierto
+  A→B→C ei tiedä milloin treenattiin: jos eilen meni ylävartalo, tänään ei
+  kannata mennä ylävartalolle vaikka kierto niin sanoisi. Kun kierto ja
+  palautuminen ovat eri mieltä, TÄNÄÄN kertoo **miksi** se poikkeaa
+  kierrosta. Tuntemattomat ryhmänimet pudotetaan normalisoinnissa — keksitty
+  ryhmä ei osuisi mihinkään mutta näyttäisi ikuisesti levänneeltä.
+  **Vanhat ohjelmat eivät sisällä ryhmiä** → lepo on tuntematon (99) ja
+  logiikka palautuu pelkkään kiertoon. Ei regressiota, mutta hyöty tulee
+  vasta kun ohjelma on koottu uudelleen.
+- **Uutislähteet** (worker.js): Yle, ESS (Lahti), Tivi, HN, Ars Technica,
+  BBC World, Guardian World, NYT World. Feedit ovat nyt objekteja joissa on
+  `source` ja `scope` — ilman niitä suodatin arvaa lähteen linkistä eikä
+  osaa pitää kotimaisten ja kansainvälisten välistä tasapainoa. Prompt
+  kieltää kuusi otsikkoa samasta lähteestä. Reuters ja AP eivät tarjoa
+  avointa RSS:ää (000 / 401). 8 otsikkoa per lähde, ei 10: kahdeksan
+  lähdettä × 10 olisi turhan iso syöte siitä että kuusi valitaan.
+  Fallback-lista vuorottelee lähteitä, koska suora `slice(0,8)` antaisi
+  pelkkää Yleä. **Vaatii workerin päivityksen Cloudflareen.**
 - **Muisti syntyy ilman peukkua** (`convLog`): jokainen chat- ja äänivaihto
   kirjautuu automaattisesti, ja päivän koonti käyttää **koko päivän
   keskustelua** raaka-aineena. Ennen v5.2 `compileDay` luki pelkkää

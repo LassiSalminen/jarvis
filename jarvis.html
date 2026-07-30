@@ -1154,7 +1154,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="5.2";
+const VERSION="5.3";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1904,14 +1904,18 @@ function newsSource(link){
    näkymän tekstiin "Uutisten haku epäonnistui." vaikka otsikot olivat jo
    haettuna — ja koska virhe niellään, syytä ei näkynyt missään. */
 async function newsPick(items){
-  const interests='teknologia, musiikki, akateemiset julkaisut, paikalliset uutiset Nastola/Lahti-alueelta';
+  const interests='teknologia, musiikki, akateemiset julkaisut, paikalliset uutiset Nastola/Lahti-alueelta, isot kansainväliset uutiset';
   const wikiCtx=wiki.slice(0,10).map(w=>w.title).join(', ');
   const sys=`Olet ${AI.name}. Suodata nämä uutisotsikot Lassin kiinnostusten perusteella.
 Kiinnostukset: ${interests}.
 Wiki-konteksti (Lassin nykyiset projektit/aiheet): ${wikiCtx||'ei vielä'}.
+Otsikot tulevat eri lähteistä ja "scope" kertoo mitä kukin kattaa (kotimaa, Lahden seutu, tekniikka, maailma).
+Pidä valikoima tasapainoisena: älä palauta kuutta otsikkoa samasta lähteestä tai samasta aiheesta.
+Ota mukaan myös maailman isoimmat uutiset vaikka ne eivät osuisi kapeasti Lassin harrastuksiin — hän haluaa tietää mitä maailmalla tapahtuu.
+Kirjoita "source" täsmälleen sellaisena kuin se tulee syötteessä.
 Palauta VAIN JSON-array, max 6 parasta, järjestettynä relevanteimmasta:
-[{"title":"otsikko","reason":"1 lause miksi tämä sopii Lassille","link":"url","source":"Yle/HN/muu"}]`;
-  const payload=JSON.stringify(items.map(i=>({title:i.title,link:i.link,desc:i.desc})));
+[{"title":"otsikko","reason":"1 lause miksi tämä sopii Lassille","link":"url","source":"lähde"}]`;
+  const payload=JSON.stringify(items.map(i=>({title:i.title,link:i.link,desc:i.desc,source:i.source,scope:i.scope})));
   // Mekaaninen JSON-kutsu → nopea malli, ja toinen yritys tiukemmalla ohjeella
   for(let yr=0;yr<2;yr++){
     const raw=await askClaude(sys,[{role:'user',content:yr===0?payload
@@ -1947,8 +1951,20 @@ async function fetchNews(force=false){
   let picked=null;
   try{picked=await newsPick(items)}
   catch(e){console.warn('fetchNews suodatus:',e)}
-  const list=picked||items.slice(0,8).map(i=>({title:i.title,link:i.link,
-    source:newsSource(i.link),reason:(i.desc||'').slice(0,120)}));
+  // Fallback-lista vuorottelee lähteitä. Suora slice(0,8) antaisi kahdeksan
+  // ensimmäistä eli käytännössä pelkkää Yleä, kun juuri lähteiden kirjo on
+  // se mitä listalta halutaan.
+  const list=picked||(()=>{
+    const ryhmat={};
+    items.forEach(i=>{const s=i.source||newsSource(i.link)||'muu';(ryhmat[s]=ryhmat[s]||[]).push(i)});
+    const nimet=Object.keys(ryhmat),ulos=[];
+    for(let k=0;ulos.length<8;k++){
+      if(!nimet.some(n=>ryhmat[n][k]))break;
+      nimet.forEach(n=>{const it=ryhmat[n][k];if(it&&ulos.length<8)ulos.push(it)});
+    }
+    return ulos.map(i=>({title:i.title,link:i.link,
+      source:i.source||newsSource(i.link),reason:(i.desc||'').slice(0,120)}));
+  })();
   newsCache=list;newsCacheTs=Date.now();
   renderNews(list,picked?'':'Tekoälysuodatus ei vastannut — tuoreimmat otsikot sellaisenaan.');
 }
@@ -2660,6 +2676,46 @@ function ptNextDayIdx(){
   const li=days.findIndex(d=>d.name===last.dayName);
   return li<0?0:(li+1)%days.length;
 }
+/* ---- Mikä treeni tänään? ----
+   Pelkkä kierto (A→B→C) ei riitä, koska se ei tiedä milloin treenattiin.
+   Jos eilen meni ylävartalo, tänään ei kannata mennä ylävartalolle vaikka
+   kierto niin sanoisi — lihas kasvaa levossa, ei kuormituksessa. Siksi
+   päivät kertovat lihasryhmänsä ja niistä lasketaan kuka on levännyt.
+   Vanhat ohjelmat eivät sisällä ryhmiä, jolloin lepo on tuntematon ja
+   logiikka palautuu pelkkään kiertoon — ei regressiota. */
+const PT_GROUPS=['rinta','selkä','olkapäät','hauis','ojentajat','jalat','pakarat','alaselkä','keskivartalo'];
+function ptGroupRest(){
+  const days=(pt.program&&pt.program.days)||[];
+  const rest={};
+  pt.log.forEach(l=>{
+    const day=days.find(d=>d.name===l.dayName);
+    const paivia=ptDaysBetween(l.date,ptToday());
+    ((day&&day.groups)||[]).forEach(g=>{
+      if(rest[g]==null||paivia<rest[g])rest[g]=paivia;
+    });
+  });
+  return rest;
+}
+function ptRecommendDay(){
+  const days=(pt.program&&pt.program.days)||[];
+  if(!days.length)return null;
+  const rest=ptGroupRest();
+  const kierto=ptNextDayIdx();
+  // Päivän lepo = sen kuormitetuin (vähiten levännyt) ryhmä
+  const lepo=i=>{
+    const gs=days[i].groups||[];
+    return gs.length?Math.min(...gs.map(g=>rest[g]==null?99:rest[g])):99;
+  };
+  const kLepo=lepo(kierto);
+  if(kLepo>=2)return{idx:kierto,syy:''};
+  let paras=kierto,parasLepo=kLepo;
+  days.forEach((_,i)=>{const l=lepo(i);if(l>parasLepo){paras=i;parasLepo=l}});
+  if(paras===kierto)return{idx:kierto,syy:''};
+  const gs=(days[kierto].groups||[]).join(', ');
+  return{idx:paras,syy:`Kierrossa olisi "${days[kierto].name}", mutta ${gs} oli kuormituksessa ${
+    kLepo===0?'tänään':(kLepo===1?'eilen':kLepo+' päivää sitten')}. `
+    +`"${days[paras].name}" on levännyt pidempään, joten se tuottaa tänään enemmän.`};
+}
 
 /* ---- Progressio: sama paino kunnes kaikki toistot täynnä, sitten pieni nosto ---- */
 function ptLastFor(name){
@@ -3057,8 +3113,210 @@ function renderPt(){
     el.scrollTop=same?sc:0;ptLastView=view;ptTickRender();return;
   }
   const banner=ptSession?ptResumeHtml():'';
+  // Ohjelman kokoaminen valtaa OHJELMA-välilehden kunnes se hyväksytään
+  // tai perutaan — kesken jäänyt luonnos ei saa jäädä piiloon välilehden alle.
+  if(ptBuild&&ptTab==='prog'){
+    el.innerHTML=banner+ptBuildHtml();
+    el.scrollTop=same&&ptLastView==='build'?sc:0;ptLastView='build';return;
+  }
   el.innerHTML=banner+(ptTab==='prog'?ptProgHtml():ptTab==='food'?ptFoodHtml():ptTab==='stats'?ptStatsHtml():ptTodayHtml());
   el.scrollTop=same?sc:0;ptLastView=view;
+}
+
+/* ===== OHJELMAN KOKOAMINEN YHDESSÄ =====
+   Yksi napautus ja valmis ohjelma oli väärä malli: se ei tiedä että Lassi ei
+   halua kyykätä ennen kuin tekniikka on hallussa, että laitteet tuntuvat
+   turvallisemmilta kuin vapaat painot, tai että alaselkä kaipaa työtä.
+   Nämä eivät ole asioita jotka malli voi arvata — ne pitää kysyä.
+   Kokoaminen on siksi keskustelu: esitiedot kerran, sitten ehdotus jota
+   kommentoidaan kunnes se on oikea. Luonnos elää localStoragessa, joten
+   kesken jäänyt kokoaminen ei katoa sivun latauksessa. */
+let ptBuild=null;
+try{const v=localStorage.getItem('jarvis:ptBuild');if(v)ptBuild=JSON.parse(v)}catch(e){}
+function ptBuildSave(){
+  try{ptBuild?localStorage.setItem('jarvis:ptBuild',JSON.stringify(ptBuild))
+             :localStorage.removeItem('jarvis:ptBuild')}catch(e){}
+}
+const PT_SPLITS=[
+  ['kokovartalo','Kokovartalo','Koko keho joka kerta. Vähällä käyntimäärällä tehokkain.'],
+  ['ylaala','Ylä / ala','Ylävartalo ja alavartalo vuorotellen.'],
+  ['tyontoveto','Työntö / veto / jalat','Rinta+olkapäät+ojentajat, selkä+koukistajat, jalat.'],
+  ['oma','Kerron itse','Sanot omin sanoin miten haluat jakaa.']
+];
+const PT_GEAR=[
+  ['laitteet','Mieluiten laitteet','Liikerata on valmiina — turvallista opetella.'],
+  ['sekaisin','Sekaisin','Laitteita ja vapaita painoja sopivassa suhteessa.'],
+  ['vapaat','Mieluiten vapaat painot','Tanko ja käsipainot edellä.']
+];
+function ptBuildStart(){
+  const p=pt.profile||{};
+  ptBuild={vaihe:'esitiedot',
+    split:p.split||'',gear:p.gear||'sekaisin',
+    avoid:p.avoid||'',focus:p.focus||'',splitOma:p.splitOma||'',
+    kommentit:[],draft:null,reply:'',busy:false,virhe:''};
+  ptBuildSave();ptTab='prog';switchPtTab('prog');
+}
+function ptBuildCancel(){
+  if(ptBuild&&ptBuild.draft&&!confirm('Hylätäänkö kesken oleva ohjelma? Luonnos menetetään.'))return;
+  ptBuild=null;ptBuildSave();renderPt();
+}
+function ptBuildSet(k,v){if(!ptBuild)return;ptBuild[k]=v;ptBuildSave();renderPt()}
+function ptBuildField(k,id){
+  if(!ptBuild)return;
+  const e=document.getElementById(id);
+  if(e){ptBuild[k]=e.value.trim().slice(0,300);ptBuildSave()}
+}
+/* Välipäivien liikunta on osa samaa ohjelmaa — sama teksti kelpaa sekä
+   ensimmäiseen ehdotukseen että korjauskierroksille. */
+function ptCardioPrompt(){
+  const p=pt.profile||{};
+  const carD=p.cardioDays==null?2:p.cardioDays;
+  if(!carD)return{teksti:'',maara:0};
+  const lajit=Array.isArray(p.cardioTypes)&&p.cardioTypes.length?p.cardioTypes.join(', '):'';
+  return{maara:carD,teksti:`
+Salin lisäksi Lassi liikkuu ${carD} kertaa viikossa salin välipäivinä.${
+  lajit?' Lajit joita hän harrastaa: '+lajit+'. Käytä vain näitä.':''}${
+  p.cardioNotes?' Huomioitavaa: '+p.cardioNotes+'.':''}
+Suunnittele näille sisältö "cardio"-osioon: montako kertaa viikossa, kuinka pitkään ja millä teholla.
+Sähköpyörä on oma lajinsa eikä tavallista pyöräilyä: avustus keventää kuormaa, joten sillä haetaan pitkää rauhallista aerobista aikaa, ei kovaa tehoa.
+Aseta lenkit niin etteivät ne syö salitreenien palautumista: kova juoksu ei kuulu jalkatreenin viereen.`};
+}
+function ptBuildSys(){
+  const b=ptBuild||{},p=pt.profile||{};
+  const days=p.gymDays||p.days||3;
+  const car=ptCardioPrompt();
+  const JAKO={
+    kokovartalo:'Kokovartalotreeni joka kerta.',
+    ylaala:'Ylävartalo ja alavartalo vuorotellen.',
+    tyontoveto:'Työntö / veto / jalat -jako.',
+    oma:b.splitOma?('Lassin oma toive jaosta: '+b.splitOma):'Valitse sopivin jako ja perustele lyhyesti.'
+  };
+  const KALUSTO={
+    laitteet:'Suosi LAITTEITA. Lassi ei vielä luota tekniikkaansa vapailla painoilla, ja laitteessa liikerata on valmiina. Vapaita painoja vain jos liike on helppo oppia turvallisesti yksin.',
+    sekaisin:'Laitteita ja vapaita painoja sekaisin.',
+    vapaat:'Suosi vapaita painoja (tanko ja käsipainot).'
+  };
+  const rajoitteet=[
+    b.avoid&&('Liikkeet joita Lassi EI halua tehdä: '+b.avoid+'. Älä sisällytä näitä missään muodossa — korvaa ne liikkeillä jotka kuormittavat samoja lihaksia.'),
+    b.focus&&('Erityinen kehityskohde: '+b.focus+'. Varaa tälle omaa työtä ohjelmassa, ei vain sivutuotteena.'),
+    b.kommentit&&b.kommentit.length&&('Lassin aiempi palaute tästä ohjelmasta, ota kaikki huomioon:\n- '+b.kommentit.join('\n- '))
+  ].filter(Boolean).join('\n');
+  return `Olet kokenut suomalainen voimavalmentaja. Kokoat kuntosaliohjelmaa YHDESSÄ Lassin kanssa: ehdotat, hän kommentoi, sinä korjaat.
+Lähtötiedot: ${days} salitreeniä viikossa. Taso: aloittelija, joka aloitti käytännössä nollasta.${p.weight?' Paino '+p.weight+' kg.':''}
+${JAKO[b.split]||JAKO.oma}
+${KALUSTO[b.gear]||KALUSTO.sekaisin}
+${rajoitteet}${car.teksti}
+Palauta VAIN JSON, ei muuta tekstiä:
+{"reply":"<2-4 lausetta: mitä teit ja miksi, ja mitä muutit jos sait palautetta. Puhu Lassille suoraan.>","program":{"name":"ohjelman nimi","idea":"1-2 lausetta","weekIdea":"1-2 lausetta viikkorytmistä","progression":"2-3 lausetta painojen nostamisesta","days":[{"name":"A · Rinta, olkapäät, ojentajat","groups":["rinta","olkapäät","ojentajat"],"exercises":[{"name":"Penkkipunnerrus laitteessa","sets":3,"reps":"8-10","rest":150,"start":"kevyt paino, tekniikka edellä","note":"lyhyt vinkki"}]}],"cardio":${car.maara?'[{"name":"Kävely","times":2,"minutes":45,"effort":"rauhallinen","note":"salin välipäivinä"}]':'[]'}}
+Säännöt:
+- "groups" on pakollinen: mitkä lihasryhmät päivä kuormittaa. Käytä näitä sanoja: rinta, selkä, olkapäät, hauis, ojentajat, jalat, pakarat, alaselkä, keskivartalo. Niistä lasketaan palautuminen, joten älä keksi omia.
+- ${days} treenipäivää, kierrätettävä.
+- 5-6 liikettä per treeni, 2-3 sarjaa liikettä kohden. Ei uupumukseen asti.
+- "rest" sekunteina: perusliikkeille 120-180, eristäville 60-90.
+- "start" kertoo konkreettisen aloituspainon tai -tavan.
+- ${car.maara?'"cardio" sisältää 1-3 riviä, yhteensä '+car.maara+' kertaa viikossa.':'"cardio" on tyhjä lista.'}
+- Kaikki suomeksi, myös liikenimet. Kerro liikkeen nimessä jos se tehdään laitteessa.`;
+}
+async function ptBuildRun(kommentti){
+  if(!ptBuild||ptBuild.busy)return;
+  if(kommentti)ptBuild.kommentit.push(kommentti.slice(0,300));
+  ptBuild.vaihe='luonnos';ptBuild.busy=true;ptBuild.virhe='';ptBuildSave();renderPt();
+  try{
+    // Nykyinen luonnos mukaan korjauskierroksella: malli korjaa sitä eikä
+    // aloita alusta, jolloin jo hyväksytyt kohdat pysyvät paikallaan.
+    const viesti=ptBuild.draft&&kommentti
+      ? 'Nykyinen ehdotus:\n'+JSON.stringify(ptBuild.draft)
+        +'\n\nLassin palaute: '+kommentti+'\n\nKorjaa ohjelma palautteen mukaan ja palauta koko ohjelma uudestaan.'
+      : 'Laadi ensimmäinen ehdotus.';
+    const raw=await askClaudeRetry(ptBuildSys(),[{role:'user',content:viesti}],3000);
+    const r=ptParseJson(raw);
+    const ohjelma=r&&(r.program||(Array.isArray(r.days)?r:null));
+    if(!ohjelma||!Array.isArray(ohjelma.days)||!ohjelma.days.length)throw new Error('ohjelmaa ei saatu jäsennettyä');
+    const norm=ptNormalizeProgram(ohjelma);
+    if(!norm.days.length)throw new Error('ohjelmassa ei ollut yhtään liikettä');
+    ptBuild.draft=norm;
+    ptBuild.reply=String((r&&r.reply)||'').slice(0,700);
+  }catch(e){
+    console.warn('ptBuildRun:',e);
+    // Epäonnistuminen ei saa hukata edellistä luonnosta eikä kommentteja
+    ptBuild.virhe=String(e.message||e).slice(0,150);
+  }
+  ptBuild.busy=false;ptBuildSave();renderPt();
+}
+async function ptBuildAccept(){
+  if(!ptBuild||!ptBuild.draft)return;
+  pt.program=ptBuild.draft;
+  // Mieltymykset talteen profiiliin: seuraavalla kerralla ei tarvitse
+  // kertoa uudestaan ettei kyykky maistu ja että laitteet ovat mieluisampia
+  pt.profile={...(pt.profile||{}),level:'aloittelija',place:'sali',
+    split:ptBuild.split,splitOma:ptBuild.splitOma,gear:ptBuild.gear,
+    avoid:ptBuild.avoid,focus:ptBuild.focus};
+  ptBuild=null;ptBuildSave();
+  await ptSave();sSave();
+  toast('Ohjelma otettu käyttöön');
+  ptTab='today';switchPtTab('today');
+}
+function ptBuildHtml(){
+  const b=ptBuild;
+  if(b.vaihe==='esitiedot'){
+    const chip=(k,lista)=>`<div class="pt-chips">${lista.map(([v,nimi])=>
+      `<button class="${b[k]===v?'on':''}" onclick='ptBuildSet(${ptAttr(k)},${ptAttr(v)})'>${esc(nimi)}</button>`).join('')}</div>`;
+    const kuvaus=(lista,val)=>{const o=lista.find(x=>x[0]===val);return o?`<div class="pt-sub" style="margin-top:7px">${esc(o[2]||'')}</div>`:''};
+    return `<div class="pt-hero"><div class="pt-tag">KOOTAAN OHJELMA YHDESSÄ</div>
+      <h2>Ensin muutama asia</h2>
+      <div class="pt-sub">Näiden jälkeen teen ehdotuksen, jota voit kommentoida vapaasti kunnes se on oikea. Vastaukset jäävät muistiin seuraavaa kertaa varten.</div></div>
+    <div class="pt-hero"><div class="pt-tag">MITEN JAETAAN</div>
+      ${chip('split',PT_SPLITS)}
+      ${kuvaus(PT_SPLITS,b.split)}
+      ${b.split==='oma'?`<div class="pt-field" style="margin-top:11px"><label>KERRO OMIN SANOIN</label>
+        <textarea class="pt-input" id="ptbSplit" rows="2" onchange="ptBuildField('splitOma','ptbSplit')" placeholder="esim. rinta, kädet ja selkä samalla kertaa — en tykkää liian kapeasta jaosta">${esc(b.splitOma||'')}</textarea></div>`:''}
+    </div>
+    <div class="pt-hero"><div class="pt-tag">LAITTEET VAI VAPAAT PAINOT</div>
+      ${chip('gear',PT_GEAR)}
+      ${kuvaus(PT_GEAR,b.gear)}
+    </div>
+    <div class="pt-hero"><div class="pt-tag">RAJOITTEET JA PAINOPISTEET</div>
+      <div class="pt-field"><label>LIIKKEET JOITA ET HALUA TEHDÄ</label>
+        <textarea class="pt-input" id="ptbAvoid" rows="2" onchange="ptBuildField('avoid','ptbAvoid')" placeholder="esim. kyykky ja maastaveto — en osaa tekniikkaa vielä">${esc(b.avoid||'')}</textarea></div>
+      <div class="pt-field" style="margin-top:11px"><label>MITÄ HALUAT ERITYISESTI KEHITTÄÄ</label>
+        <textarea class="pt-input" id="ptbFocus" rows="2" onchange="ptBuildField('focus','ptbFocus')" placeholder="esim. alaselkä, se on heikko ja jumittaa istumatyössä">${esc(b.focus||'')}</textarea></div>
+      <div class="learn-btns" style="margin-top:14px">
+        <button class="btn" onclick="ptBuildField('avoid','ptbAvoid');ptBuildField('focus','ptbFocus');ptBuildField('splitOma','ptbSplit');ptBuildRun()">TEE EHDOTUS →</button>
+        <button class="btn ghost" onclick="ptBuildCancel()">PERUUTA</button>
+      </div>
+    </div>`;
+  }
+  // Luonnosvaihe
+  if(b.busy&&!b.draft)return `<div class="learn-placeholder">Valmentaja kokoaa ehdotusta…</div>`;
+  const d=b.draft;
+  return `<div class="pt-hero"><div class="pt-tag">EHDOTUS${b.kommentit.length?' · KIERROS '+(b.kommentit.length+1):''}</div>
+    <h2>${esc(d?d.name:'Ehdotus')}</h2>
+    ${b.reply?`<div class="pt-sub">${esc(b.reply)}</div>`:''}
+    ${b.busy?`<div class="pt-hint" style="margin-top:11px"><b>KORJAAN…</b>Hetki, muokkaan ohjelmaa palautteesi mukaan.</div>`:''}
+    ${b.virhe?`<div class="pt-hint" style="margin-top:11px;border-left-color:var(--red)"><b>EI ONNISTUNUT</b>${esc(b.virhe)}${d?' Edellinen ehdotus on yhä alla — voit yrittää uudestaan.':''}</div>`:''}
+  </div>
+  ${d?(d.days||[]).map(day=>`<div class="pt-day">
+    <h4>${esc(day.name)}</h4>
+    ${day.groups&&day.groups.length?`<div class="pt-sub" style="margin:-4px 0 8px">${esc(day.groups.join(' · '))}</div>`:''}
+    <ul>${(day.exercises||[]).map(e=>`<li>${esc(e.name)} <i>${e.sets} × ${esc(e.reps)}</i>${e.note?`<br><i>${esc(e.note)}</i>`:''}</li>`).join('')}</ul>
+  </div>`).join(''):''}
+  ${d&&d.cardio&&d.cardio.length?`<div class="pt-hero"><div class="pt-tag">MUU LIIKUNTA</div>
+    ${d.cardio.map(c=>`<div class="pt-row"><span>${esc(c.name)}${c.effort?`<br><span style="font-size:12px;color:var(--txt-dim)">${esc(c.effort)}</span>`:''}</span>
+      <span class="val">${c.times}× ${c.minutes} min</span></div>`).join('')}</div>`:''}
+  ${d&&d.progression?`<div class="pt-coach"><div class="pt-tag">PROGRESSIO</div>${esc(d.progression)}</div>`:''}
+  <div class="pt-hero"><div class="pt-tag">MITÄ MUUTTAISIT</div>
+    <div class="pt-chips" style="margin-bottom:10px">${[
+      'Liikaa jalkoja','Vaihda vapaat painot laitteisiin','Lisää alaselkää',
+      'Liikaa liikkeitä, lyhennä','Lisää käsiä','Vaihda päivien järjestystä'
+    ].map(v=>`<button onclick='ptBuildRun(${ptAttr(v)})'>${esc(v)}</button>`).join('')}</div>
+    <textarea class="pt-input" id="ptbKomm" rows="2" placeholder="Kirjoita omin sanoin: esim. en halua tehdä kyykkyä, vaihda se johonkin laitteeseen"></textarea>
+    <div class="learn-btns" style="margin-top:11px">
+      <button class="btn ghost" onclick="const v=document.getElementById('ptbKomm').value.trim();if(v)ptBuildRun(v)">⟳ KORJAA NÄIN</button>
+      ${d?`<button class="btn" onclick="ptBuildAccept()">✓ OTA KÄYTTÖÖN</button>`:''}
+      <button class="btn ghost" onclick="ptBuildCancel()">PERUUTA</button>
+    </div>
+    ${b.kommentit.length?`<div class="pt-sub" style="margin-top:11px;font-size:12px">Huomioitu tähän mennessä: ${esc(b.kommentit.join(' · '))}</div>`:''}
+  </div>`;
 }
 // Muistutus + paluu käynnissä olevaan treeniin
 function ptResumeHtml(){
@@ -3075,10 +3333,11 @@ function ptTodayHtml(){
     <h2>Aloitetaan kunnolla</h2>
     <div class="pt-sub">Teen sinulle kuntosaliohjelman: 3 kertaa viikossa, perusliikkeet, aloitus rauhassa tekniikka edellä. Sen jälkeen kirjaat sarjat tästä näkymästä ja ${esc(AI.name)} ehdottaa seuraavat painot automaattisesti edellisen kerran perusteella.</div>
     <div class="learn-btns" style="margin-top:14px">
-      <button class="btn" onclick="ptGenerateProgram()">⊕ LUO OHJELMA</button>
+      <button class="btn" onclick="ptBuildStart()">⊕ KOOTAAN OHJELMA</button>
     </div></div>`;
   const days=pt.program.days||[];
-  const idx=ptNextDayIdx();
+  const suositus=ptRecommendDay()||{idx:0,syy:''};
+  const idx=suositus.idx;
   const day=days[idx]||days[0];
   const r=ptReadiness();
   const wk=ptWeekCount();
@@ -3097,11 +3356,14 @@ function ptTodayHtml(){
       <b>TAUKOA ${tauko} PÄIVÄÄ</b>${tauko>=21
         ? 'Painoehdotukset on kevennetty automaattisesti — aloita maltilla, tuntuma palaa parissa treenissä.'
         : 'Kunto ei katoa tässä ajassa, mutta rutiini katoaa. Tämä treeni kannattaa tehdä vaikka kevennettynä.'}</div>`:''}
+    ${suositus.syy?`<div class="pt-hint" style="margin-top:12px"><b>MIKSI TÄMÄ</b>${esc(suositus.syy)}</div>`:''}
     <div class="learn-btns" style="margin-top:14px">
       <button class="btn" onclick="ptStartSession(${idx})">▶ ALOITA TREENI</button>
       <button class="btn ghost" style="font-size:11px" onclick="switchPtTab('prog')">OHJELMA</button>
     </div></div>
-  <div class="pt-day next"><h4>OHJELMASSA TÄNÄÄN</h4><ul>${
+  ${ptRestedHtml()}
+  <div class="pt-day next"><h4>OHJELMASSA TÄNÄÄN${
+    day.groups&&day.groups.length?' · '+esc(day.groups.join(' · ').toUpperCase()):''}</h4><ul>${
     (day.exercises||[]).map(e=>`<li>${esc(e.name)} <i>${e.sets||3} × ${esc(e.reps||'8-10')}</i>${ptExLinks(e.name)}${ptTechHtml(e.name)}</li>`).join('')
   }</ul></div>
   ${ptCardioTodayHtml()}
@@ -3110,6 +3372,22 @@ function ptTodayHtml(){
     ${ptBarRow('Proteiini',f.protein,t.protein,'g')}
     <div class="learn-btns" style="margin-top:12px"><button class="btn ghost" style="font-size:11px" onclick="switchPtTab('food')">KIRJAA SYÖMISET</button></div></div>`:''}
   ${ptLastCoachHtml()}`;
+}
+/* Mikä on levännyt ja mikä ei. Tämä on se tieto jonka perusteella päivän
+   valinta tehdään, joten se kannattaa näyttää eikä vain käyttää piilossa. */
+function ptRestedHtml(){
+  const rest=ptGroupRest();
+  const gs=Object.keys(rest);
+  if(!gs.length)return'';
+  const jarj=gs.sort((a,b)=>rest[a]-rest[b]);
+  return `<div class="pt-hero"><div class="pt-tag">LIHASRYHMIEN PALAUTUMINEN</div>
+    ${jarj.map(g=>{
+      const d=rest[g];
+      const vari=d===0?'red':(d===1?'gold':'green');
+      return `<div class="pt-row"><span>${esc(g)}</span><span class="val" style="color:var(--${vari})">${
+        d===0?'tänään':(d===1?'eilen':d+' päivää sitten')}</span></div>`;
+    }).join('')}
+    <div class="pt-sub" style="font-size:12px;margin-top:9px">Lihas kasvaa levossa. Vihreä on valmis, keltainen vielä palautumassa.</div></div>`;
 }
 /* Viikon liikunta TÄNÄÄN-näkymässä. Kaksi kysymystä joihin tämä vastaa:
    mitä on jo tullut tehtyä, ja mitä välipäivänä kannattaisi tehdä. Toinen
@@ -3162,17 +3440,18 @@ function ptWeekCount(){
 function ptProgHtml(){
   if(!pt.program)return `<div class="learn-placeholder">Ei ohjelmaa vielä.\n\nLuo se TÄNÄÄN-välilehdeltä.</div>`;
   const p=pt.program;
-  const idx=ptNextDayIdx();
+  const idx=(ptRecommendDay()||{idx:0}).idx;
   return `<div class="pt-hero"><div class="pt-tag">OHJELMA</div><h2>${esc(p.name||'Ohjelma')}</h2>
     <div class="pt-sub">${esc(p.idea||'')}</div></div>
   ${(p.days||[]).map((d,i)=>`<div class="pt-day${i===idx?' next':''}">
-    <h4>${esc(d.name)}${i===idx?' · SEURAAVA':''}</h4>
+    <h4>${esc(d.name)}${i===idx?' · SUOSITUS TÄNÄÄN':''}</h4>
+    ${d.groups&&d.groups.length?`<div class="pt-sub" style="margin:-4px 0 8px">${esc(d.groups.join(' · '))}</div>`:''}
     <ul>${(d.exercises||[]).map((e,ei)=>`<li>${esc(e.name)} <i>${e.sets||3} × ${esc(e.reps||'8-10')}</i>${ptExLinks(e.name,i,ei)}${e.note?`<br><i>${esc(e.note)}</i>`:''}${ptTechHtml(e.name)}</li>`).join('')}</ul>
     <div class="learn-btns" style="margin-top:10px"><button class="btn ghost" style="font-size:10px" onclick="ptStartSession(${i})">▶ ALOITA TÄMÄ</button></div>
   </div>`).join('')}
   ${ptCardioPlanHtml()}
   ${p.progression?`<div class="pt-coach"><div class="pt-tag">PROGRESSIO</div>${esc(p.progression)}</div>`:''}
-  <div class="learn-btns"><button class="btn ghost" style="font-size:11px" onclick="ptGenerateProgram(true)">⟳ UUSI OHJELMA</button></div>`;
+  <div class="learn-btns"><button class="btn ghost" style="font-size:11px" onclick="ptBuildStart()">⟳ UUSI OHJELMA</button></div>`;
 }
 /* Välipäivien liikunta ohjelmanäkymässä: suunniteltu määrä ja mitä siitä on
    tällä viikolla toteutunut. Toteuma tulee Garminista, joten rivi kertoo
@@ -3752,6 +4031,12 @@ function ptStatsHtml(){
 function ptNormalizeProgram(r){
   const days=(Array.isArray(r.days)?r.days:[]).map((d,di)=>({
     name:String(d&&d.name||('Treeni '+(di+1))).slice(0,60),
+    // Lihasryhmät palautumislaskentaa varten. Tuntemattomat sanat pudotetaan:
+    // keksitty ryhmä ei osuisi mihinkään eikä siitä olisi hyötyä, mutta se
+    // sotkisi laskennan näyttämällä levänneeltä.
+    groups:(Array.isArray(d&&d.groups)?d.groups:[])
+      .map(g=>String(g||'').trim().toLowerCase())
+      .filter(g=>PT_GROUPS.includes(g)).slice(0,6),
     exercises:(Array.isArray(d&&d.exercises)?d.exercises:[])
       .filter(e=>e&&(e.name||'').toString().trim())
       .map(e=>{
@@ -3783,53 +4068,6 @@ function ptNormalizeProgram(r){
     progression:String(r.progression||'').slice(0,400),
     weekIdea:String(r.weekIdea||'').slice(0,400),days,cardio};
 }
-async function ptGenerateProgram(replace){
-  if(replace&&!confirm('Luodaanko uusi ohjelma? Vanha korvataan (treenihistoria säilyy).'))return;
-  const el=document.getElementById('ptBody');
-  if(el)el.innerHTML='<div class="learn-placeholder">Valmentaja suunnittelee ohjelmaa…</div>';
-  const p=pt.profile||{};
-  const days=p.gymDays||p.days||3;
-  // Välipäivien liikunta ohjelmaan: ilman tätä ohjelma on kolme salitreeniä
-  // ja neljä tyhjää päivää, vaikka lenkit ovat osa samaa kokonaisuutta ja
-  // vaikuttavat sekä palautumiseen että kulutukseen.
-  const lajit=Array.isArray(p.cardioTypes)&&p.cardioTypes.length?p.cardioTypes.join(', '):'';
-  const carD=p.cardioDays==null?2:p.cardioDays;
-  const liikunta=carD>0?`
-Salin lisäksi Lassi liikkuu ${carD} kertaa viikossa salin välipäivinä.${
-  lajit?' Lajit joita hän harrastaa: '+lajit+'. Käytä vain näitä.':''}${
-  p.cardioNotes?' Huomioitavaa: '+p.cardioNotes+'.':''}
-Suunnittele näille konkreettinen sisältö "cardio"-osioon: montako kertaa viikossa, kuinka pitkään ja millä teholla.
-Sähköpyörä on oma lajinsa eikä tavallista pyöräilyä: avustus keventää kuormaa, joten sillä haetaan pitkää rauhallista aerobista aikaa ja palauttavaa liikettä, ei kovaa tehoa.
-Aseta lenkit niin etteivät ne syö salitreenien palautumista: kova juoksu ei kuulu jalkatreenin viereen.`:'';
-  const sys=`Olet kokenut suomalainen voimavalmentaja. Laadi kuntosaliohjelma ja sen ympärille viikon liikuntarytmi.
-Lähtötiedot: ${days} treeniä viikossa salilla. Taso: aloittelija, joka aloittaa käytännössä nollasta pitkän tauon jälkeen. Tavoite: yleinen lihaskunto ja voima.${p.weight?' Paino '+p.weight+' kg.':''}${liikunta}
-Palauta VAIN JSON, ei muuta tekstiä:
-{"name":"ohjelman nimi","idea":"1-2 lausetta ohjelman ideasta","weekIdea":"1-2 lausetta siitä miten salipäivät ja lenkit sijoittuvat viikkoon","progression":"2-3 lausetta siitä miten painoja nostetaan","days":[{"name":"A · Kokovartalo","exercises":[{"name":"Jalkakyykky","sets":3,"reps":"8-10","rest":150,"start":"pelkkä tanko, tekniikka edellä","note":"lyhyt vinkki suorituksesta"}]}],"cardio":[{"name":"Kävely","times":2,"minutes":45,"effort":"rauhallinen, pystyy puhumaan","note":"salin välipäivinä, palauttaa"}]}
-Säännöt:
-- "rest" on sarjapalautus sekunteina: perusliikkeille 120-180, eristäville 60-90.
-- ${days} treenipäivää, kierrätettävä (esim. A/B/A).
-- 5-6 liikettä per treeni, painopiste perusliikkeissä (kyykky, maastaveto, penkkipunnerrus, pystypunnerrus, kulmasoutu, ylätalja).
-- Aloittelijalle 2-3 sarjaa liikettä kohden, ei uupumukseen asti.
-- "start" kertoo konkreettisen aloituspainon tai -tavan ensikertalaiselle.
-- ${carD>0?'"cardio" sisältää 1-3 riviä, yhteensä '+carD+' kertaa viikossa. "effort" kuvaa tehoa arkikielellä, ei sykealueina.'
-          :'"cardio" on tyhjä lista.'}
-- Kaikki suomeksi. Liikenimet suomeksi.`;
-  try{
-    const raw=await askClaudeRetry(sys,[{role:'user',content:'Laadi ohjelma.'}],2200);
-    const r=ptParseJson(raw);
-    if(!r||!Array.isArray(r.days)||!r.days.length)throw new Error('ohjelmaa ei saatu jäsennettyä');
-    pt.program=ptNormalizeProgram(r);
-    if(!pt.program.days.length)throw new Error('ohjelmassa ei ollut yhtään liikettä');
-    pt.profile={...(pt.profile||{}),days,level:'aloittelija',place:'sali'};
-    await ptSave();sSave();
-    ptTab='today';switchPtTab('today');
-  }catch(e){
-    console.warn('ptGenerateProgram:',e);
-    if(el)el.innerHTML=`<div class="learn-placeholder">Ohjelman luonti epäonnistui.\n\nSyy: ${esc(String(e.message||e)).slice(0,160)}\n\nJos chat ei myöskään vastaa, vika on workerissa tai Claude-avaimessa — ei tässä toiminnossa.</div>
-      <div class="learn-btns"><button class="btn" onclick="ptGenerateProgram()">⟳ YRITÄ UUDELLEEN</button></div>`;
-  }
-}
-
 function ptStartSession(idx){
   const day=(pt.program&&pt.program.days||[])[idx];
   if(!day)return;
