@@ -1154,7 +1154,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="5.3";
+const VERSION="5.4";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -3207,7 +3207,7 @@ ${JAKO[b.split]||JAKO.oma}
 ${KALUSTO[b.gear]||KALUSTO.sekaisin}
 ${rajoitteet}${car.teksti}
 Palauta VAIN JSON, ei muuta tekstiä:
-{"reply":"<2-4 lausetta: mitä teit ja miksi, ja mitä muutit jos sait palautetta. Puhu Lassille suoraan.>","program":{"name":"ohjelman nimi","idea":"1-2 lausetta","weekIdea":"1-2 lausetta viikkorytmistä","progression":"2-3 lausetta painojen nostamisesta","days":[{"name":"A · Rinta, olkapäät, ojentajat","groups":["rinta","olkapäät","ojentajat"],"exercises":[{"name":"Penkkipunnerrus laitteessa","sets":3,"reps":"8-10","rest":150,"start":"kevyt paino, tekniikka edellä","note":"lyhyt vinkki"}]}],"cardio":${car.maara?'[{"name":"Kävely","times":2,"minutes":45,"effort":"rauhallinen","note":"salin välipäivinä"}]':'[]'}}
+{"reply":"<2-4 lausetta: mitä teit ja miksi, ja mitä muutit jos sait palautetta. Puhu Lassille suoraan.>","program":{"name":"ohjelman nimi","idea":"1-2 lausetta","weekIdea":"1-2 lausetta viikkorytmistä","progression":"2-3 lausetta painojen nostamisesta","days":[{"name":"A · Rinta, olkapäät, ojentajat","groups":["rinta","olkapäät","ojentajat"],"exercises":[{"name":"Penkkipunnerrus laitteessa","sets":3,"reps":"8-10","rest":150,"start":"kevyt paino, tekniikka edellä","note":"lyhyt vinkki"}]}],"cardio":${car.maara?'[{"name":"Kävely","times":2,"minutes":45,"effort":"rauhallinen","note":"salin välipäivinä"}]':'[]'}}}
 Säännöt:
 - "groups" on pakollinen: mitkä lihasryhmät päivä kuormittaa. Käytä näitä sanoja: rinta, selkä, olkapäät, hauis, ojentajat, jalat, pakarat, alaselkä, keskivartalo. Niistä lasketaan palautuminen, joten älä keksi omia.
 - ${days} treenipäivää, kierrätettävä.
@@ -3228,10 +3228,20 @@ async function ptBuildRun(kommentti){
       ? 'Nykyinen ehdotus:\n'+JSON.stringify(ptBuild.draft)
         +'\n\nLassin palaute: '+kommentti+'\n\nKorjaa ohjelma palautteen mukaan ja palauta koko ohjelma uudestaan.'
       : 'Laadi ensimmäinen ehdotus.';
-    const raw=await askClaudeRetry(ptBuildSys(),[{role:'user',content:viesti}],3000);
+    // 3600 tokenia: kolmen päivän ohjelma vinkkeineen plus saateteksti on
+    // iso vastaus, ja token-kattoon katkennut JSON näyttää samalta kuin
+    // täysi epäonnistuminen.
+    const raw=await askClaudeRetry(ptBuildSys(),[{role:'user',content:viesti}],3600);
     const r=ptParseJson(raw);
     const ohjelma=r&&(r.program||(Array.isArray(r.days)?r:null));
-    if(!ohjelma||!Array.isArray(ohjelma.days)||!ohjelma.days.length)throw new Error('ohjelmaa ei saatu jäsennettyä');
+    if(!ohjelma||!Array.isArray(ohjelma.days)||!ohjelma.days.length){
+      // Kerro mitä oikeasti tuli: pelkkä "ei saatu jäsennettyä" ei erottele
+      // katkennutta vastausta, väärää muotoa ja tyhjää vastausta toisistaan.
+      const n=String(raw||'').length;
+      const avaimet=r&&typeof r==='object'?Object.keys(r).slice(0,5).join(', '):'ei mitään';
+      throw new Error(!n?'malli ei palauttanut mitään'
+        :('vastaus ei ollut odotetussa muodossa ('+n+' merkkiä, kentät: '+avaimet+')'));
+    }
     const norm=ptNormalizeProgram(ohjelma);
     if(!norm.days.length)throw new Error('ohjelmassa ei ollut yhtään liikettä');
     ptBuild.draft=norm;
@@ -3239,7 +3249,7 @@ async function ptBuildRun(kommentti){
   }catch(e){
     console.warn('ptBuildRun:',e);
     // Epäonnistuminen ei saa hukata edellistä luonnosta eikä kommentteja
-    ptBuild.virhe=String(e.message||e).slice(0,150);
+    ptBuild.virhe=String(e.message||e).slice(0,180);
   }
   ptBuild.busy=false;ptBuildSave();renderPt();
 }
@@ -3289,21 +3299,35 @@ function ptBuildHtml(){
   // Luonnosvaihe
   if(b.busy&&!b.draft)return `<div class="learn-placeholder">Valmentaja kokoaa ehdotusta…</div>`;
   const d=b.draft;
+  /* Kokonaan epäonnistunut ensiyritys on oma tilansa: ilman luonnosta ei ole
+     mitään kommentoitavaa, joten kommenttikentän tarjoaminen olisi harhaan-
+     johtavaa. Tarjotaan uusi yritys ja paluu esitietoihin. */
+  if(!d)return `<div class="pt-hero" style="border-left-color:var(--red)">
+      <div class="pt-tag" style="color:var(--red)">EHDOTUS EI ONNISTUNUT</div>
+      <h2>Ei saatu ohjelmaa</h2>
+      <div class="pt-sub">Syy: ${esc(b.virhe||'tuntematon')}.
+        Esitietosi ovat tallessa, joten uusi yritys ei vaadi niiden syöttämistä uudelleen.
+        Jos chat ei myöskään vastaa, vika on workerissa tai Claude-avaimessa eikä tässä toiminnossa.</div>
+      <div class="learn-btns" style="margin-top:14px">
+        <button class="btn" onclick="ptBuildRun()">⟳ YRITÄ UUDELLEEN</button>
+        <button class="btn ghost" onclick="ptBuildSet('vaihe','esitiedot')">← MUOKKAA ESITIETOJA</button>
+        <button class="btn ghost" onclick="ptBuildCancel()">PERUUTA</button>
+      </div></div>`;
   return `<div class="pt-hero"><div class="pt-tag">EHDOTUS${b.kommentit.length?' · KIERROS '+(b.kommentit.length+1):''}</div>
-    <h2>${esc(d?d.name:'Ehdotus')}</h2>
+    <h2>${esc(d.name)}</h2>
     ${b.reply?`<div class="pt-sub">${esc(b.reply)}</div>`:''}
     ${b.busy?`<div class="pt-hint" style="margin-top:11px"><b>KORJAAN…</b>Hetki, muokkaan ohjelmaa palautteesi mukaan.</div>`:''}
-    ${b.virhe?`<div class="pt-hint" style="margin-top:11px;border-left-color:var(--red)"><b>EI ONNISTUNUT</b>${esc(b.virhe)}${d?' Edellinen ehdotus on yhä alla — voit yrittää uudestaan.':''}</div>`:''}
+    ${b.virhe?`<div class="pt-hint" style="margin-top:11px;border-left-color:var(--red)"><b>KORJAUS EI ONNISTUNUT</b>${esc(b.virhe)} Alla oleva ehdotus on ennallaan — voit yrittää uudestaan.</div>`:''}
   </div>
-  ${d?(d.days||[]).map(day=>`<div class="pt-day">
+  ${(d.days||[]).map(day=>`<div class="pt-day">
     <h4>${esc(day.name)}</h4>
     ${day.groups&&day.groups.length?`<div class="pt-sub" style="margin:-4px 0 8px">${esc(day.groups.join(' · '))}</div>`:''}
     <ul>${(day.exercises||[]).map(e=>`<li>${esc(e.name)} <i>${e.sets} × ${esc(e.reps)}</i>${e.note?`<br><i>${esc(e.note)}</i>`:''}</li>`).join('')}</ul>
-  </div>`).join(''):''}
-  ${d&&d.cardio&&d.cardio.length?`<div class="pt-hero"><div class="pt-tag">MUU LIIKUNTA</div>
+  </div>`).join('')}
+  ${d.cardio&&d.cardio.length?`<div class="pt-hero"><div class="pt-tag">MUU LIIKUNTA</div>
     ${d.cardio.map(c=>`<div class="pt-row"><span>${esc(c.name)}${c.effort?`<br><span style="font-size:12px;color:var(--txt-dim)">${esc(c.effort)}</span>`:''}</span>
       <span class="val">${c.times}× ${c.minutes} min</span></div>`).join('')}</div>`:''}
-  ${d&&d.progression?`<div class="pt-coach"><div class="pt-tag">PROGRESSIO</div>${esc(d.progression)}</div>`:''}
+  ${d.progression?`<div class="pt-coach"><div class="pt-tag">PROGRESSIO</div>${esc(d.progression)}</div>`:''}
   <div class="pt-hero"><div class="pt-tag">MITÄ MUUTTAISIT</div>
     <div class="pt-chips" style="margin-bottom:10px">${[
       'Liikaa jalkoja','Vaihda vapaat painot laitteisiin','Lisää alaselkää',
@@ -3312,7 +3336,7 @@ function ptBuildHtml(){
     <textarea class="pt-input" id="ptbKomm" rows="2" placeholder="Kirjoita omin sanoin: esim. en halua tehdä kyykkyä, vaihda se johonkin laitteeseen"></textarea>
     <div class="learn-btns" style="margin-top:11px">
       <button class="btn ghost" onclick="const v=document.getElementById('ptbKomm').value.trim();if(v)ptBuildRun(v)">⟳ KORJAA NÄIN</button>
-      ${d?`<button class="btn" onclick="ptBuildAccept()">✓ OTA KÄYTTÖÖN</button>`:''}
+      <button class="btn" onclick="ptBuildAccept()">✓ OTA KÄYTTÖÖN</button>
       <button class="btn ghost" onclick="ptBuildCancel()">PERUUTA</button>
     </div>
     ${b.kommentit.length?`<div class="pt-sub" style="margin-top:11px;font-size:12px">Huomioitu tähän mennessä: ${esc(b.kommentit.join(' · '))}</div>`:''}

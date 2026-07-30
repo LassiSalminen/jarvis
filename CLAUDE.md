@@ -34,7 +34,13 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v5.3)
+## Toiminnot (v5.4)
+- **HUOM esimerkki-JSON promptissa**: `ptBuildSys`in mallivastauksesta puuttui
+  yksi sulkeva `}` (sisäkkäinen `{"reply":…,"program":{…}}` tarvitsee kaksi
+  lopussa), ja malli tuotti täsmälleen sen rikkinäisen muodon jota sille
+  näytettiin — ensimmäinen ehdotus epäonnistui aina. Jos lisäät promptiin
+  sisäkkäisen JSON-esimerkin, **tarkista sulkeiden tasapaino**; virhe ei näy
+  koodia lukemalla, koska merkkijono on validi JavaScriptiä.
 - **Ohjelma kootaan yhdessä** (`ptBuild`, `ptBuildSys`, `ptBuildRun`):
   "UUSI OHJELMA" ei enää generoi kerralla vaan avaa kokoamisen.
   `ptGenerateProgram` on **poistettu** — yhden napautuksen generointi ei voi
