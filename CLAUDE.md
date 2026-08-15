@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v6.1). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v6.2). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -35,7 +35,22 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v6.1)
+## Toiminnot (v6.2)
+- **Telegram-chat** (`tgChat`, `tgKonteksti`, `tgAsk`): botille voi kirjoittaa
+  vapaasti, ja se vastaa **samalla persoonalla ja samasta tietopankista** kuin
+  selain — se ei ole eri assistentti vaan sama. Persoona luetaan `state`-
+  avaimesta (`TG_VARAPERSOONA` jos sovellus ei ole vielä synkannut).
+  Konteksti pidetään tiiviinä: NYT-tilannekuva, sivujen otsikot, treeni,
+  päivän ravinto ja Garmin — koko wiki promptissa olisi hidas, ja botti on
+  nopeaan kysymiseen.
+  **HUOM `sendChatAction`**: Telegram näyttää "kirjoittaa…" vain viisi
+  sekuntia, ja Sonnet kestää usein pidempään — ilman sitä ruutu näyttää
+  siltä ettei mitään tapahtunut.
+  **HUOM `tg-inbox` on oma KV-avaimensa** eikä osa `state`a: sovellus
+  kirjoittaa `state`n kokonaan yli, joten sinne lisätty rivi katoaisi heti
+  kun sovellus seuraavan kerran synkkaa. `GET /api/state` liittää inboxin
+  `convLog`iin, joten Telegramissa käydyt keskustelut päätyvät päivän
+  koontiin. Malliketju Sonnet 5 → Sonnet 4.6 kuten sovelluksessa.
 - **Workerin versiotarkistus** (`WORKER_VERSION`, `/api/version`,
   `workerVanha()`): Cloudflareen unohtunut deploy on ollut tämän projektin
   toistuvin vika, eikä se näkynyt mistään — PIN-portti vastaa tuntemattomaan
