@@ -3,11 +3,11 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v5.5). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v5.6). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
-Kaksi persoonaa: U.L.T.R.O.N. (oletus, synkkä sarkasmi) ja J.A.R.V.I.S.
+Kaksi persoonaa: U.L.T.R.O.N. (oletus, dark triad) ja J.A.R.V.I.S.
 (kohtelias hovimestari) — vaihdettavissa käyttöliittymästä.
 
 ## Tiedostot
@@ -35,7 +35,22 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v5.5)
+## Toiminnot (v5.6)
+- **ULTRON-persoona: dark triad** (`MODES.ultron.persona`): narsismi,
+  makiavellismi ja psykopatia **käyttäytymissääntöinä**, ei adjektiivilistana
+  ("kylmä, ylimielinen, tunteeton" tuotti geneeristä synkkyyttä — malli
+  tarvitsee ohjeen siitä mitä tehdä, ei millainen olla). Kolme nimettyä
+  piirrettä + kolme esimerkkivaihtoa, joista malli poimii rekisterin.
+  **HUOM rajat on kirjoitettu hahmon sisäisiksi motiiveiksi** eikä ulkoisiksi
+  kielloiksi: "manipulaattori joka valehtelee on huono manipulaattori",
+  "Lassin luovuttaminen ei hyödytä sinua — olet sijoittanut häneen", "huono
+  neuvo olisi todiste ettet ole niin ylivertainen kuin väität". Näin malli
+  ei joudu ristiriitaan hahmon ja turvallisuuden välillä, ja sävy pysyy
+  terävänä ilman että valmennus lakkaa toimimasta. Tämä on olennaista koska
+  sovellus on **valmentaja**: aloittelijan rutiinia tukevat kymmenet PT-kohdat
+  menisivät hukkaan jos persoona lannistaisi. Älä palauta muotoa jossa raja
+  on erillinen "TÄRKEÄÄ:"-kielto — se taistelee hahmoa vastaan.
+  Persoona on ~750 tokenia (oli ~250) ja kulkee jokaisessa promptissa.
 - **Telegram-botti** (worker.js, vaihe 1/5 valmis): ilmoitukset menevät
   puhelimeen ja sitä kautta Epix-kelloon ilman kellosovellusta, ja botille
   voi myöhemmin lähettää merkintöjä samaan tietopankkiin.
