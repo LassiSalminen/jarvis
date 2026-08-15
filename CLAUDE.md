@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v5.9). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v6.1). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -35,7 +35,17 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v5.9)
+## Toiminnot (v6.1)
+- **Workerin versiotarkistus** (`WORKER_VERSION`, `/api/version`,
+  `workerVanha()`): Cloudflareen unohtunut deploy on ollut tämän projektin
+  toistuvin vika, eikä se näkynyt mistään — PIN-portti vastaa tuntemattomaan
+  reittiin **401:llä**, joka näyttää täsmälleen samalta kuin väärä PIN.
+  Molemmat päät arvailivat samaa asiaa tuntikausia. `/api/version` on
+  **PIN-portin ulkopuolella** tarkoituksella: juuri silloin kun worker on
+  vanha, PIN-polkuun ei voi luottaa. Pelkkä versionumero ei paljasta dataa
+  eikä reittejä, ja workerin olemassaolon paljastaa jo 401-vastaus.
+  **Nosta `WORKER_VERSION`ia aina kun muutat worker.js:ää** ja pidä
+  `WORKER_MIN` jarvis.html:ssä samana, muuten sovellus valittaa turhaan.
 - **Telegram-diagnostiikka** (`/api/telegram/status`, `tgDiag`): botti hylkää
   kelpaamattomat viestit **hiljaa** — se on turvallisuusominaisuus, mutta
   tarkoittaa ettei vikatilanteessa näy mitään. `getWebhookInfo` on tässä

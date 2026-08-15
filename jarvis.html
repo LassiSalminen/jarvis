@@ -1158,7 +1158,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="6.0";
+const VERSION="6.1";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1283,6 +1283,30 @@ function telegramRaportti(d){
    osoitteessa (localhost vs. GitHub Pages) on selaimelle eri sivusto eikä
    muista PINiä. Ilman tätä tarkistusta käyttäjä saa workerilta pelkän
    "unauthorized"-sanan, joka ei kerro mistä on kyse. */
+/* Cloudflareen unohtunut deploy on ollut tämän projektin toistuvin vika, eikä
+   se näkynyt mistään: PIN-portti vastaa tuntemattomaan reittiin 401:llä, joka
+   näyttää samalta kuin väärä PIN. Versioreitti on portin ulkopuolella, joten
+   tämä toimii silloinkin kun mikään muu ei. */
+const WORKER_MIN='6.0';
+async function workerVersio(){
+  try{
+    const r=await fetch(WORKER_URL+'/api/version');
+    if(!r.ok)return null;
+    const d=await r.json();
+    return d.version||null;
+  }catch(e){return null}
+}
+async function workerVanha(){
+  const v=await workerVersio();
+  if(v===WORKER_MIN)return false;
+  alert('Workeria ei ole päivitetty Cloudflareen.\n\n'+
+    (v?('Cloudflaressa on versio '+v+', tarvitaan '+WORKER_MIN+'.')
+      :('Cloudflaressa on vanha versio joka ei osaa kertoa versiotaan (tarvitaan '+WORKER_MIN+').'))+
+    '\n\nKorjaus:\n1. Cloudflare → Workers & Pages → jarvis\n2. Edit code\n'+
+    '3. Valitse kaikki ja korvaa worker.js-tiedoston sisällöllä\n4. Deploy\n\n'+
+    'Yritä sitten uudestaan.');
+  return true;
+}
 function pinPuuttuu(){
   if(JARVIS_PIN)return false;
   alert('Et ole kirjautunut tällä osoitteella.\n\nOsoite: '+location.origin+
@@ -1292,6 +1316,7 @@ function pinPuuttuu(){
   return true;
 }
 async function telegramSetup(){
+  if(await workerVanha())return;
   if(pinPuuttuu())return;
   if(!confirm('Kytketäänkö Telegram-botti ja tarkistetaan sen tila?\n\nEdellyttää että TELEGRAM_BOT_TOKEN ja TELEGRAM_SECRET on lisätty Cloudflaren secretteihin ja worker on deployattu.'))return;
   try{
@@ -1306,6 +1331,7 @@ async function telegramSetup(){
 }
 // Pelkkä tilan tarkistus ilman että webhookiin kosketaan
 async function telegramStatus(){
+  if(await workerVanha())return;
   if(pinPuuttuu())return;
   try{
     const r=await apiFetch('/api/telegram/status');
