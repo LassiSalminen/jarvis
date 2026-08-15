@@ -137,6 +137,78 @@ ettei toimintoa ole käytössä, ja synkkauksen voi ajaa käsin GitHubissa
    ajastimen ja hakee uuden datan itsestään heti kun ajo valmistuu
    (tavallisesti noin minuutti).
 
+### 2f — (Vapaaehtoinen) Telegram-botti: ilmoitukset kelloon ja merkinnät puhelimesta
+
+Telegram-botti on kaksisuuntainen: se lähettää sinulle ilmoituksia (jotka
+Garmin Epix näyttää automaattisesti, koska kello peilaa puhelimen ilmoitukset)
+ja ottaa vastaan merkintöjä samaan tietopankkiin kuin sovellus.
+
+Tee vaiheet järjestyksessä — botti ei tee mitään ennen kuin kaikki kolme
+salaisuutta ovat paikallaan.
+
+**1. Luo botti (5 min)**
+1. Avaa Telegram ja hae käyttäjä **@BotFather**.
+2. Lähetä `/newbot`.
+3. Anna botille nimi (esim. `Jarvis`) ja käyttäjätunnus joka päättyy
+   `bot`-sanaan (esim. `lassi_jarvis_bot`). Tunnuksen pitää olla vapaa.
+4. BotFather antaa **tokenin** muotoa `1234567890:AAE...`. Kopioi se heti.
+   **Tämä on salasana bottiisi** — älä liitä sitä chattiin, sähköpostiin,
+   GitHubiin tai selaimen osoiteriville.
+
+**2. Vie token ja oma salasana Cloudflareen (3 min)**
+1. Cloudflare → Workerisi → Settings → Variables and Secrets → Add:
+   - Type: **Secret**, Name: `TELEGRAM_BOT_TOKEN`, Value: BotFatherin token.
+2. Lisää **toinen** secret:
+   - Name: `TELEGRAM_SECRET`
+   - Value: **pitkä satunnainen jono**, jonka keksit itse
+     (esim. `q8fj-2mzp-71xd-vk04-ba9r`). Tämä ei ole mistään saatu — se on
+     sinun oma. Telegram lähettää sen jokaisessa viestissä, ja se on ainoa
+     asia joka erottaa aidon Telegramin siitä että joku muu kutsuu workerisi
+     osoitetta suoraan.
+3. Paina **Deploy**.
+
+**3. Päivitä workerin koodi**
+Workerissa on nyt useampi päivittämätön muutos (uutislähteet + Telegram).
+Cloudflare → Workerisi → **Edit code** → korvaa kaikki uusimmalla
+`worker.js`-tiedostolla → **Deploy**.
+
+**4. Kytke botti sovelluksesta (10 sekuntia)**
+Avaa J.A.R.V.I.S. → mobiilinäkymässä **INFO**-välilehti → JÄRJESTELMÄ-kortti →
+**✈ KYTKE TELEGRAM**.
+
+Tämä kertoo Telegramille mihin osoitteeseen viestit lähetetään. Se tehdään
+sovelluksesta eikä selaimen osoiteriviltä siksi, että Telegramin omissa
+ohjeissa neuvottu tapa vaatisi tokenin liittämisen URLiin — sieltä se jäisi
+selaushistoriaan ja voisi synkkautua muille laitteille.
+
+**5. Lukitse botti itsellesi (2 min) — älä jätä tätä tekemättä**
+1. Avaa Telegramissa oma bottisi ja lähetä sille mikä tahansa viesti.
+2. Botti vastaa: `Chat-tunnisteesi on: 123456789`.
+3. Cloudflare → Settings → Variables and Secrets → Add:
+   - Type: **Secret**, Name: `TELEGRAM_CHAT_ID`, Value: tuo numero → **Deploy**.
+4. Lähetä botille `/status`. Nyt sen pitäisi kertoa tietopankin tilanne.
+
+Ennen kohtaa 3 botti kertoo vain chat-tunnisteen eikä tee mitään muuta —
+se ei siis vuoda dataa. Mutta lukitus kannattaa tehdä heti: ilman sitä kuka
+tahansa bottisi tunnuksen arvaava voisi myöhemmissä vaiheissa kirjoittaa
+tietopankkiisi ja kuluttaa Claude-saldoasi.
+
+**6. Varmista että ilmoitukset näkyvät kellossa**
+- Puhelin: Asetukset → Sovellukset → Telegram → Ilmoitukset päälle.
+- Garmin Connect -sovellus: Asetukset → Älyilmoitukset → varmista että
+  Telegram on sallittujen listalla.
+- Testi: lähetä botille `/status` ja katso tuleeko ilmoitus kelloon.
+
+**Vianetsintä**
+- "Workeria ei ole päivitetty" → kohta 3 jäi tekemättä.
+- "TELEGRAM_BOT_TOKEN puuttuu workerista" → secretin nimi väärin tai Deploy
+  painamatta.
+- Botti ei vastaa mitään → tarkista että `TELEGRAM_SECRET` on **sama** arvo
+  Cloudflaressa kuin kytkentähetkellä. Jos vaihdoit sen, paina
+  ✈ KYTKE TELEGRAM uudestaan.
+- Botti vastasi ennen mutta ei enää → jos vaihdoit `TELEGRAM_CHAT_ID`:n,
+  tarkista että siinä on tasan se numero jonka botti kertoi.
+
 ---
 
 ## VAIHE 3 — Liitä osoite käyttöliittymään (3 min)

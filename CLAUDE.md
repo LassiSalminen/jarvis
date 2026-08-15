@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v5.3). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v5.5). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -15,7 +15,8 @@ Kaksi persoonaa: U.L.T.R.O.N. (oletus, synkkä sarkasmi) ja J.A.R.V.I.S.
   Julkaistaan GitHub Pagesiin: https://lassisalminen.github.io/jarvis/jarvis.html
 - `worker.js` — Cloudflare Worker: (1) proxy Claude APIin (avain palvelimella),
   (2) wiki KV:hen → sama muisti kaikilla laitteilla, (3) uutisfeed,
-  (4) ElevenLabs TTS + Scribe-transkriptio, (5) Garmin-synkkaus.
+  (4) ElevenLabs TTS + Scribe-transkriptio, (5) Garmin-synkkaus,
+  (6) Telegram-botti (ilmoitukset kelloon + merkinnät puhelimesta).
   EI koskaan GitHubiin (.gitignore hoitaa).
 - `manifest.json`, `sw.js`, ikonit — PWA (network-first-cache).
 - `MUISTI-ARKKITEHTUURI.md` — pitkän aikavälin muistijärjestelmän spesifikaatio.
@@ -34,7 +35,30 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v5.4)
+## Toiminnot (v5.5)
+- **Telegram-botti** (worker.js, vaihe 1/5 valmis): ilmoitukset menevät
+  puhelimeen ja sitä kautta Epix-kelloon ilman kellosovellusta, ja botille
+  voi myöhemmin lähettää merkintöjä samaan tietopankkiin.
+  **HUOM PIN-portti**: `/api/telegram` on ainoa reitti joka ohittaa
+  `JARVIS_PIN`-portin — Telegramin palvelin ei voi lähettää
+  `X-Jarvis-Pin`-otsaketta, joten webhook saisi muuten aina 401:n.
+  Ohitus on tarkka polkuvertailu, joten `/api/telegram/setup` pysyy PIN:n
+  takana (se muuttaa asetuksia). Tilalla **kaksi lukkoa**: Telegramin
+  `secret_token` (`X-Telegram-Bot-Api-Secret-Token`) ja `TELEGRAM_CHAT_ID`
+  -valkolista. Molemmat tarvitaan; ilman chat-lukitusta botti kertoo vain
+  chat-tunnisteen eikä tee muuta.
+  **HUOM webhook vastaa aina 200**, myös hylätessään: muu kuin 200 saa
+  Telegramin lähettämään saman viestin uudestaan loputtomiin. Varsinainen työ
+  ajetaan `ctx.waitUntil()`issa, jotta vastaus lähtee ennen aikakatkaisua —
+  siksi `fetch(request, env, ctx)` eikä enää `(request, env)`.
+  **Viestit lähetetään ilman `parse_mode`a**: HTML/Markdown-muotoilu
+  tarkoittaisi että yksi mallin tuottama erikoismerkki hylkäyttää KOKO
+  viestin, ja sen huomaisi vasta siitä ettei aamubriiffi tullut.
+  Kytkentä tehdään sovelluksesta (INFO → ✈ KYTKE TELEGRAM → `/api/telegram/setup`),
+  koska Telegramin oma ohje veisi bottitunnuksen selaimen osoiteriville ja
+  sitä kautta selaushistoriaan. Asennus: ASENNUS.md kohta 2f.
+  Secretit: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_SECRET`, `TELEGRAM_CHAT_ID`.
+  **Vaatii workerin päivityksen Cloudflareen.**
 - **HUOM esimerkki-JSON promptissa**: `ptBuildSys`in mallivastauksesta puuttui
   yksi sulkeva `}` (sisäkkäinen `{"reply":…,"program":{…}}` tarvitsee kaksi
   lopussa), ja malli tuotti täsmälleen sen rikkinäisen muodon jota sille

@@ -1022,6 +1022,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
               <button class="btn ghost" onclick="exportBackup()" style="font-size:11px;flex:1;min-height:40px">⭳ VARMUUSKOPIO</button>
               <button class="btn ghost" onclick="importBackup()" style="font-size:11px;flex:1;min-height:40px">⭱ PALAUTA</button>
             </div>
+            <button class="btn ghost" onclick="telegramSetup()" style="font-size:12px;width:100%;min-height:40px">✈ KYTKE TELEGRAM</button>
             <button class="btn ghost" onclick="changePin()" style="font-size:12px;width:100%;min-height:40px">⟲ VAIHDA PIN / KIRJAUDU ULOS</button>
           </div>
         </div>
@@ -1154,7 +1155,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="5.4";
+const VERSION="5.5";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1219,6 +1220,27 @@ function logout(reason){
     setTimeout(()=>{pe.style.opacity='0';pe.textContent='VÄÄRÄ PIN-KOODI';},2800);}
 }
 // Vaihda PIN / kirjaudu ulos manuaalisesti
+/* Telegram-botin kytkentä. Tämä kertoo Telegramille mihin osoitteeseen
+   viestit lähetetään. Tehdään sovelluksesta eikä selaimen osoiteriviltä,
+   koska Telegramin ohjeissa neuvottu tapa vaatisi bottitunnuksen
+   liittämisen URLiin — sieltä se jäisi selaushistoriaan ja mahdollisesti
+   synkkautuisi muille laitteille. Worker tietää tunnuksen jo, joten sen
+   ei tarvitse käydä selaimen kautta lainkaan. */
+async function telegramSetup(){
+  if(!confirm('Kytketäänkö Telegram-botti tähän workeriin?\n\nEdellyttää että TELEGRAM_BOT_TOKEN ja TELEGRAM_SECRET on lisätty Cloudflaren secretteihin ja worker on deployattu.'))return;
+  try{
+    const r=await apiFetch('/api/telegram/setup',{method:'POST'});
+    if(r.status===404){toast('Workeria ei ole päivitetty — /api/telegram/setup puuttuu',6000);return}
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||d.error){toast('Kytkentä ei onnistunut: '+(d.error||('virhe '+r.status)),7000);return}
+    toast(d.chatLocked
+      ? 'Telegram kytketty: @'+(d.bot||'botti')
+      : 'Telegram kytketty: @'+(d.bot||'botti')+'. Lähetä botille viesti — se kertoo chat-tunnisteesi, joka pitää vielä lukita Cloudflareen.',
+      d.chatLocked?3500:9000);
+  }catch(e){
+    toast('Kytkentä ei onnistunut: '+String(e.message||e).slice(0,80),6000);
+  }
+}
 function changePin(){
   if(confirm('Kirjaudutaanko ulos? Joudut syöttämään PIN-koodin uudelleen tällä laitteella.')) logout('SYÖTÄ UUSI PIN-KOODI');
 }
