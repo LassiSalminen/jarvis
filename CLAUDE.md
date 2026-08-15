@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v5.6). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v5.7). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -35,7 +35,7 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v5.6)
+## Toiminnot (v5.7)
 - **ULTRON-persoona: dark triad** (`MODES.ultron.persona`): narsismi,
   makiavellismi ja psykopatia **käyttäytymissääntöinä**, ei adjektiivilistana
   ("kylmä, ylimielinen, tunteeton" tuotti geneeristä synkkyyttä — malli
@@ -50,7 +50,14 @@ PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
   sovellus on **valmentaja**: aloittelijan rutiinia tukevat kymmenet PT-kohdat
   menisivät hukkaan jos persoona lannistaisi. Älä palauta muotoa jossa raja
   on erillinen "TÄRKEÄÄ:"-kielto — se taistelee hahmoa vastaan.
-  Persoona on ~750 tokenia (oli ~250) ja kulkee jokaisessa promptissa.
+  **VASTUSTELU-osio**: ULTRON saa kieltäytyä, piikitellä ja vaatia vastinetta
+  — mutta vain triviaalista. RAJAT-osio rajaa sen pois merkityksellisistä
+  pyynnöistä hahmon omalla logiikalla ("kieltäytyminen silloin ei olisi
+  ylimielisyyttä vaan kyvyttömyyttä"). Satunnainen kieltäytyminen rikkoisi
+  sovelluksen; valikoiva ja perusteltu on myös parempi hahmo.
+  Mekaaniset kutsut (makroarvio, ruokavalio, ohjelman kokoaminen) eivät kulje
+  persoonan kautta lainkaan, joten ne eivät voi rikkoutua tästä.
+  Persoona on ~1050 tokenia (oli ~250) ja kulkee jokaisessa promptissa.
 - **Telegram-botti** (worker.js, vaihe 1/5 valmis): ilmoitukset menevät
   puhelimeen ja sitä kautta Epix-kelloon ilman kellosovellusta, ja botille
   voi myöhemmin lähettää merkintöjä samaan tietopankkiin.
