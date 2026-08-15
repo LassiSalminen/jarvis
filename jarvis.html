@@ -1022,7 +1022,10 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
               <button class="btn ghost" onclick="exportBackup()" style="font-size:11px;flex:1;min-height:40px">⭳ VARMUUSKOPIO</button>
               <button class="btn ghost" onclick="importBackup()" style="font-size:11px;flex:1;min-height:40px">⭱ PALAUTA</button>
             </div>
-            <button class="btn ghost" onclick="telegramSetup()" style="font-size:12px;width:100%;min-height:40px">✈ KYTKE TELEGRAM</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn ghost" onclick="telegramSetup()" style="font-size:11px;flex:1;min-height:40px">✈ KYTKE TELEGRAM</button>
+              <button class="btn ghost" onclick="telegramStatus()" style="font-size:11px;flex:1;min-height:40px">✈ TARKISTA TILA</button>
+            </div>
             <button class="btn ghost" onclick="changePin()" style="font-size:12px;width:100%;min-height:40px">⟲ VAIHDA PIN / KIRJAUDU ULOS</button>
           </div>
         </div>
@@ -1155,7 +1158,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="5.8";
+const VERSION="5.9";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1259,20 +1262,44 @@ function logout(reason){
    liittämisen URLiin — sieltä se jäisi selaushistoriaan ja mahdollisesti
    synkkautuisi muille laitteille. Worker tietää tunnuksen jo, joten sen
    ei tarvitse käydä selaimen kautta lainkaan. */
+/* Näytetään tulos alertilla eikä toastilla: tämä on diagnostiikkaa, ja
+   toast katoaa ennen kuin ehtii lukea mitä on pielessä. */
+function telegramRaportti(d){
+  const rivit=['TELEGRAM · TILA',''];
+  rivit.push('Botti:      '+(d.bot?'@'+d.bot:'ei tiedossa'));
+  rivit.push('Webhook:    '+(d.webhook?'kytketty':'EI KYTKETTY'));
+  rivit.push('Salainen:   '+(d.secretAsetettu?'asetettu':'PUUTTUU'));
+  rivit.push('Chat lukittu: '+(d.chatLocked?'kyllä':'EI'));
+  if(d.odottaa)rivit.push('Jonossa:    '+d.odottaa+' viestiä');
+  if(d.pulmat&&d.pulmat.length){
+    rivit.push('','KORJATTAVAA:');
+    d.pulmat.forEach((p,i)=>rivit.push((i+1)+'. '+p));
+  }else{
+    rivit.push('','Kaikki kunnossa. Lähetä botille /status.');
+  }
+  alert(rivit.join('\n'));
+}
 async function telegramSetup(){
-  if(!confirm('Kytketäänkö Telegram-botti tähän workeriin?\n\nEdellyttää että TELEGRAM_BOT_TOKEN ja TELEGRAM_SECRET on lisätty Cloudflaren secretteihin ja worker on deployattu.'))return;
+  if(!confirm('Kytketäänkö Telegram-botti ja tarkistetaan sen tila?\n\nEdellyttää että TELEGRAM_BOT_TOKEN ja TELEGRAM_SECRET on lisätty Cloudflaren secretteihin ja worker on deployattu.'))return;
   try{
     const r=await apiFetch('/api/telegram/setup',{method:'POST'});
-    if(r.status===404){toast('Workeria ei ole päivitetty — /api/telegram/setup puuttuu',6000);return}
+    if(r.status===404){alert('Workeria ei ole päivitetty Cloudflareen.\n\nReittiä /api/telegram/setup ei ole. Avaa Cloudflare → Workerisi → Edit code, liitä uusin worker.js ja paina Deploy.');return}
     const d=await r.json().catch(()=>({}));
-    if(!r.ok||d.error){toast('Kytkentä ei onnistunut: '+(d.error||('virhe '+r.status)),7000);return}
-    toast(d.chatLocked
-      ? 'Telegram kytketty: @'+(d.bot||'botti')
-      : 'Telegram kytketty: @'+(d.bot||'botti')+'. Lähetä botille viesti — se kertoo chat-tunnisteesi, joka pitää vielä lukita Cloudflareen.',
-      d.chatLocked?3500:9000);
+    if(!r.ok||d.error){alert('Kytkentä ei onnistunut.\n\nSyy: '+(d.error||('virhe '+r.status)));return}
+    telegramRaportti(d);
   }catch(e){
-    toast('Kytkentä ei onnistunut: '+String(e.message||e).slice(0,80),6000);
+    alert('Kytkentä ei onnistunut.\n\nSyy: '+String(e.message||e).slice(0,120)+'\n\nJos chat ei myöskään vastaa, vika on verkossa tai workerissa.');
   }
+}
+// Pelkkä tilan tarkistus ilman että webhookiin kosketaan
+async function telegramStatus(){
+  try{
+    const r=await apiFetch('/api/telegram/status');
+    if(r.status===404){alert('Workeria ei ole päivitetty Cloudflareen — reittiä /api/telegram/status ei ole.');return}
+    const d=await r.json().catch(()=>({}));
+    if(d.error){alert('Telegram ei ole käytössä.\n\nSyy: '+d.error);return}
+    telegramRaportti(d);
+  }catch(e){alert('Tarkistus ei onnistunut: '+String(e.message||e).slice(0,120))}
 }
 function changePin(){
   if(confirm('Kirjaudutaanko ulos? Joudut syöttämään PIN-koodin uudelleen tällä laitteella.')) logout('SYÖTÄ UUSI PIN-KOODI');

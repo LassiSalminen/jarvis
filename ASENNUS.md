@@ -199,15 +199,29 @@ tietopankkiisi ja kuluttaa Claude-saldoasi.
   Telegram on sallittujen listalla.
 - Testi: lähetä botille `/status` ja katso tuleeko ilmoitus kelloon.
 
-**Vianetsintä**
-- "Workeria ei ole päivitetty" → kohta 3 jäi tekemättä.
-- "TELEGRAM_BOT_TOKEN puuttuu workerista" → secretin nimi väärin tai Deploy
-  painamatta.
-- Botti ei vastaa mitään → tarkista että `TELEGRAM_SECRET` on **sama** arvo
-  Cloudflaressa kuin kytkentähetkellä. Jos vaihdoit sen, paina
-  ✈ KYTKE TELEGRAM uudestaan.
-- Botti vastasi ennen mutta ei enää → jos vaihdoit `TELEGRAM_CHAT_ID`:n,
-  tarkista että siinä on tasan se numero jonka botti kertoi.
+**Vianetsintä — aloita aina tästä**
+
+Botti hylkää kelpaamattomat viestit **hiljaa**. Se on turvallisuusominaisuus,
+mutta se tarkoittaa ettei vikatilanteessa näy mitään. Siksi on oma nappi:
+
+INFO → JÄRJESTELMÄ → **✈ TARKISTA TILA**
+
+Se kysyy Telegramilta mitä se ajattelee webhookista ja kertoo suomeksi mitä
+on korjattavana. Tyypilliset vastaukset:
+
+| Mitä lukee | Mitä tehdä |
+|---|---|
+| "Workeria ei ole päivitetty" | Kohta 3 jäi tekemättä — liitä worker.js ja Deploy |
+| "TELEGRAM_BOT_TOKEN puuttuu" | Secretin nimi väärin tai Deploy painamatta |
+| "TELEGRAM_SECRET puuttuu" | Sama, toiselle secretille |
+| "Telegramilla ei ole webhookia" | Paina ✈ KYTKE TELEGRAM |
+| "Webhook osoittaa väärään paikkaan" | Paina ✈ KYTKE TELEGRAM |
+| "TELEGRAM_CHAT_ID puuttuu" | Lähetä botille viesti, lisää saamasi numero |
+| "Telegramin viimeisin virhe: …401…" | `TELEGRAM_SECRET` on eri kuin kytkentähetkellä — paina ✈ KYTKE TELEGRAM uudestaan |
+| "N viestiä jonossa" | Telegram ei saa viestejä perille; katso yllä oleva virhe |
+
+Jos kaikki on kunnossa mutta botti on silti hiljaa, tarkista että kirjoitat
+**oikealle** botille — BotFatherilla voi olla useampi.
 
 ---
 

@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v5.8). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v5.9). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -35,7 +35,15 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v5.8)
+## Toiminnot (v5.9)
+- **Telegram-diagnostiikka** (`/api/telegram/status`, `tgDiag`): botti hylkää
+  kelpaamattomat viestit **hiljaa** — se on turvallisuusominaisuus, mutta
+  tarkoittaa ettei vikatilanteessa näy mitään. `getWebhookInfo` on tässä
+  olennaisin: Telegram kertoo siinä suoraan jos se ei saa yhteyttä workeriin
+  tai jos `secret_token` ei täsmää, eikä sitä näkisi mistään muualta.
+  INFO → ✈ TARKISTA TILA. Tulos näytetään `alert`illa eikä toastilla, koska
+  toast katoaa ennen kuin ehtii lukea mitä on pielessä.
+  Katettu 7 vikatilannetta, kukin oma suomenkielinen ohjeensa (ASENNUS.md 2f).
 - **Sovelluksen tila KV:hen** (`/api/state`, `pushState`/`loadState`):
   `convLog` (päivän keskustelu), `learnData` (opitut aiheet) ja valittu
   persoona synkataan workerille. Syy: **yökoonti siirtyy workeriin**, jotta
