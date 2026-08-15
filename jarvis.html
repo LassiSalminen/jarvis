@@ -1158,7 +1158,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="5.9";
+const VERSION="6.0";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1279,7 +1279,20 @@ function telegramRaportti(d){
   }
   alert(rivit.join('\n'));
 }
+/* PIN elää localStoragessa, joka on osoitekohtainen: sama sovellus eri
+   osoitteessa (localhost vs. GitHub Pages) on selaimelle eri sivusto eikä
+   muista PINiä. Ilman tätä tarkistusta käyttäjä saa workerilta pelkän
+   "unauthorized"-sanan, joka ei kerro mistä on kyse. */
+function pinPuuttuu(){
+  if(JARVIS_PIN)return false;
+  alert('Et ole kirjautunut tällä osoitteella.\n\nOsoite: '+location.origin+
+    '\n\nPIN muistetaan osoitekohtaisesti, joten puhelimella syötetty PIN ei päde tässä. '+
+    'Syötä PIN tälle osoitteelle, tai avaa sovellus samasta osoitteesta jota käytät puhelimella:\n\n'+
+    'https://lassisalminen.github.io/jarvis/jarvis.html');
+  return true;
+}
 async function telegramSetup(){
+  if(pinPuuttuu())return;
   if(!confirm('Kytketäänkö Telegram-botti ja tarkistetaan sen tila?\n\nEdellyttää että TELEGRAM_BOT_TOKEN ja TELEGRAM_SECRET on lisätty Cloudflaren secretteihin ja worker on deployattu.'))return;
   try{
     const r=await apiFetch('/api/telegram/setup',{method:'POST'});
@@ -1293,6 +1306,7 @@ async function telegramSetup(){
 }
 // Pelkkä tilan tarkistus ilman että webhookiin kosketaan
 async function telegramStatus(){
+  if(pinPuuttuu())return;
   try{
     const r=await apiFetch('/api/telegram/status');
     if(r.status===404){alert('Workeria ei ole päivitetty Cloudflareen — reittiä /api/telegram/status ei ole.');return}
