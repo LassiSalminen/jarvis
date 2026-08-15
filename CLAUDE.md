@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v5.7). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v5.8). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -35,7 +35,23 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v5.7)
+## Toiminnot (v5.8)
+- **Sovelluksen tila KV:hen** (`/api/state`, `pushState`/`loadState`):
+  `convLog` (päivän keskustelu), `learnData` (opitut aiheet) ja valittu
+  persoona synkataan workerille. Syy: **yökoonti siirtyy workeriin**, jotta
+  se tapahtuu myös kun sovellus on kiinni — nykyinen `compileDay` ajetaan
+  selaimen `setInterval`illa klo 21 eli vain jos tabletti sattuu olemaan auki.
+  Worker ei näe localStoragea, joten ilman tätä koonti osaisi kertoa ruoasta
+  ja treenistä mutta ei siitä mistä puhuttiin tai mitä opittiin.
+  Sivuhyöty: `convLog` ja `learnData` olivat **laitekohtaisia** — tabletilla
+  käyty keskustelu puuttui puhelimen koonnista. `loadState` yhdistää
+  convLogin aikaleiman ja kysymyksen perusteella.
+  **HUOM kirjoitus on viivästetty 8 s** (`pushState`): jokainen chat-viesti
+  kutsuu `saveConv`ia, ja välitön PUT tarkoittaisi kymmeniä turhia
+  KV-kirjoituksia minuutissa. Todennettu: viisi peräkkäistä muutosta → yksi
+  kirjoitus.
+  `learnData` otetaan KV:stä vain jos paikallinen on tyhjä — kertaushistorian
+  kaksisuuntainen yhdistäminen olisi oma urakkansa eikä koonti tarvitse sitä.
 - **ULTRON-persoona: dark triad** (`MODES.ultron.persona`): narsismi,
   makiavellismi ja psykopatia **käyttäytymissääntöinä**, ei adjektiivilistana
   ("kylmä, ylimielinen, tunteeton" tuotti geneeristä synkkyyttä — malli

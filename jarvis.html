@@ -1155,7 +1155,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="5.7";
+const VERSION="5.8";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1384,6 +1384,7 @@ function startApp(){
   loadPortfolio();
   loadLectures();
   loadGarmin();
+  loadState();   // päivän keskustelu ja opitut aiheet myös muilta laitteilta
 }
 
 // Enter-näppäin PIN-kentässä
@@ -1583,10 +1584,54 @@ async function saveRaw(){try{localStorage.setItem('jarvis:raw',JSON.stringify(ra
    koonnissa wiki-sivuksi, muu saa kadota. */
 let convLog=[];
 try{const v=localStorage.getItem('jarvis:conv');if(v)convLog=JSON.parse(v)}catch(e){}
+/* ---- Tilan synkkaus workerille ----
+   Yökoonti ajetaan Cloudflaressa eikä selaimessa, jotta se tapahtuu myös
+   silloin kun sovellus on kiinni. Worker ei kuitenkaan näe localStoragea,
+   joten päivän keskustelu, opitut aiheet ja valittu persoona pitää työntää
+   KV:hen. Ilman tätä koonti osaisi kertoa ruoasta ja treenistä mutta ei
+   siitä mistä puhuit tai mitä opit.
+   Kirjoitus on viivästetty: jokainen chat-viesti kutsuu saveConvia, ja
+   välitön PUT tarkoittaisi kymmeniä turhia kirjoituksia minuutissa. */
+let stateT=null;
+function pushState(){
+  if(stateT)clearTimeout(stateT);
+  stateT=setTimeout(async()=>{
+    stateT=null;
+    try{
+      await apiFetch('/api/state',{method:'PUT',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({convLog,learn:learnData,
+          persona:AI.persona,personaName:AI.name,updated:Date.now()})});
+    }catch(e){/* offline: paikallinen tila säilyy, synkkaus yrittää uudestaan */}
+  },8000);
+}
+/* Haetaan workerin tila käynnistyksessä ja yhdistetään paikalliseen.
+   convLog yhdistetään aikaleiman ja kysymyksen perusteella, koska päivä voi
+   jakautua laitteille: tabletilla käyty keskustelu kuului aiemmin vain sille
+   laitteelle. learnData otetaan käyttöön vain jos paikallinen on tyhjä —
+   kertaushistorian yhdistäminen olisi oma urakkansa eikä koonti tarvitse
+   sitä, se lukee vain aiheet. */
+async function loadState(){
+  try{
+    const r=await apiFetch('/api/state');
+    if(!r.ok)return;
+    const s=await r.json();
+    if(Array.isArray(s.convLog)&&s.convLog.length){
+      const avain=x=>x.ts+'|'+String(x.q||'').slice(0,60);
+      const on=new Set(convLog.map(avain));
+      s.convLog.forEach(x=>{if(x&&!on.has(avain(x)))convLog.push(x)});
+      convLog.sort((a,b)=>a.ts-b.ts);
+      saveConv();
+    }
+    if(s.learn&&Array.isArray(s.learn.topics)&&!learnData.topics.length){
+      learnData=s.learn;saveLearn();
+    }
+  }catch(e){/* ei verkkoa — jatketaan paikallisella tilalla */}
+}
 function saveConv(){
   const raja=Date.now()-3*86400000;
   convLog=convLog.filter(r=>r&&r.ts>=raja).slice(-400);
   try{localStorage.setItem('jarvis:conv',JSON.stringify(convLog))}catch(e){}
+  pushState();
 }
 /* Pitkän keskustelun tiivistys. Malli näkee vain viimeiset viestit, joten
    ilman tätä kymmenen viestin takainen asia katosi jäljettömiin kesken
@@ -4784,7 +4829,7 @@ setInterval(()=>{const n=new Date(),lp=new Date(lastPrune);if(n.getHours()>=21&&
 let learnData = {topics:[], streak:0, lastDate:'', todayDone:false};
 try{const v=localStorage.getItem('jarvis:learn');if(v)learnData=JSON.parse(v)}catch(e){}
 
-function saveLearn(){try{localStorage.setItem('jarvis:learn',JSON.stringify(learnData))}catch(e){}}
+function saveLearn(){try{localStorage.setItem('jarvis:learn',JSON.stringify(learnData))}catch(e){}pushState()}
 
 function learnToday(){return new Date().toISOString().slice(0,10)}
 
@@ -6259,6 +6304,7 @@ if(JARVIS_PIN){
   loadPortfolio();
   loadLectures();
   loadGarmin();
+  loadState();   // päivän keskustelu ja opitut aiheet myös muilta laitteilta
 }
 </script>
 </body>
