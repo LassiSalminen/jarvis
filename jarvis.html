@@ -830,6 +830,11 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
       <button class="tab" data-view="pt">Treeni</button>
       <button class="tab" data-view="news">Uutiset</button>
       <button class="tab" data-view="invest">Sijoitus</button>
+      <!-- INFO oli aiemmin vain mobiilinavigaatiossa, joka piilotetaan yli
+           768 px leveydellä. Koneella ei siis päässyt lainkaan Telegramin
+           kytkentään, ajastusten testiin, varmuuskopioon eikä PIN:n
+           vaihtoon — ja juuri ne tehdään koneella. -->
+      <button class="tab" data-view="info">Info</button>
     </div>
 
     <!-- HOME -->
@@ -1160,7 +1165,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="6.7";
+const VERSION="6.8";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */

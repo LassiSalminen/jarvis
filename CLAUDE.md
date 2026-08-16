@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v6.7). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v6.8). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -47,7 +47,12 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v6.7)
+## Toiminnot (v6.8)
+- **HUOM Info-välilehti oli vain mobiilissa**: `#mobileNav` on `display:none` ja
+  näytetään vain `@media(max-width:768px)`, joten koneella ei päässyt lainkaan
+  Telegramin kytkentään, ajastusten testiin, varmuuskopioon eikä PIN:n vaihtoon
+  — ja juuri ne tehdään koneella. Lisätty `.tabs`-riviin oma välilehti; sama
+  `#view-info` palvelee molempia leveyksiä eikä uutta näkymää tarvittu.
 - **Yökoonti klo 23 workerissa** (`cronKoonti`): päivästä tulee muistia ilman
   että sovellusta avataan. **Selaimen `setInterval`-automaatti klo 21 on
   poistettu** — se ajettiin vain jos tabletti sattui olemaan auki, ja kaksi
