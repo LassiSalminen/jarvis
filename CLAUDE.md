@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v6.4). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v6.5). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -47,7 +47,27 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v6.4)
+## Toiminnot (v6.5)
+- **Ruokakuva botille** (`tgKuva`, `tgKirjaaRuoka`, `tgB64`): lautasesta otettu
+  kuva → makroarvio → kirjaus samaan PT-dataan jota sovellus käyttää. Nopein
+  tapa kirjata: mitään ei tarvitse kuvailla sanoin eikä punnita.
+  **HUOM webhook luki aiemmin vain `msg.text`ia**, joten kuva ei mennyt
+  mihinkään. `msg.photo` on taulukko eri kokoja — **viimeinen on suurin**, ja
+  kuvateksti tulee omassa `msg.caption`-kentässään eikä `text`issä.
+  **HUOM `tgB64` muuntaa paloissa**: `String.fromCharCode(...bytes)` koko
+  taulukolle ylittää pinon isolla kuvalla ja kaatuu.
+  `tgJson` sietää koodilohkoon kääritty vastauksen — malli tekee sen usein
+  vaikka pyydetään pelkkää JSONia.
+  **Kirjaus menee suoraan PT-dataan eikä jonoon**: muistutukset lukevat samaa
+  dataa, ja jonossa oleva ateria tarkoittaisi että proteiinimuistutus tulee
+  vaikka olet juuri syönyt. Kilpa-ajo sovelluksen kanssa on mahdollinen mutta
+  kapea — kirjaus tapahtuu puhelimella, jolloin sovellus on harvoin auki.
+  Tekstikirjaus on **oma komentonsa** `/ruoka …` eikä arvaus vapaasta
+  tekstistä: "söin eilen liikaa" on keskustelua, ja väärin arvattu kirjaus
+  vääristäisi päivän luvut hiljaa.
+- **HUOM `node --check` ei riitä worker.js:lle**: se päästi läpi merkkijonon
+  jonka sisällä oli oikea rivinvaihto, ja vika näkyi vasta ES-moduulina
+  ladattaessa. Tarkista `import()`illa.
 - **Chat ei roiku yli päivän** (`restoreChat`, `tyhjennaChat`, `clearChatView`):
   keskustelu palautuu sivulatauksessa vain jos se on **tämän päivän**
   (`jarvis:chatDay`). Aiemmin historia jäi ruudulle päiväkausiksi, koska mikään
