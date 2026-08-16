@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v6.8). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v6.9). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -47,7 +47,24 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v6.8)
+## Toiminnot (v6.9)
+- **Ääniviestit botille** (`tgAani`): puhut, ElevenLabs Scribe litteroi ja
+  teksti kulkee saman polun kuin kirjoitettu. Litterointi näytetään
+  ("Kuulin: …") jotta väärin kuultu sana ei jää huomaamatta ja päädy
+  kirjaukseksi. Kävellessä puhuminen on nopeampaa kuin kirjoittaminen, ja
+  juuri silloin asiat unohtuvat.
+- **Keskustelun louhinta** (`tgLouhi`, `tgKirjaaPaino`): viestistä poimitaan
+  ruoat, paino ja treenimaininnat ja ne kirjataan automaattisesti.
+  Ajetaan **vastauksen lähettämisen jälkeen** taustalla — se ei saa hidastaa
+  keskustelua eikä sen kaatuminen viedä sitä mukanaan (`catch` + `console.warn`).
+  Ajetaan `API_MODEL_FAST`illa, koska se on mekaaninen JSON-kutsu.
+  **HUOM prompt kieltää kysymykset, suunnitelmat ja menneet päivät**: "paljonko
+  söin" ja "aion syödä" eivät ole kirjauksia, ja väärin ymmärretty lause
+  vääristäisi päivän luvut hiljaa. Todennettu testillä.
+  **Botti kertoo aina mitä kirjasi** — hiljainen kirjaus olisi pahin
+  vaihtoehto, koska virhettä ei huomaisi.
+  Treenit eivät kirjaudu treenilokiin vaan menevät koontiin tekstinä: loki on
+  sarjakohtainen ja osittainen kirjaus sotkisi painoehdotukset jotka lukevat sitä.
 - **HUOM Info-välilehti oli vain mobiilissa**: `#mobileNav` on `display:none` ja
   näytetään vain `@media(max-width:768px)`, joten koneella ei päässyt lainkaan
   Telegramin kytkentään, ajastusten testiin, varmuuskopioon eikä PIN:n vaihtoon
