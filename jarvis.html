@@ -930,6 +930,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
         <button class="chip" data-q="Millainen sää on tänään ja lähipäivinä? Mitä kannattaa huomioida?">☂ SÄÄ</button>
         <button class="chip" data-q="Milloin sähkö on halvimmillaan seuraavan vuorokauden aikana ja mitä sillä kannattaa ajoittaa?">↯ SÄHKÖ</button>
         <button class="chip" onclick="askNewsChip()">◰ UUTISET</button>
+        <button class="chip" onclick="tyhjennaChat()" title="Tyhjentää vain ruudun — päivän muisti säilyy">🗑 TYHJENNÄ</button>
       </div>
       <div class="inputbar">
         <button class="btn mic ghost" id="micChat">🎙</button>
@@ -1026,6 +1027,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
               <button class="btn ghost" onclick="telegramSetup()" style="font-size:11px;flex:1;min-height:40px">✈ KYTKE TELEGRAM</button>
               <button class="btn ghost" onclick="telegramStatus()" style="font-size:11px;flex:1;min-height:40px">✈ TARKISTA TILA</button>
             </div>
+            <button class="btn ghost" onclick="cronTesti()" style="font-size:12px;width:100%;min-height:40px">⏰ TESTAA AJASTUS</button>
             <button class="btn ghost" onclick="changePin()" style="font-size:12px;width:100%;min-height:40px">⟲ VAIHDA PIN / KIRJAUDU ULOS</button>
           </div>
         </div>
@@ -1158,7 +1160,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="6.3";
+const VERSION="6.4";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1330,6 +1332,30 @@ async function telegramSetup(){
   }
 }
 // Pelkkä tilan tarkistus ilman että webhookiin kosketaan
+/* Ajastuksen käsiajo. Ilman tätä testaaminen vaatisi curlin ja PIN-koodin
+   liittämisen komentoriville — sovellus tietää PIN:n jo, joten napista se
+   on yksi napautus. Käsiajo ohittaa kellonajan ja päivälukon. */
+const CRON_TEHTAVAT_UI=[
+  ['aamu','Aamubriiffi'],['ilta','Iltakysely'],['lounas','Lounasmuistutus'],
+  ['illallinen','Illallismuistutus'],['proteiini','Proteiinimuistutus'],['treeni','Treenimuistutus']
+];
+async function cronTesti(){
+  if(await workerVanha())return;
+  if(pinPuuttuu())return;
+  const lista=CRON_TEHTAVAT_UI.map((t,i)=>(i+1)+') '+t[1]).join('\n');
+  const v=prompt('Mikä ajastus ajetaan heti?\n\n'+lista+'\n\nAnna numero:','1');
+  if(!v)return;
+  const t=CRON_TEHTAVAT_UI[parseInt(v,10)-1];
+  if(!t){alert('Tuntematon valinta.');return}
+  try{
+    const r=await apiFetch('/api/cron/run?tehtava='+t[0],{method:'POST'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||d.error){alert(t[1]+' ei onnistunut.\n\nSyy: '+(d.error||('virhe '+r.status)));return}
+    alert(d.lahetetty
+      ? t[1]+' lähetettiin Telegramiin.\n\n'+(d.teksti||'')
+      : t[1]+': ei lähetetty.\n\nTämä on oikea tulos jos muistutuksella ei ollut asiaa — esimerkiksi ruoka on jo kirjattu tai proteiinitavoite täyttyy.');
+  }catch(e){alert('Ei onnistunut: '+String(e.message||e).slice(0,120))}
+}
 async function telegramStatus(){
   if(await workerVanha())return;
   if(pinPuuttuu())return;
@@ -2504,16 +2530,43 @@ async function askNewsChip(){
   sendChat('Kerro päivän tärkeimmät uutiset lyhyesti.');
 }
 
+/* Tyhjennä näkyvä keskustelu. Tämä EI koske convLogia: se on päivän koonnin
+   raaka-ainetta ja elää omassa avaimessaan. Ruudun siivoaminen ei saa
+   tarkoittaa että päivä katoaa muistista. */
+function clearChatView(){
+  const el=$('#chatlog');if(el)el.innerHTML='';
+  chatHistory=[];saveChat();
+  chatSummary='';saveChatSummary();
+  $('#endConvBar').classList.remove('show');
+  const e=$('#hd-chat');if(e)e.textContent='0';
+}
+function tyhjennaChat(){
+  if(chatHistory.length&&!confirm('Tyhjennetäänkö keskustelu?\n\nPäivän muisti säilyy — tämä siivoaa vain ruudun eikä vaikuta koontiin.'))return;
+  clearChatView();
+  addMsg('chatlog','system','[ Uusi keskustelu ]');
+}
 // Palauta edellinen keskustelu sivulatauksen jälkeen (esim. tabletti sammutti selaimen)
 function restoreChat(){
   if(!chatHistory.length)return;
+  /* Eilinen keskustelu ei kuulu tämän päivän ruudulle. Aiemmin historia
+     roikkui näkyvissä päiväkausia, koska mikään ei nollannut sitä ja
+     tyhjennys vaati yhteenvedon tekemistä. convLog ja koonti eivät kärsi:
+     ne elävät erillään ja ovat jo tallessa. */
+  const tanaan=new Date().toDateString();
+  let pv=null;try{pv=localStorage.getItem('jarvis:chatDay')}catch(e){}
+  if(pv&&pv!==tanaan){
+    chatHistory=[];saveChat();chatSummary='';saveChatSummary();
+    try{localStorage.setItem('jarvis:chatDay',tanaan)}catch(e){}
+    return;
+  }
+  if(!pv){try{localStorage.setItem('jarvis:chatDay',tanaan)}catch(e){}}
   chatHistory.forEach(m=>{
     if(typeof m.content!=='string')return;
     addMsg('chatlog',m.role==='user'?'user':'jarvis',m.content);
   });
-  addMsg('chatlog','system','[ Edellinen keskustelu palautettu'
+  addMsg('chatlog','system','[ Tämän päivän keskustelu palautettu'
     +(chatSummary?' — alkuosa on tiivistetty muistiin, se kulkee mukana vaikkei näy tässä':'')
-    +' — ✕ LOPETA & KOKOA aloittaa puhtaalta pöydältä ]');
+    +' — 🗑 TYHJENNÄ aloittaa puhtaalta pöydältä ]');
   if(chatHistory.length>=2)$('#endConvBar').classList.add('show');
   const e=$('#hd-chat');if(e)e.textContent=chatHistory.filter(m=>m.role==='user').length;
 }

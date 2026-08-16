@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v6.3). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v6.4). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -35,7 +35,20 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v6.3)
+## Toiminnot (v6.4)
+- **Chat ei roiku yli päivän** (`restoreChat`, `tyhjennaChat`, `clearChatView`):
+  keskustelu palautuu sivulatauksessa vain jos se on **tämän päivän**
+  (`jarvis:chatDay`). Aiemmin historia jäi ruudulle päiväkausiksi, koska mikään
+  ei nollannut sitä ja ainoa tyhjennys (`endTextConversation`) vaati vähintään
+  kaksi viestiä, teki Claude-kutsun ja jätti silti DOMin siivoamatta.
+  🗑 TYHJENNÄ on nyt aina näkyvissä chipeissä.
+  **HUOM tyhjennys ei koske `convLog`ia** — se on päivän koonnin raaka-ainetta
+  ja elää omassa avaimessaan. Ruudun siivoaminen ei saa tarkoittaa että päivä
+  katoaa muistista. Todennettu testillä.
+- **Ajastusten käsiajo napista** (`cronTesti`): INFO → ⏰ TESTAA AJASTUS ajaa
+  valitun ajastuksen heti ohittaen kellonajan ja päivälukon. Ilman tätä
+  testaaminen vaatisi curlin ja PIN-koodin liittämisen komentoriville.
+  Jos muistutus vaikenee, alert kertoo että se on oikea tulos eikä vika.
 - **Ajastukset** (`scheduled`, `cronAja`, `CRON_TEHTAVAT`): aamubriiffi klo 7,
   ruokamuistutus 12 ja 18, proteiini 20, treeni 16, iltakysely 21.
   **HUOM Cloudflaren cron on `0 * * * *` eli kerran tunnissa** — kellonaikoja
