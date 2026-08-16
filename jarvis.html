@@ -1033,6 +1033,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
               <button class="btn ghost" onclick="telegramStatus()" style="font-size:11px;flex:1;min-height:40px">✈ TARKISTA TILA</button>
             </div>
             <button class="btn ghost" onclick="cronTesti()" style="font-size:12px;width:100%;min-height:40px">⏰ TESTAA AJASTUS</button>
+            <button class="btn ghost" onclick="botDiag()" style="font-size:12px;width:100%;min-height:40px">🔧 TESTAA BOTIN OSAT</button>
             <button class="btn ghost" onclick="changePin()" style="font-size:12px;width:100%;min-height:40px">⟲ VAIHDA PIN / KIRJAUDU ULOS</button>
           </div>
         </div>
@@ -1165,7 +1166,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="7.0";
+const VERSION="7.1";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1294,7 +1295,7 @@ function telegramRaportti(d){
    se näkynyt mistään: PIN-portti vastaa tuntemattomaan reittiin 401:llä, joka
    näyttää samalta kuin väärä PIN. Versioreitti on portin ulkopuolella, joten
    tämä toimii silloinkin kun mikään muu ei. */
-const WORKER_MIN='7.0';
+const WORKER_MIN='7.1';
 async function workerVersio(){
   try{
     const r=await fetch(WORKER_URL+'/api/version');
@@ -1341,9 +1342,45 @@ async function telegramSetup(){
    liittämisen komentoriville — sovellus tietää PIN:n jo, joten napista se
    on yksi napautus. Käsiajo ohittaa kellonajan ja päivälukon. */
 const CRON_TEHTAVAT_UI=[
-  ['aamu','Aamubriiffi'],['ilta','Iltakysely'],['lounas','Lounasmuistutus'],
+  ['aamu','Aamubriiffi'],['ilta','Iltakysely'],['koonti','Yökoonti'],
+  ['utelias','Utelias kysymys'],['lounas','Lounasmuistutus'],
   ['illallinen','Illallismuistutus'],['proteiini','Proteiinimuistutus'],['treeni','Treenimuistutus']
 ];
+/* Kun botti vaikenee, syitä on monta ja kaikki näyttävät samalta. Tämä ajaa
+   osat erikseen ja kertoo mikä niistä pettää — arvaaminen on maksanut tässä
+   projektissa jo tarpeeksi aikaa. */
+async function botDiag(){
+  if(await workerVanha())return;
+  if(pinPuuttuu())return;
+  const testit=[
+    ['claude','Claude-yhteys'],
+    ['elevenlabs','ElevenLabs (ääniviestit)'],
+    ['ptdata','PT-data (kirjausten kohde)'],
+    ['louhinta','Louhinta: "söin lounaaksi kanaa ja riisiä"'],
+  ];
+  const rivit=['BOTIN OSAT',''];
+  for(const [mita,nimi] of testit){
+    try{
+      const r=await apiFetch('/api/telegram/testaa?mita='+mita,{method:'POST'});
+      if(r.status===404){rivit.push('✗ '+nimi+': workeria ei ole päivitetty');continue}
+      const d=await r.json().catch(()=>({}));
+      if(d.ok===false||d.virhe){
+        rivit.push('✗ '+nimi+': '+(d.syy||d.virhe||('status '+d.status)));
+        if(d.vastaus)rivit.push('   '+String(d.vastaus).slice(0,160));
+      }else if(mita==='louhinta'){
+        const j=d.jasennetty;
+        rivit.push((j&&j.ruoat&&j.ruoat.length?'✓ ':'✗ ')+nimi);
+        rivit.push('   '+(j?JSON.stringify(j).slice(0,200):'ei jäsentynyt: '+String(d.raaka).slice(0,140)));
+      }else if(mita==='ptdata'){
+        rivit.push('✓ '+nimi+': '+d.ruokia+' ruokaa, '+d.treeneja+' treeniä, tavoite '+
+          (d.tavoitteet?d.tavoitteet.kcal+' kcal':'PUUTTUU'));
+      }else{
+        rivit.push('✓ '+nimi);
+      }
+    }catch(e){rivit.push('✗ '+nimi+': '+String(e.message||e).slice(0,80))}
+  }
+  alert(rivit.join('\n'));
+}
 async function cronTesti(){
   if(await workerVanha())return;
   if(pinPuuttuu())return;
