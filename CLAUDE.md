@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v6.9). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v7.0). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -47,7 +47,24 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v6.9)
+## Toiminnot (v7.0)
+- **Utelias yhteydenotto** (`cronUtelias`, klo 14): botti kysyy itse. Tämä on
+  tietopankin kannalta arvokkaampaa kuin mikään muu — Lassi ei osaa kertoa
+  siitä mitä ei tule ajatelleeksi, mutta kysymys nostaa sen esiin. Aukkojen
+  täyttäminen on koneen työtä.
+  Malli saa sivujen **iät** (mistä ei ole kuulunut), NYT-tilannekuvan, päivän
+  keskustelut ja treenitilanteen, ja etsii niistä aukon.
+  **Kolme vaientajaa**: yli 6 vaihtoa tänään → ei kysytä (Lassilla on ollut
+  mahdollisuus kertoa, ja iltakysely tulee joka tapauksessa); malli saa vastata
+  `EI` jos aidosti kysyttävää ei ole; `tg-kysytty` estää saman kysymyksen
+  toiston. Joka päivä tuleva "mitä kuuluu" olisi kohinaa, ja kohina opitaan
+  ohittamaan.
+  Päiväkirjasivut suodatetaan pois ikälistalta — ne ovat tuoreita joka päivä
+  eivätkä kerro mistään aukosta.
+- **Keskustelukumppani-ohje** (`tgKonteksti`): persoona kysyy takaisin kun
+  vastaus jättää jotain auki. Perusteltu hahmon sisältä ("tieto on valtaa"),
+  ja rajattu samoin ("jatkuva utelu on tarvitsevaisuutta") — ULTRON ei ala
+  kysellä joka vastauksessa.
 - **Ääniviestit botille** (`tgAani`): puhut, ElevenLabs Scribe litteroi ja
   teksti kulkee saman polun kuin kirjoitettu. Litterointi näytetään
   ("Kuulin: …") jotta väärin kuultu sana ei jää huomaamatta ja päädy
