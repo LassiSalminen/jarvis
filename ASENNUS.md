@@ -193,7 +193,46 @@ se ei siis vuoda dataa. Mutta lukitus kannattaa tehdä heti: ilman sitä kuka
 tahansa bottisi tunnuksen arvaava voisi myöhemmissä vaiheissa kirjoittaa
 tietopankkiisi ja kuluttaa Claude-saldoasi.
 
-**6. Varmista että ilmoitukset näkyvät kellossa**
+**6. Kytke ajastukset päälle (aamubriiffi, muistutukset)**
+
+Ilman tätä botti vastaa kysymyksiin mutta ei lähetä mitään itse.
+
+1. Cloudflare → Workerisi **jarvis** → **Settings** → **Trigger Events**
+   (tai vasemmalta "Triggers") → **Add** → **Cron Trigger**.
+2. Kirjoita kentään tasan tämä:
+
+       0 * * * *
+
+   Se tarkoittaa "kerran tunnissa tasalta". **Älä kirjoita tähän kellonaikoja.**
+   Cloudflaren ajastin käy UTC-ajassa, jolloin klo 7 Suomen aikaa olisi kesällä
+   04 ja talvella 05 — kiinteä aika siirtyisi tunnin väärään paikkaan lokakuun
+   lopussa eikä mikään kertoisi siitä. Worker herää joka tunti ja päättää itse
+   Suomen paikallisajan perusteella mitä on aika tehdä.
+3. **Deploy**.
+
+Ajastukset ja niiden oletusajat:
+
+| Klo | Mitä | Lähtee vain jos |
+|---|---|---|
+| 7 | Aamubriiffi: sää, sähkö, keho, treeni, 3 uutista | aina |
+| 12 | Lounasmuistutus | ruokakirjauksia puuttuu |
+| 18 | Illallismuistutus | ruokakirjauksia puuttuu |
+| 20 | Proteiinimuistutus | alle 70 % tavoitteesta |
+| 16 | Treenimuistutus | ei treeniä tänään ja 2+ pv edellisestä |
+| 21 | Iltakysely: "mitä teit tänään?" | aina |
+
+Muistutukset lähtevät **vain kun niillä on asiaa**. Muistutus joka tulee myös
+silloin kun asia on hoidettu opitaan ohittamaan, ja lakkaa sen jälkeen
+toimimasta silloinkin kun sillä olisi väliä.
+
+Aikojen muuttaminen: `PUT /api/cron` (PIN:n takana). Lääkemuistutus on pois
+päältä oletuksena — kytke `laakeKaytossa: true` ja aseta `laake`-tunti.
+
+Testaus ilman odottelua: `POST /api/cron/run?tehtava=aamu` ajaa yhden
+tehtävän heti ja ohittaa sekä kellonajan että päivälukon. Kelpaavat tunnisteet:
+`aamu`, `lounas`, `illallinen`, `proteiini`, `treeni`, `laake`, `ilta`.
+
+**7. Varmista että ilmoitukset näkyvät kellossa**
 - Puhelin: Asetukset → Sovellukset → Telegram → Ilmoitukset päälle.
 - Garmin Connect -sovellus: Asetukset → Älyilmoitukset → varmista että
   Telegram on sallittujen listalla.

@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v6.2). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v6.3). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -35,7 +35,28 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v6.2)
+## Toiminnot (v6.3)
+- **Ajastukset** (`scheduled`, `cronAja`, `CRON_TEHTAVAT`): aamubriiffi klo 7,
+  ruokamuistutus 12 ja 18, proteiini 20, treeni 16, iltakysely 21.
+  **HUOM Cloudflaren cron on `0 * * * *` eli kerran tunnissa** — kellonaikoja
+  EI kirjoiteta croniin. Cloudflare ajaa UTC:ssä, joten kiinteä aika siirtyisi
+  tunnin väärään paikkaan lokakuun lopusta alkaen eikä mikään kertoisi siitä.
+  `fiNyt()` käyttää `Intl`iä `Europe/Helsinki`-vyöhykkeellä, joka hoitaa
+  kesäajan itse — omaa DST-laskentaa ei kirjoiteta, se on juuri se koodi joka
+  unohtuu päivittää.
+  **Muistutus lähtee vain kun sillä on asiaa**: `cronRuoka` vaikenee jos
+  kirjaukset ovat kunnossa, `cronProteiini` jos tavoite täyttyy, `cronTreeni`
+  jos tänään on jo treenattu. Muistutus joka tulee myös turhaan opitaan
+  ohittamaan, ja lakkaa toimimasta silloinkin kun sillä olisi väliä.
+  **HUOM `cron-log` merkitään tehdyksi ENNEN suoritusta**: jos lähetys kaatuu,
+  viesti jää tulematta kerran — parempi kuin että sama viesti toistuu joka
+  tunti kunnes vika korjataan.
+  Käsiajo testaukseen: `POST /api/cron/run?tehtava=aamu` ohittaa kellonajan ja
+  päivälukon. Asetukset `GET/PUT /api/cron` (`cron-conf` KV:ssä).
+  `haeUutiset()` on eriytetty jaettuun funktioon, koska sekä `/api/news` että
+  aamubriiffi tarvitsevat sen — kaksi kopiota erkanisi ajan myötä.
+  Sää Open-Meteosta ja sähkö porssisahko.netistä, molemmat ilman avainta.
+  **Vaatii Cron Triggerin lisäämisen Cloudflaressa** (ASENNUS.md 2f kohta 6).
 - **Telegram-chat** (`tgChat`, `tgKonteksti`, `tgAsk`): botille voi kirjoittaa
   vapaasti, ja se vastaa **samalla persoonalla ja samasta tietopankista** kuin
   selain — se ei ole eri assistentti vaan sama. Persoona luetaan `state`-
