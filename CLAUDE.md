@@ -13,6 +13,18 @@ Kaksi persoonaa: U.L.T.R.O.N. (oletus, dark triad) ja J.A.R.V.I.S.
 ## Tiedostot
 - `jarvis.html` — koko käyttöliittymä (HTML/CSS/JS yhdessä tiedostossa).
   Julkaistaan GitHub Pagesiin: https://lassisalminen.github.io/jarvis/jarvis.html
+- `wrangler.toml` — workerin julkaisuasetukset. **Deploy tehdään komennolla
+  `npx wrangler deploy`**, ei enää kopioimalla koodia Cloudflaren Edit code
+  -ruutuun. Unohtunut deploy oli tämän projektin toistuvin vika.
+  **HUOM arvot on luettu Cloudflaresta** (`wrangler versions view`), ei
+  kirjoitettu muistista: `wrangler deploy` asettaa bindingit ja ajastukset
+  tämän tiedoston mukaan, joten puuttuva rivi ei jätä asetusta ennalleen vaan
+  **poistaa sen**. Jos `JARVIS_KV` katoaisi, koko tietopankki katkeaisi
+  sovelluksesta ilman että mikään kertoisi syytä.
+  Secretit eivät ole täällä eivätkä saa olla — ne elävät Cloudflaressa
+  erillään eikä deploy koske niihin. `account_id` jätetty pois, jottei
+  tunniste päädy julkiseen repoon. `preview_urls = false`, koska
+  esikatseluosoitteet ovat julkisia ja pysyviä eli turhaa hyökkäyspintaa.
 - `worker.js` — Cloudflare Worker: (1) proxy Claude APIin (avain palvelimella),
   (2) wiki KV:hen → sama muisti kaikilla laitteilla, (3) uutisfeed,
   (4) ElevenLabs TTS + Scribe-transkriptio, (5) Garmin-synkkaus,
@@ -471,9 +483,12 @@ jälkeen — GitHub Pages päivittyy pushista. `worker.js` EI koskaan GitHubiin.
 Muutosten jälkeen: aja `node --check` irrotetulle skriptilohkolle ennen pushia.
 Kun toiminnallisuus muuttuu, nosta `jarvis.html`:n `VERSION`-vakiota ja pidä
 CLAUDE.md:n versionumero samana (BUILD päivittyy itsestään).
-HUOM: worker.js-muutokset eivät tule voimaan ennen kuin Lassi päivittää
-workerin Cloudflareen käsin — älä riko HTML:ää workerin uusilla endpointeilla
-ilman fallbackia.
+worker.js-muutokset viedään Cloudflareen komennolla `npx wrangler deploy`
+(vaatii `npx wrangler login` kerran). Nosta `WORKER_VERSION`ia ja pidä
+`WORKER_MIN` jarvis.html:ssä samana. Tarkista deploy aina osoitteesta
+`/api/version` — se on PIN-portin ulkopuolella juuri tätä varten.
+Älä silti riko HTML:ää workerin uusilla endpointeilla ilman fallbackia:
+sovellus voi olla vanhempi kuin worker (selaimen välimuisti).
 
 ## Seuraavat askeleet
 MUISTI-ARKKITEHTUURI.md:n siirtymäpolku: privaatti jarvis-knowledge-repo →

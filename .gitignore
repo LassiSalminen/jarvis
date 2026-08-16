@@ -6,3 +6,6 @@ worker.js
 
 # Pythonin käännöskakut
 __pycache__/
+
+# Wranglerin paikallinen valimuisti (sisaltaa tilitiedot)
+.wrangler/

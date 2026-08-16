@@ -1,0 +1,46 @@
+# Cloudflare Workerin julkaisuasetukset.
+#
+# Tämän ansiosta workerin voi deployata komennolla `npx wrangler deploy`
+# eikä koodia tarvitse kopioida käsin Cloudflaren Edit code -ruutuun.
+# Unohtunut deploy on ollut tämän projektin toistuvin vika.
+#
+# HUOM: nämä arvot on LUETTU Cloudflaresta (`wrangler versions view`),
+# ei kirjoitettu muistista. Syy: `wrangler deploy` asettaa bindingit ja
+# ajastukset TÄMÄN tiedoston mukaan — puuttuva rivi ei jätä asetusta
+# ennalleen vaan poistaa sen. Jos JARVIS_KV katoaisi, koko tietopankki
+# katkeaisi sovelluksesta ilman että mikään kertoisi syytä.
+#
+# Secretit (ANTHROPIC_API_KEY, JARVIS_PIN, TELEGRAM_*, GOOGLE_TTS_API_KEY,
+# ELEVENLABS_API_KEY, GITHUB_TOKEN) EIVÄT ole täällä eivätkä saa olla:
+# ne elävät Cloudflaressa erillään koodista eikä deploy koske niihin.
+#
+# account_id on jätetty pois tarkoituksella — tilejä on yksi, joten
+# wrangler löytää sen itse, eikä tunniste päädy julkiseen repoon.
+
+name = "jarvis"
+main = "worker.js"
+compatibility_date = "2026-06-17"
+
+# Jokainen deploy loisi oletuksena oman esikatseluosoitteensa
+# (<versio>-jarvis.…workers.dev). Ne ovat julkisia ja pysyviä, eli turhaa
+# hyökkäyspintaa: PIN-portti suojaa niitäkin, mutta /api/telegram ohittaa
+# sen tarkoituksella. Tätä sovellusta käytetään yhdestä osoitteesta.
+preview_urls = false
+
+# Sama muisti kaikilla laitteilla. ID luettu Cloudflaresta.
+[[kv_namespaces]]
+binding = "JARVIS_KV"
+id = "a0348172035f4437b828e419759bbf91"
+
+# Ajastukset. Kerran tunnissa tasalta — kellonaikoja EI kirjoiteta tähän.
+# Cloudflare ajaa cronit UTC:ssä, joten kiinteä aika siirtyisi tunnin
+# väärään paikkaan kesäajan vaihtuessa. Worker herää tunneittain ja
+# päättää itse Suomen paikallisajan perusteella mitä on aika tehdä
+# (ks. fiNyt() ja CRON_TEHTAVAT worker.js:ssä).
+[triggers]
+crons = ["0 * * * *"]
+
+# Lokit Cloudflaren hallintapaneeliin, jotta cron-ajojen virheet näkyvät
+# jossain. Ilman tätä epäonnistunut aamubriiffi olisi täysin hiljainen.
+[observability]
+enabled = true
