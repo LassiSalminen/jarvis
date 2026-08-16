@@ -1160,7 +1160,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="6.6";
+const VERSION="6.7";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1289,7 +1289,7 @@ function telegramRaportti(d){
    se näkynyt mistään: PIN-portti vastaa tuntemattomaan reittiin 401:llä, joka
    näyttää samalta kuin väärä PIN. Versioreitti on portin ulkopuolella, joten
    tämä toimii silloinkin kun mikään muu ei. */
-const WORKER_MIN='6.6';
+const WORKER_MIN='6.7';
 async function workerVersio(){
   try{
     const r=await fetch(WORKER_URL+'/api/version');
@@ -4871,13 +4871,12 @@ Nykyiset wiki-sivut: ${JSON.stringify(userWiki().map(w=>({id:w.id,title:w.title}
   }catch(e){span.parentElement.classList.remove('typing');span.textContent='Päivän koonti epäonnistui.'}
 }
 $('#compileBtn').onclick=()=>compileDay(false);
-// Automaattikoonti klo 21. Ehtona koko päivän keskustelu, ei enää peukutetut:
-// aiemmin päivä jäi kokoamatta aina kun peukkua ei ollut painettu.
-setInterval(()=>{
-  const n=new Date(),lc=new Date(lastCompile),t0=new Date().setHours(0,0,0,0);
-  const onAineistoa=convLog.some(r=>r&&r.ts>=t0)||rawLog.some(r=>r&&r.ts>=t0);
-  if(n.getHours()>=21&&!(lastCompile&&lc.toDateString()===n.toDateString())&&onAineistoa)compileDay(true);
-},60000);
+/* Automaattikoonti on siirretty workeriin (cronKoonti, klo 23). Se ajettiin
+   ennen tässä selaimen ajastimella, jolloin päivä koottiin vain jos tabletti
+   sattui olemaan auki — juuri se riippuvuus josta haluttiin eroon. Worker
+   näkee saman keskustelun (state + tg-inbox) ja lisäksi Telegramissa käydyt.
+   KOKOA PÄIVÄ -nappi jää käsiajoon; ilman tätä päivä koottaisiin kahdesti ja
+   päiväkirjasivulle tulisi kaksi versiota samasta päivästä. */
 
 /* ===== WIKI-SIIVOUS (automaattinen unohtaminen) ===== */
 let lastPrune=0;

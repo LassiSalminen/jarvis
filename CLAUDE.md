@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v6.6). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v6.7). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -47,7 +47,25 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v6.6)
+## Toiminnot (v6.7)
+- **Yökoonti klo 23 workerissa** (`cronKoonti`): päivästä tulee muistia ilman
+  että sovellusta avataan. **Selaimen `setInterval`-automaatti klo 21 on
+  poistettu** — se ajettiin vain jos tabletti sattui olemaan auki, ja kaksi
+  koontia tuottaisi kaksi versiota samasta päivästä. KOKOA PÄIVÄ jää käsiajoon.
+  Raaka-aine kolmesta lähteestä: `state.convLog` (sovellus), `tg-inbox`
+  (Telegram, ml. **iltakyselyn vastaus** = ainoa tieto työ- ja kotipäivästä)
+  ja mitattu data (PT, Garmin, uutiset).
+  Tuotos: päiväkirjasivu, enintään 3 louhittua sivua, korvattu `nyt-konteksti`,
+  `luentoehdotukset`-sivu ja lyhyt kooste Telegramiin.
+  **HUOM wiki luetaan uudestaan juuri ennen kirjoitusta**: illan aikana tulleet
+  botin ruokakirjaukset katoaisivat muuten.
+  **HUOM alle 2 vaihtoa → ei koontia**: mitattu data näkyy sovelluksessa
+  muutenkin eikä siitä kannata tehdä sivua joka ilta.
+  Tärkeyssuodatus on promptissa nimenomaisena kieltona (ks. alempi kohta) ja
+  `TG_SUOJATUT` estää järjestelmäsivujen ylikirjoituksen — todennettu
+  testillä jossa malli yritti pyyhkiä `pt-data`n.
+  Luentoehdotuksia enintään 2, ja jo pidetyt luennot menevät promptiin jottei
+  samaa ehdoteta uudestaan.
 - **Botti kirjoittaa tietopankkiin** (`/muista`, `tgMuista`): malli päättää itse
   meneekö asia olemassa olevalle sivulle vai uudelle — Lassi ei valitse sivua
   eikä otsikkoa, koska kone on kirjastonhoitaja.
