@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v6.5). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v6.6). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -47,7 +47,21 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v6.5)
+## Toiminnot (v6.6)
+- **Botti kirjoittaa tietopankkiin** (`/muista`, `tgMuista`): malli päättää itse
+  meneekö asia olemassa olevalle sivulle vai uudelle — Lassi ei valitse sivua
+  eikä otsikkoa, koska kone on kirjastonhoitaja.
+  **HUOM päivitys lisää loppuun eikä ylikirjoita**: botin kautta ei saa voida
+  vahingossa pyyhkiä sivun sisältöä, ja mallin virhe olisi peruuttamaton.
+  `TG_SUOJATUT` estää `pt-data`n, `nyt-konteksti`n ja `yleiskatsaus`en
+  ylikirjoittamisen — ne ovat järjestelmän omia ja rikkoutuisivat.
+  Promptiin menevät vain sivujen otsikot, ei sisältö: valintaan riittää tietää
+  mitä on olemassa.
+- **HUOM malli ei tiedä kykyjään ilman että ne kerrotaan**: botti vastasi
+  "en pysty kirjaamaan" vaikka ruokakirjaus oli juuri rakennettu. `tgKonteksti`
+  kertoo nyt MITÄ OSAAT -osiossa mitä komentoja on ja kieltää nimenomaisesti
+  kieltäytymästä kirjaamisesta. Toiminto joka on olemassa mutta jää käyttämättä
+  on pahempi kuin puuttuva toiminto — käyttäjä lakkaa yrittämästä.
 - **Ruokakuva botille** (`tgKuva`, `tgKirjaaRuoka`, `tgB64`): lautasesta otettu
   kuva → makroarvio → kirjaus samaan PT-dataan jota sovellus käyttää. Nopein
   tapa kirjata: mitään ei tarvitse kuvailla sanoin eikä punnita.

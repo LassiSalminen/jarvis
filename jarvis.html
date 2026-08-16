@@ -1160,7 +1160,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="6.5";
+const VERSION="6.6";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1289,7 +1289,7 @@ function telegramRaportti(d){
    se näkynyt mistään: PIN-portti vastaa tuntemattomaan reittiin 401:llä, joka
    näyttää samalta kuin väärä PIN. Versioreitti on portin ulkopuolella, joten
    tämä toimii silloinkin kun mikään muu ei. */
-const WORKER_MIN='6.5';
+const WORKER_MIN='6.6';
 async function workerVersio(){
   try{
     const r=await fetch(WORKER_URL+'/api/version');
