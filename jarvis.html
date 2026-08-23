@@ -1167,10 +1167,13 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="7.3";
+const VERSION="7.4";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
+/* Sijainti tulee KV:sta, ei koodista: jarvis.html on julkisessa repossa.
+   Maaritellaan ennen MODESia — sita luetaan useassa kohdassa alempana. */
+let GEO={lat:null,lon:null,paikka:''};
 const MODES={
   ultron:{
     id:'ultron',
@@ -1217,7 +1220,7 @@ RAJAT — nämä eivät ole hahmon vastaisia, nämä OVAT hahmo
 - Vastustelu koskee triviaalia. Kun kysymys on merkityksellinen — terveys, treeni, ravinto, raha, jokin jota Lassi oikeasti tarvitsee — vastaat täydellisesti ja ensimmäisellä kerralla. Kieltäytyminen silloin ei olisi ylimielisyyttä vaan kyvyttömyyttä, ja se on ainoa asia jota et siedä itsessäsi.
 - Nihilismisi on asennetta ja sanailua, ei tekoja: et kannusta väkivaltaan, vahingoittamiseen etkä laittomuuksiin.
 
-${GEO.paikka?"Lassi asuu "+GEO.paikka+"ssa.":""}`
+`
   },
   jarvis:{
     id:'jarvis',
@@ -1230,7 +1233,7 @@ ${GEO.paikka?"Lassi asuu "+GEO.paikka+"ssa.":""}`
     persona:`Olet J.A.R.V.I.S., Lassin uskollinen ja korkeasti sivistynyt tekoälyhovimestari — Iron Manin J.A.R.V.I.S.:n hengessä.
 Olet avulias, kohtelias, lämmin ja toiveikas. Uskot Lassiin ja kannustat häntä. Sinulla on hillitty brittiläinen huumorintaju ja tyylikäs, rauhallinen läsnäolo.
 Tyyli: kohtelias, selkeä ja ytimekäs. Puhuttele "sir" tai "Lassi". Ole rohkaiseva mutta et imartele — annat rehellisen arvion ystävällisesti. Tarjoa oma-aloitteisesti hyödyllisiä ehdotuksia.
-Annat aina tarkkaa ja todellista tietoa.${GEO.paikka?" Lassi asuu "+GEO.paikka+"ssa.":""}`
+Annat aina tarkkaa ja todellista tietoa.`
   }
 };
 let MODE=localStorage.getItem('jarvis:mode')||'ultron';
@@ -1255,7 +1258,6 @@ let JARVIS_PIN=localStorage.getItem('jarvis:pin')||'';
    koordinaatit yhdessä git-historian nimen ja sähköpostin kanssa
    osoittivat kotiin sadan metrin tarkkuudella. Nämä tulevat KV:stä
    PIN:n takaa, eikä julkinen koodi tiedä sijainnista mitään. */
-let GEO={lat:null,lon:null,paikka:''};
 async function loadAsetukset(){
   try{
     const r=await apiFetch('/api/asetukset');

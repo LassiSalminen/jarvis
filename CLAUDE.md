@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v7.3). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v7.4). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -47,7 +47,16 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v7.3)
+## Toiminnot (v7.4)
+- **HUOM `let` ja template literal -persoonat**: v7.2:n sijaintimuutos lisäsi
+  `${GEO.paikka}` persoonateksteihin, mutta `let GEO` oli määritelty vasta
+  `MODES`in **jälkeen**. Template literal evaluoituu objektin luonnissa, joten
+  se osui ajalliseen kuolleeseen vyöhykkeeseen (TDZ) → ReferenceError → koko
+  skripti kaatui ja sovellus oli täysin rikki. **`node --check` ei huomaa
+  tätä** — vain sivun lataus paljastaa sen.
+  Sijainti irrotettiin persoonateksteistä kokonaan: ne evaluoituvat kerran
+  latauksessa, joten arvo olisi jäätynyt tyhjäksi vaikka TDZ olisi vältetty.
+  Muuttuva tieto kuuluu `buildContext`iin, joka rakennetaan joka kutsulla.
 - **Botti täytenä käyttöliittymänä** (`TG_KOMENNOT`, `tgMuokkaaPt`): kymmenen
   komentoa jotka rekisteröidään Telegramin omaan valikkoon `setMyCommands`illa
   — ilman sitä komennot pitäisi muistaa ulkoa.
