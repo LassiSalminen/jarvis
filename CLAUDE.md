@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v7.0). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v7.3). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -47,7 +47,30 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v7.0)
+## Toiminnot (v7.3)
+- **Botti täytenä käyttöliittymänä** (`TG_KOMENNOT`, `tgMuokkaaPt`): kymmenen
+  komentoa jotka rekisteröidään Telegramin omaan valikkoon `setMyCommands`illa
+  — ilman sitä komennot pitäisi muistaa ulkoa.
+  `/tanaan` (päivän ruoka, treeni, paino, Garmin), `/treeni` (ohjelman päivä ja
+  liikkeet), `/kirjaa penkki 45 3x8` (treenisarja), `/paino`, `/peru`,
+  `/sivu <haku>` (tietopankin luku), `/ruoka`, `/muista`, `/status`, `/apua`.
+  **HUOM `/peru` lunastaa lupauksen**: botti sanoi "sano jos meni väärin,
+  korjaan sen" mutta ei osannut. Lupaus jota ei lunasteta on pahempi kuin
+  puuttuva toiminto.
+  **HUOM peruminen vertaa aikaleimoja** (`ts`): ilman sitä se poistaisi aina
+  ruoan, vaikka punnitus olisi kirjattu myöhemmin. Todennettu testillä.
+  Kaikki PT-datan muokkaus kulkee `tgMuokkaaPt`in kautta — yksi paikka jossa
+  luku ja kirjoitus ovat lähekkäin, ei viittä kopiota samasta logiikasta.
+  Treenikirjaus kokoaa päivän **yhteen merkintään**, jotta painoehdotukset
+  näkevät treenin kokonaisuutena eivätkä pirstaleina.
+- **Sijainti pois julkisesta koodista** (`/api/asetukset`, `GEO`): koordinaatit
+  olivat kovakoodattuina `jarvis.html`:ään 25 kohdassa, ja repo on julkinen.
+  Yhdessä git-historian nimen ja sähköpostin kanssa ne osoittivat kotiin sadan
+  metrin tarkkuudella. Nyt ne elävät KV:ssä PIN:n takana; sovellus lukee ne
+  `loadAsetukset`illa ja worker samasta avaimesta. INFO → 📍 SIJAINTI.
+  Myös prompt-dialogien esimerkkikoordinaatit vaihdettu geneerisiksi.
+  **Nimi ja sähköposti näkyvät yhä git-historiassa** — sitä ei voi muuttaa
+  ilman koko historian uudelleenkirjoitusta.
 - **Utelias yhteydenotto** (`cronUtelias`, klo 14): botti kysyy itse. Tämä on
   tietopankin kannalta arvokkaampaa kuin mikään muu — Lassi ei osaa kertoa
   siitä mitä ei tule ajatelleeksi, mutta kysymys nostaa sen esiin. Aukkojen
