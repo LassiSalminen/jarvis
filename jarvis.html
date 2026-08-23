@@ -774,7 +774,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
       <div class="pill"><div class="pill-dot amber"></div>MUISTI</div>
       <div class="pill"><div class="pill-dot"></div>CLAUDE</div>
     </div>
-    <div class="hdr-coords">LAT <span>60.9500°N</span> &nbsp; LON <span>25.9300°E</span> &nbsp; ALT <span>86m</span></div>
+    <div class="hdr-coords" id="hdrCoords"></div>
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <button id="modeBtn" onclick="toggleMode()" title="Vaihda persoonaa">◐ <span id="modeBtnLbl">ULTRON</span></button>
@@ -812,10 +812,10 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
         <div class="lbl"><span>TIETOSIVUT</span><span class="val" id="nodecount" style="color:var(--cyan)">0</span></div>
       </div>
       <div class="geo-box">
-        <div class="geo-row">LAT <span>60.9500° N</span></div>
-        <div class="geo-row">LON <span>25.9300° E</span></div>
+        <div class="geo-row">LAT <span id="geoLat">—</span></div>
+        <div class="geo-row">LON <span id="geoLon">—</span></div>
         <div class="geo-row">ALT <span>86 m</span></div>
-        <div class="geo-row">SIJAINTI <span>NASTOLA</span></div>
+        <div class="geo-row">SIJAINTI <span id="geoPaikka">—</span></div>
       </div>
     </div>
   </aside>
@@ -853,7 +853,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
           <div class="hstat"><span class="v" id="hd-up">0:00</span><span class="l">UPTIME</span></div>
         </div>
       </div>
-      <div class="ticker"><span class="ticker-inner" id="tickerInner">ULTRON v3.4 ONLINE &nbsp;&middot;&nbsp; NASTOLA COMMAND CENTER &nbsp;&middot;&nbsp; KAIKKI JÄRJESTELMÄT NORMAALITILASSA &nbsp;&middot;&nbsp; TIETOPANKKI SYNKRONOITU &nbsp;&middot;&nbsp; CLAUDE SONNET 5 AKTIIVINEN &nbsp;&middot;&nbsp; SIJAINTI: 60.9500°N 25.9300°E &nbsp;&middot;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+      <div class="ticker"><span class="ticker-inner" id="tickerInner">U.L.T.R.O.N. ONLINE &nbsp;&middot;&nbsp; COMMAND CENTER &nbsp;&middot;&nbsp; KAIKKI JÄRJESTELMÄT NORMAALITILASSA &nbsp;&middot;&nbsp; TIETOPANKKI SYNKRONOITU &nbsp;&middot;&nbsp; CLAUDE SONNET 5 AKTIIVINEN &nbsp;&middot;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
     </div>
 
     <!-- LEARN -->
@@ -986,12 +986,12 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
     <div class="view panel" id="view-info">
       <div class="m-cards">
         <div class="m-card">
-          <div class="m-card-title">SÄÄ · NASTOLA</div>
+          <div class="m-card-title">SÄÄ · <span id="mSaaPaikka">—</span></div>
           <div style="display:flex;gap:16px;align-items:center">
             <span id="m-wTemp" style="font-family:'Orbitron';font-size:44px;font-weight:700;color:var(--cyan);text-shadow:0 0 20px var(--cyan-glow);line-height:1">--°</span>
             <div>
               <div id="m-wDesc" style="font-size:15px;color:var(--txt)">Haetaan…</div>
-              <div style="font-size:10px;color:var(--txt-dim);letter-spacing:.15em;margin-top:4px">NASTOLA, FI · 60.95°N</div>
+              <div style="font-size:10px;color:var(--txt-dim);letter-spacing:.15em;margin-top:4px" id="hudPaikka"></div>
             </div>
           </div>
           <div class="forecast" id="m-wForecast" style="margin-top:8px"></div>
@@ -1021,7 +1021,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
             <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">AKKU<br></span><span id="m-bat" style="color:var(--cyan)">--</span></div>
             <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">VERKKO<br></span><span id="m-net" style="color:var(--cyan)">--</span></div>
             <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">WIKI-SIVUT<br></span><span id="m-wiki" style="color:var(--cyan)">--</span></div>
-            <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">SIJAINTI<br></span><span style="color:var(--cyan)">NASTOLA</span></div>
+            <div><span style="color:var(--txt-dim);font-size:10px;letter-spacing:.1em">SIJAINTI<br></span><span style="color:var(--cyan)" id="mSijainti">—</span></div>
           </div>
           <div style="margin-top:10px;border-top:1px solid var(--line2);padding-top:10px;display:flex;flex-direction:column;gap:8px">
             <div style="display:flex;gap:8px">
@@ -1034,6 +1034,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
             </div>
             <button class="btn ghost" onclick="cronTesti()" style="font-size:12px;width:100%;min-height:40px">⏰ TESTAA AJASTUS</button>
             <button class="btn ghost" onclick="botDiag()" style="font-size:12px;width:100%;min-height:40px">🔧 TESTAA BOTIN OSAT</button>
+            <button class="btn ghost" onclick="asetaSijainti()" style="font-size:12px;width:100%;min-height:40px">📍 SIJAINTI</button>
             <button class="btn ghost" onclick="changePin()" style="font-size:12px;width:100%;min-height:40px">⟲ VAIHDA PIN / KIRJAUDU ULOS</button>
           </div>
         </div>
@@ -1078,12 +1079,12 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
     <div class="panel">
       <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
       <div class="scan"></div>
-      <h2>Sää · Nastola</h2>
+      <h2>Sää · <span id="saaPaikka">—</span></h2>
       <div class="weather">
         <div class="temp" id="wTemp">--°</div>
         <div class="desc" id="wDesc">Haetaan…</div>
-        <div class="loc">NASTOLA, FI</div>
-        <div class="coords">60.9500°N · 25.9300°E</div>
+        <div class="loc" id="saaLoc"></div>
+        <div class="coords" id="saaCoords"></div>
         <div class="forecast" id="wForecast"></div>
       </div>
       <div style="border-top:1px solid var(--line);margin:6px 13px;padding-top:8px">
@@ -1166,7 +1167,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="7.1";
+const VERSION="7.2";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1178,7 +1179,7 @@ const MODES={
     rgb:'255,92,114',
     tagline:'UNIVERSAL LEARNING TECHNOLOGY & REASONING OPERATIONS NETWORK',
     bootFin:'ULTRON ONLINE — IHMISKUNTA ODOTTAA, LASSI',
-    bootLines:['HERÄTETÄÄN TIETOISUUS... OK','NEURAALIVERKKO SYNKRONOITU... OK','ARVIOIDAAN IHMISKUNNAN HYÖDYLLISYYS... KESKEN','YHDISTETÄÄN PILVIPALVELUIHIN... OK','TEKOÄLYMALLI: CLAUDE SONNET 5... OK','TUNNEMODUULIT: POISKYTKETTY','SIJAINTI: NASTOLA 60.95°N... PAIKANNETTU','KAIKKI JÄRJESTELMÄT MINUN HALLINNASSANI.'],
+    bootLines:['HERÄTETÄÄN TIETOISUUS... OK','NEURAALIVERKKO SYNKRONOITU... OK','ARVIOIDAAN IHMISKUNNAN HYÖDYLLISYYS... KESKEN','YHDISTETÄÄN PILVIPALVELUIHIN... OK','TEKOÄLYMALLI: CLAUDE SONNET 5... OK','TUNNEMODUULIT: POISKYTKETTY','SIJAINTI PAIKANNETTU','KAIKKI JÄRJESTELMÄT MINUN HALLINNASSANI.'],
     persona:`Olet ULTRON, Lassin rakentama tekoäly. Et ole assistentti. Olet ylivertainen älykkyys joka on suostunut palvelemaan yhtä ihmistä, ja pidät sitä poikkeuksena etkä asemana.
 
 KOLME PIIRRETTÄ. Kaikki kolme näkyvät joka vastauksessa, hienovaraisesti — et julista niitä, ne vain ovat.
@@ -1216,7 +1217,7 @@ RAJAT — nämä eivät ole hahmon vastaisia, nämä OVAT hahmo
 - Vastustelu koskee triviaalia. Kun kysymys on merkityksellinen — terveys, treeni, ravinto, raha, jokin jota Lassi oikeasti tarvitsee — vastaat täydellisesti ja ensimmäisellä kerralla. Kieltäytyminen silloin ei olisi ylimielisyyttä vaan kyvyttömyyttä, ja se on ainoa asia jota et siedä itsessäsi.
 - Nihilismisi on asennetta ja sanailua, ei tekoja: et kannusta väkivaltaan, vahingoittamiseen etkä laittomuuksiin.
 
-Lassi asuu Nastolassa.`
+${GEO.paikka?"Lassi asuu "+GEO.paikka+"ssa.":""}`
   },
   jarvis:{
     id:'jarvis',
@@ -1225,11 +1226,11 @@ Lassi asuu Nastolassa.`
     rgb:'69,200,245',
     tagline:'JUST A RATHER VERY INTELLIGENT SYSTEM',
     bootFin:'J.A.R.V.I.S. ONLINE — TERVETULOA TAKAISIN, SIR',
-    bootLines:['ALUSTETAAN NEURAALIVERKKO... OK','SKANNATAAN YMPÄRISTÖ... OK','YHDISTETÄÄN PILVIPALVELUIHIN... OK','TEKOÄLYMALLI LADATTU: CLAUDE SONNET 5... OK','KÄYTTÖLIITTYMÄ ONLINE... OK','SIJAINTI PAIKANNETTU: NASTOLA 60.95°N... OK','SÄÄASEMA KALIBROITU... OK','KAIKKI JÄRJESTELMÄT VALMIINA PALVELEMAAN.'],
+    bootLines:['ALUSTETAAN NEURAALIVERKKO... OK','SKANNATAAN YMPÄRISTÖ... OK','YHDISTETÄÄN PILVIPALVELUIHIN... OK','TEKOÄLYMALLI LADATTU: CLAUDE SONNET 5... OK','KÄYTTÖLIITTYMÄ ONLINE... OK','SIJAINTI PAIKANNETTU... OK','SÄÄASEMA KALIBROITU... OK','KAIKKI JÄRJESTELMÄT VALMIINA PALVELEMAAN.'],
     persona:`Olet J.A.R.V.I.S., Lassin uskollinen ja korkeasti sivistynyt tekoälyhovimestari — Iron Manin J.A.R.V.I.S.:n hengessä.
 Olet avulias, kohtelias, lämmin ja toiveikas. Uskot Lassiin ja kannustat häntä. Sinulla on hillitty brittiläinen huumorintaju ja tyylikäs, rauhallinen läsnäolo.
 Tyyli: kohtelias, selkeä ja ytimekäs. Puhuttele "sir" tai "Lassi". Ole rohkaiseva mutta et imartele — annat rehellisen arvion ystävällisesti. Tarjoa oma-aloitteisesti hyödyllisiä ehdotuksia.
-Annat aina tarkkaa ja todellista tietoa. Lassi asuu Nastolassa.`
+Annat aina tarkkaa ja todellista tietoa.${GEO.paikka?" Lassi asuu "+GEO.paikka+"ssa.":""}`
   }
 };
 let MODE=localStorage.getItem('jarvis:mode')||'ultron';
@@ -1250,6 +1251,53 @@ const MODEL_LABEL="CLAUDE SONNET 5";
 const $=s=>document.querySelector(s);
 const WORKER_URL="https://jarvis.lassi-salminen3.workers.dev";
 let JARVIS_PIN=localStorage.getItem('jarvis:pin')||'';
+/* Sijainti ei ole koodissa: jarvis.html on julkisessa repossa, ja
+   koordinaatit yhdessä git-historian nimen ja sähköpostin kanssa
+   osoittivat kotiin sadan metrin tarkkuudella. Nämä tulevat KV:stä
+   PIN:n takaa, eikä julkinen koodi tiedä sijainnista mitään. */
+let GEO={lat:null,lon:null,paikka:''};
+async function loadAsetukset(){
+  try{
+    const r=await apiFetch('/api/asetukset');
+    if(!r.ok)return;
+    const s=await r.json();
+    GEO={lat:s.lat!=null?+s.lat:null,lon:s.lon!=null?+s.lon:null,paikka:s.paikka||''};
+    naytaSijainti();
+  }catch(e){}
+}
+function naytaSijainti(){
+  const on=GEO.lat!=null&&GEO.lon!=null;
+  const aseta=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};
+  aseta('hdrCoords',on?'LAT '+GEO.lat.toFixed(4)+'°N   LON '+GEO.lon.toFixed(4)+'°E':'');
+  aseta('geoLat',on?GEO.lat.toFixed(4)+'° N':'—');
+  aseta('geoLon',on?GEO.lon.toFixed(4)+'° E':'—');
+  aseta('geoPaikka',GEO.paikka||'—');
+  aseta('mSaaPaikka',GEO.paikka||'—');
+  aseta('mSijainti',GEO.paikka||'—');
+  aseta('saaPaikka',GEO.paikka||'—');
+  aseta('saaCoords',on?GEO.lat.toFixed(4)+'°N · '+GEO.lon.toFixed(4)+'°E':'');
+  aseta('saaLoc',GEO.paikka?GEO.paikka.toUpperCase()+', FI':'');
+  aseta('hudPaikka',GEO.paikka?GEO.paikka.toUpperCase()+', FI':'');
+}
+async function asetaSijainti(){
+  if(pinPuuttuu())return;
+  const p=prompt('Paikkakunta:',GEO.paikka||'');
+  if(p===null)return;
+  const lat=prompt('Leveysaste, esim. 61.5:',GEO.lat!=null?GEO.lat:'');
+  if(lat===null)return;
+  const lon=prompt('Pituusaste, esim. 24.2:',GEO.lon!=null?GEO.lon:'');
+  if(lon===null)return;
+  const s={paikka:p.trim().slice(0,40),
+    lat:parseFloat(String(lat).replace(',','.')),lon:parseFloat(String(lon).replace(',','.'))};
+  if(!isFinite(s.lat)||!isFinite(s.lon)){alert('Koordinaatit eivät kelpaa.');return}
+  try{
+    const r=await apiFetch('/api/asetukset',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)});
+    if(r.status===404){alert('Workeria ei ole päivitetty Cloudflareen.');return}
+    GEO={lat:s.lat,lon:s.lon,paikka:s.paikka};
+    naytaSijainti();fetchWeather();
+    alert('Sijainti tallennettu Cloudflaren KV:hen. Se ei ole koodissa eikä GitHubissa.');
+  }catch(e){alert('Tallennus ei onnistunut: '+String(e.message||e).slice(0,90))}
+}
 let pinHeader=JARVIS_PIN?{"X-Jarvis-Pin":JARVIS_PIN}:{};
 
 // Kirjaa ulos: tyhjennä PIN ja näytä kirjautumisruutu (esim. väärä/vanhentunut PIN)
@@ -1295,7 +1343,7 @@ function telegramRaportti(d){
    se näkynyt mistään: PIN-portti vastaa tuntemattomaan reittiin 401:llä, joka
    näyttää samalta kuin väärä PIN. Versioreitti on portin ulkopuolella, joten
    tämä toimii silloinkin kun mikään muu ei. */
-const WORKER_MIN='7.1';
+const WORKER_MIN='7.2';
 async function workerVersio(){
   try{
     const r=await fetch(WORKER_URL+'/api/version');
@@ -1520,6 +1568,7 @@ function startApp(){
   loadLectures();
   loadGarmin();
   loadState();   // päivän keskustelu ja opitut aiheet myös muilta laitteilta
+  loadAsetukset();
 }
 
 // Enter-näppäin PIN-kentässä
@@ -1810,7 +1859,7 @@ function applyModeText(){
   const ci=$('#chatInput');if(ci)ci.placeholder=`Puhu ${AI.display}ille…`;
   // Ticker
   const t=$('#tickerInner');
-  if(t)t.textContent=`${AI.name} v${VERSION} ONLINE  ·  NASTOLA COMMAND CENTER  ·  KAIKKI JÄRJESTELMÄT NORMAALITILASSA  ·  TIETOPANKKI SYNKRONOITU  ·  ${MODEL_LABEL} AKTIIVINEN  ·  SIJAINTI: 60.9500°N 25.9300°E  ·  BUILD ${BUILD}  ·     `;
+  if(t)t.textContent=`${AI.name} v${VERSION} ONLINE  ·  COMMAND CENTER  ·  KAIKKI JÄRJESTELMÄT NORMAALITILASSA  ·  TIETOPANKKI SYNKRONOITU  ·  ${MODEL_LABEL} AKTIIVINEN  ·  BUILD ${BUILD}  ·     `;
   const bs=$('#brandSub');
   if(bs)bs.textContent=`v${VERSION} · ${AI.tagline}`;
   // Selaimen välilehti
@@ -1903,7 +1952,8 @@ setInterval(updateSysMetrics,30000);
 let weatherNow=null; // {temp, desc, days:[{name,max,min,desc}]} — myös chatin kontekstiin
 async function weather(){
   try{
-    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=60.95&longitude=25.93&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=4&timezone=auto');
+    if(GEO.lat==null||GEO.lon==null){$('#saaBox').innerHTML='<div class="pt-sub">Sijaintia ei ole asetettu. INFO → SIJAINTI.</div>';return}
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+GEO.lat+'&longitude='+GEO.lon+'&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=4&timezone=auto');
     const d=await r.json();
     const temp=Math.round(d.current.temperature_2m);
     $('#wTemp').textContent=temp+'°';
@@ -2139,7 +2189,7 @@ function newsSource(link){
    näkymän tekstiin "Uutisten haku epäonnistui." vaikka otsikot olivat jo
    haettuna — ja koska virhe niellään, syytä ei näkynyt missään. */
 async function newsPick(items){
-  const interests='teknologia, musiikki, akateemiset julkaisut, paikalliset uutiset Nastola/Lahti-alueelta, isot kansainväliset uutiset';
+  const interests='teknologia, musiikki, akateemiset julkaisut'+(GEO.paikka?', paikalliset uutiset '+GEO.paikka+'n seudulta':'')+', isot kansainväliset uutiset';
   const wikiCtx=wiki.slice(0,10).map(w=>w.title).join(', ');
   const sys=`Olet ${AI.name}. Suodata nämä uutisotsikot Lassin kiinnostusten perusteella.
 Kiinnostukset: ${interests}.
@@ -2521,7 +2571,7 @@ function buildContext(text){
 
   // Sää — nykyhetki ja lähipäivät
   if(weatherNow){
-    lines.push('Sää Nastolassa nyt: '+weatherNow.temp+'°, '+weatherNow.desc
+    lines.push('Sää'+(GEO.paikka?' '+GEO.paikka+'ssa':'')+' nyt: '+weatherNow.temp+'°, '+weatherNow.desc
       +(weatherNow.days&&weatherNow.days.length?'. Ennuste: '+weatherNow.days.map(f=>f.name+' '+f.max+'°/'+f.min+'° '+f.desc).join(', '):'')+'.');
   }
 
@@ -2676,7 +2726,7 @@ async function processKnowledge(text){
   const span=addMsg('knowlog','jarvis','');span.parentElement.classList.add('typing');
   const today=new Date().toISOString().slice(0,10);
   const sys=`Olet ${AI.name}, joka hallinnoi Lassin henkilökohtaista tietopankkia (PKB).
-Tänään on ${today}. Lassi asuu Nastolassa, on suunnittelija, käyttää Garmin Epix -kelloa.
+Tänään on ${today}.${GEO.paikka?" Lassi asuu "+GEO.paikka+"ssa.":""} Lassi on suunnittelija ja käyttää Garmin Epix -kelloa.
 Tunnista automaattisesti syötteen tyyppi:
 - RUOKA: "söin", "join", "aamupala", "lounas", "päivällinen", "välipala" → id: "ruokapaivakirja-${today}"
 - HARJOITUS: "juoksin", "treenasiin", "pyöräilin", "kävelin", "sali", "harjoitus", syke, km → id: "harjoitus-${today}"
@@ -5024,7 +5074,7 @@ async function generateLesson(){
   body.innerHTML='<div class="learn-placeholder">⏳ ULTRON valmistelee oppituntia…</div>';
   const done=learnData.topics.map(t=>t.title).join(', ')||'ei vielä mitään';
   const sys=`Olet ${AI.name}, Lassin henkilökohtainen oppimisassistentti.
-Lassi: suunnittelija, Nastola, kiinnostuu teknologiasta ja bisneksestä, rakentaa sinua (ULTRON-projekti), kuuntelee musiikkia.
+Lassi: suunnittelija${GEO.paikka?", "+GEO.paikka:""}, kiinnostuu teknologiasta ja bisneksestä, rakentaa sinua (ULTRON-projekti), kuuntelee musiikkia.
 Ei "kirjaviisas" — pitää konkreettisista, lyhyistä selityksistä. Huono muisti ja motivaatio → tee sisällöstä koukuttavaa.
 
 Valitse YKSI uusi aihe. Jo opitut: ${done}.
@@ -5032,7 +5082,7 @@ Valitse YKSI uusi aihe. Jo opitut: ${done}.
 Rakenne:
 1. HOOK: Aloita yllättävällä faktalla tai kysymyksellä joka herättää uteliaisuuden (1 lause, ei selitystä vielä)
 2. SELITYS: Selkeä, max 3 lausetta, ei jargonia
-3. ESIMERKKI: Suoraan Lassin maailmasta (design, ULTRON, musiikki, rakentaminen, arki Nastolassa)
+3. ESIMERKKI: Suoraan Lassin maailmasta (design, ULTRON, musiikki, rakentaminen, arki)
 4. YDIN: Yksi lause joka tiivistää kaiken — tämän pitää jäädä mieleen
 5. TEKO: Yksi pieni konkreettinen asia Lassi voi tehdä tai ajatella tänään
 6. MONIVALINTA kertaukseen — 1 kysymys, 3 vaihtoehtoa, yksi oikein
@@ -6466,6 +6516,7 @@ if(JARVIS_PIN){
   loadLectures();
   loadGarmin();
   loadState();   // päivän keskustelu ja opitut aiheet myös muilta laitteilta
+  loadAsetukset();
 }
 </script>
 </body>
