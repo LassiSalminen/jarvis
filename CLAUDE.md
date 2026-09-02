@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v7.8). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v7.9). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -47,7 +47,18 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v7.8)
+## Toiminnot (v7.9)
+- **Varaohjelma ilman mallia** (`ptVaraOhjelma`, `PT_PANKKI`): jos Claude ei
+  vastaa, ohjelma kootaan liikepankista esitietojen mukaan. Ilman tätä
+  epäonnistunut mallikutsu tarkoitti ettei ohjelmaa saanut lainkaan — ja se
+  esti salille menon, mikä on pahin mahdollinen seuraus tässä sovelluksessa.
+  Huomioi kaluston, vältettävät liikkeet ja painopisteen; deterministinen,
+  joten toimii myös offline. Botti kertoo avoimesti että kyseessä on
+  varasuunnitelma ja tarjoaa mallia uudestaan.
+  **HUOM painopisteen ryhmähaku**: "alaselkä" osui ensin ryhmään `selkä`
+  (osajono), joka on tavallisesti jo ohjelmassa — jolloin painopiste jäi
+  kokonaan pois. Pisin osuma voittaa. Painopiste myös karsitaan viimeisenä
+  eikä ensimmäisenä, jotta se mahtuu aina mukaan.
 - **Botti näkee wiki-sivujen SISÄLLÖN** (`tgKonteksti(env, viesti)`): aiemmin
   promptissa oli vain otsikkolista, joten kysymykseen "miten Korpin kanssa
   menee" botti näki sanan `Korpi.co` eikä tiennyt mitään sen tilasta — vaikka

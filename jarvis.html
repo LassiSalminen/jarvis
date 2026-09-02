@@ -1170,7 +1170,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="7.8";
+const VERSION="7.9";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -3565,6 +3565,84 @@ Säännöt:
 - ${car.maara?'"cardio" sisältää 1-3 riviä, yhteensä '+car.maara+' kertaa viikossa.':'"cardio" on tyhjä lista.'}
 - Kaikki suomeksi, myös liikenimet. Kerro liikkeen nimessä jos se tehdään laitteessa.`;
 }
+/* ---- Varaohjelma ilman mallia ----
+   Jos Claude ei vastaa, ohjelma pitää silti saada. Tämä kokoaa aloittelijan
+   ohjelman liikepankista esitietojen mukaan: kalusto, vältettävät liikkeet ja
+   painopiste huomioidaan, ja päivien määrä tulee valituista salipäivistä.
+   Deterministinen, joten se toimii myös offline ja kaatuneella API:lla. */
+const PT_PANKKI={
+  rinta:[['Penkkipunnerrus laitteessa',1],['Vipupenkki',1],['Taljaristikkäveto',1],
+         ['Penkkipunnerrus käsipainoilla',0],['Punnerrus',0]],
+  selkä:[['Ylätalja edestä',1],['Alatalja',1],['Soutulaite',1],
+         ['Kulmasoutu käsipainolla',0],['Maastaveto',0]],
+  olkapäät:[['Pystypunnerrus laitteessa',1],['Vipunosto taljassa',1],
+            ['Pystypunnerrus käsipainoilla',0],['Sivuvipunosto',0]],
+  hauis:[['Hauiskääntö taljassa',1],['Scott-penkki',1],['Hauiskääntö käsipainoilla',0]],
+  ojentajat:[['Ojentajapunnerrus taljassa',1],['Dippilaite',1],['Ranskalainen punnerrus',0]],
+  jalat:[['Jalkaprässi',1],['Reiden ojennus laitteessa',1],['Reiden koukistus laitteessa',1],
+         ['Askelkyykky käsipainoilla',0],['Kyykky',0]],
+  pakarat:[['Lonkannosto laitteessa',1],['Askelkyykky',0],['Lantionnosto',0]],
+  alaselkä:[['Selänojennus penkissä',1],['Selänojennus laitteessa',1],['Maastaveto',0]],
+  keskivartalo:[['Vatsarutistus laitteessa',1],['Lankku',0],['Vatsarutistus',0]],
+};
+function ptVaraOhjelma(b,gymDays){
+  const laitteet=b.gear!=='vapaat';
+  const valta=String(b.avoid||'').toLowerCase().split(/[,;.]+/).map(s=>s.trim()).filter(Boolean);
+  const focus=String(b.focus||'').toLowerCase();
+  const kelpaa=n=>{
+    const l=n.toLowerCase();
+    return !valta.some(v=>v.length>3&&(l.includes(v)||v.includes(l.split(' ')[0])));
+  };
+  const poimi=(ryhma,n,ohita)=>{
+    const kaikki=(PT_PANKKI[ryhma]||[]).filter(([nimi])=>kelpaa(nimi)&&!(ohita||[]).includes(nimi));
+    // Suosi kalustovalintaa mutta älä jää tyhjäksi jos sopivia ei ole
+    const ens=kaikki.filter(([,onLaite])=>laitteet?onLaite:!onLaite);
+    return [...ens,...kaikki.filter(x=>!ens.includes(x))].slice(0,n).map(([nimi])=>nimi);
+  };
+  // Painopiste saa oman liikkeensä joka päivään
+  // Pisin osuma voittaa: "alaselkä" osuisi muuten ensin ryhmään "selkä",
+  // joka on tavallisesti jo ohjelmassa, jolloin painopiste jäisi kokonaan pois
+  const painoRyhma=Object.keys(PT_PANKKI).filter(r=>focus.includes(r))
+    .sort((a,b)=>b.length-a.length)[0]||null;
+  const paivat=gymDays<=2
+    ? [{name:'A · Ylävartalo ja jalat',groups:['rinta','selkä','olkapäät','jalat']},
+       {name:'B · Selkä, kädet ja jalat',groups:['selkä','hauis','ojentajat','jalat','keskivartalo']}]
+    : gymDays===3
+    ? [{name:'A · Rinta, olkapäät, ojentajat',groups:['rinta','olkapäät','ojentajat']},
+       {name:'B · Selkä, hauis, alaselkä',groups:['selkä','hauis','alaselkä']},
+       {name:'C · Jalat ja keskivartalo',groups:['jalat','pakarat','keskivartalo']}]
+    : [{name:'A · Rinta ja ojentajat',groups:['rinta','ojentajat']},
+       {name:'B · Selkä ja hauis',groups:['selkä','hauis']},
+       {name:'C · Jalat',groups:['jalat','pakarat']},
+       {name:'D · Olkapäät ja keskivartalo',groups:['olkapäät','keskivartalo','alaselkä']}];
+  const kaytetyt=[];
+  const days=paivat.map(p=>{
+    const ex=[];
+    p.groups.forEach(r=>{
+      poimi(r,r===p.groups[0]?2:1,kaytetyt).forEach(nimi=>{
+        kaytetyt.push(nimi);
+        ex.push({name:nimi,sets:3,reps:['jalat','rinta','selkä'].includes(r)?'8-10':'10-12',
+          rest:['jalat','rinta','selkä'].includes(r)?150:90,
+          start:'Aloita kevyellä painolla ja lisää vasta kun kaikki toistot menevät puhtaasti.'});
+      });
+    });
+    const paino=[];
+    if(painoRyhma&&!p.groups.includes(painoRyhma)){
+      poimi(painoRyhma,1,kaytetyt).forEach(nimi=>{kaytetyt.push(nimi);
+        paino.push({name:nimi,sets:3,reps:'10-12',rest:90,start:'Painopisteesi — tehdään joka treenissä.'})});
+    }
+    // Painopiste mahtuu aina mukaan: se karsitaan viimeisenä eikä ensimmäisenä
+    return {name:p.name,groups:[...p.groups,...(paino.length?[painoRyhma]:[])],
+      exercises:[...ex.slice(0,6-paino.length),...paino]};
+  });
+  return {name:'Aloittelijan ohjelma '+gymDays+'× viikossa',
+    idea:'Perusliikkeet '+(laitteet?'laitteilla':'vapailla painoilla')+', koko keho viikon aikana.',
+    weekIdea:'Salipäivien väliin vähintään yksi lepopäivä.',
+    progression:'Kun kaikki sarjat menevät ylärajaan puhtaalla tekniikalla, lisää 1,25–2,5 kg. '+
+      'Jos sama paino jumittaa kolme kertaa, kevennä 10 % ja rakenna uudestaan.',
+    days,cardio:[]};
+}
+
 async function ptBuildRun(kommentti){
   if(!ptBuild||ptBuild.busy)return;
   if(kommentti)ptBuild.kommentit.push(kommentti.slice(0,300));
@@ -3601,8 +3679,21 @@ async function ptBuildRun(kommentti){
     ptBuild.reply=String((r&&r.reply)||'').slice(0,700);
   }catch(e){
     console.warn('ptBuildRun:',e);
-    // Epäonnistuminen ei saa hukata edellistä luonnosta eikä kommentteja
     ptBuild.virhe=String(e.message||e).slice(0,180);
+    /* Varaohjelma: ilman tätä epäonnistunut mallikutsu tarkoittaisi ettei
+       ohjelmaa saa lainkaan. Kootaan se liikepankista samoilla esitiedoilla,
+       ja kerrotaan avoimesti että tämä on varasuunnitelma — Lassi voi
+       kommentoida sitä normaalisti tai yrittää mallia uudestaan. */
+    if(!ptBuild.draft){
+      try{
+        const gd=(ptBuild.paivat&&ptBuild.paivat.length)||(pt.profile&&pt.profile.gymDays)||3;
+        ptBuild.draft=ptNormalizeProgram(ptVaraOhjelma(ptBuild,gd));
+        ptBuild.reply='Claude ei vastannut ('+ptBuild.virhe+'), joten kokosin ohjelman itse '+
+          'liikepankista esitietojesi mukaan. Tämä on käyttökelpoinen sellaisenaan — '+
+          'kommentoi jos haluat muutoksia, niin yritän mallia uudestaan.';
+        ptBuild.vara=true;
+      }catch(e2){ console.warn('varaohjelma:',e2); }
+    }
   }
   ptBuild.busy=false;ptBuildSave();renderPt();
 }
