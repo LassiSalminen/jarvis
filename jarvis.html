@@ -1167,7 +1167,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="7.4";
+const VERSION="7.5";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1345,7 +1345,7 @@ function telegramRaportti(d){
    se näkynyt mistään: PIN-portti vastaa tuntemattomaan reittiin 401:llä, joka
    näyttää samalta kuin väärä PIN. Versioreitti on portin ulkopuolella, joten
    tämä toimii silloinkin kun mikään muu ei. */
-const WORKER_MIN='7.3';
+const WORKER_MIN='7.5';
 async function workerVersio(){
   try{
     const r=await fetch(WORKER_URL+'/api/version');
@@ -3825,7 +3825,40 @@ function ptAttr(s){return JSON.stringify(String(s)).replace(/'/g,'&#39;')}
 function ptExLinks(name,di,ei){
   return `<a class="pt-lnk" href="${esc(ptVideoUrl(name))}" target="_blank" rel="noopener">▶ VIDEO</a>`+
     `<button class="pt-lnk" onclick='ptTechnique(${ptAttr(name)})'>ⓘ TEKNIIKKA</button>`+
-    (di!=null?`<button class="pt-lnk" style="color:var(--gold)" onclick="ptSwapExercise(${di},${ei})">⇄ VAIHDA</button>`:'');
+    (di!=null?`<button class="pt-lnk" style="color:var(--gold)" onclick="ptSwapExercise(${di},${ei})">⇄ EHDOTA</button>`
+             +`<button class="pt-lnk" style="color:var(--cyan)" onclick="ptOwnExercise(${di},${ei})">✎ OMA</button>`:'');
+}
+
+/* ---- Oma liike ohjelmaan ----
+   ⇄ EHDOTA kysyy Claudelta korvaajan, mutta usein Lassi tietää itse paremmin:
+   laite tuntuu omalta, liike on tuttu aiemmasta treenistä tai salilla on
+   sellainen jota ohjelma ei tunne. Tämä kirjoittaa valinnan suoraan
+   ohjelmaan ilman mallikutsua — nopeampi, ja toimii myös offline. */
+async function ptOwnExercise(di,ei){
+  const day=(pt.program&&pt.program.days||[])[di];
+  const ex=day&&(day.exercises||[])[ei];
+  if(!ex)return;
+  // Aiemmin tehdyt liikkeet vinkiksi: nimen pitää täsmätä progression takia,
+  // ja kirjoitusvirhe katkaisisi painohistorian
+  const tehdyt=[...new Set((pt.log||[]).flatMap(l=>(l.exercises||[]).map(e=>e.name)).filter(Boolean))];
+  const vinkit=tehdyt.filter(n=>n!==ex.name).slice(0,10);
+  const nimi=prompt('Millä liikkeellä korvataan?\n\nNykyinen: '+ex.name+
+    (vinkit.length?'\n\nAiemmin tekemiäsi:\n· '+vinkit.join('\n· '):''), ex.name);
+  if(nimi===null)return;
+  const n=nimi.trim();
+  if(!n){toast('Nimi ei voi olla tyhjä');return}
+  const sr=prompt('Sarjat × toistot:', (ex.sets||3)+'x'+(ex.reps||'8-10'));
+  if(sr===null)return;
+  const m=String(sr).match(/^\s*(\d+)\s*[x×]\s*(.+?)\s*$/i);
+  const uusi={...ex, name:n.slice(0,60)};
+  if(m){uusi.sets=+m[1];uusi.reps=m[2].trim().slice(0,12)}
+  // Tekniikkaohje ja lepoaika kuuluvat vanhaan liikkeeseen — pois uudelta
+  delete uusi.note; delete uusi.start;
+  if(uusi.name!==ex.name)delete uusi.rest;
+  day.exercises[ei]=uusi;
+  await ptSave();sSave();
+  toast(ex.name+' → '+uusi.name);
+  renderPt();
 }
 /* ---- Liikkeen vaihto ----
    Ohjelma ei saa olla kiveen hakattu: laite voi olla varattu, liike voi
@@ -3971,27 +4004,35 @@ function ptFoodHtml(){
       r.aterioita?` Edessä ${r.aterioita} ateriaa — noin ${r.perAteria} kcal ja ${r.protPerAteria} g proteiinia kutakin kohden.`
                  :' Päivän ateriat on syöty.'}</div>
   </div>
-  ${ptMealsStale()?`<div class="pt-hero" style="border-left-color:var(--gold)">
-    <div class="pt-tag" style="color:var(--gold)">RUOKAVALIO VANHENTUNUT</div>
-    <div class="pt-sub">Tämä ruokavalio on mitoitettu ${pt.meals.forKcal||'?'} kaloriin, mutta tavoitteesi on nyt <b>${t.kcal} kcal</b>. Annokset johtavat harhaan kunnes se kootaan uusiksi.</div>
-    <div class="learn-btns" style="margin-top:12px"><button class="btn" onclick="ptMealPlan()">⟳ KOKOA UUSIKSI</button></div></div>`:''}
-  ${ptMealsHtml()}
-  ${ptFavHtml()}
-  <div class="pt-hero"><div class="pt-tag">KIRJAA SYÖMISET</div>
-    <textarea class="pt-input" id="ptFoodIn" rows="2" placeholder="esim. kaurapuuro 1 dl, 3 kananmunaa, banaani"></textarea>
-    <div class="learn-btns" style="margin-top:9px"><button class="btn" id="ptFoodBtn" onclick="ptLogFood()">⊕ LISÄÄ</button></div>
-    <div class="pt-sub" style="margin-top:9px">Kirjoita arkikielellä — ${esc(AI.name)} arvioi energian ja makrot puolestasi.</div></div>
-  ${items.length?`<div class="pt-hero"><div class="pt-tag">TÄNÄÄN SYÖTY</div>
-    ${items.map((it,i)=>`<div class="pt-row"><span>${esc(it.name)}${
-      ptItemsText(it)?`<br><span style="font-size:12px;color:var(--txt-dim)">${esc(ptItemsText(it))}</span>`:''}</span>
-      <span class="val">${Math.round(it.kcal||0)} kcal · ${Math.round(it.protein||0)} g
-      <button class="btn ghost" style="font-size:9px;height:22px;padding:0 7px;margin-left:6px" onclick="ptDelFood(${pt.food.indexOf(it)})">✕</button></span></div>`).join('')}
-    </div>`:''}
-  ${ptPrefsOpen?ptPrefsFormHtml():''}
-  <div class="learn-btns">
-    <button class="btn ghost" onclick="ptMealPlan()">${pt.meals?'⟳ UUSI RUOKAVALIO':'⊕ RUOKAVALIO VAIHTOEHTOINEEN'}</button>
-    <button class="btn ghost" onclick="ptPrefsOpen=!ptPrefsOpen;renderPt()">${ptPrefsOpen?'SULJE':'🍽 MIELTYMYKSET'}</button>
-    <button class="btn ghost" onclick="pt.targets=null;renderPt()">MUOKKAA TIETOJA</button></div>`;
+  <div class="pt-chips" style="margin:2px 0 10px">
+    <button class="${ptFoodTab==='kirjaa'?'on':''}" onclick="ptFoodTab='kirjaa';renderPt()">⊕ KIRJAA</button>
+    <button class="${ptFoodTab==='valio'?'on':''}" onclick="ptFoodTab='valio';renderPt()">🍽 RUOKAVALIO${
+      ptMealsStale()?' ⚠':''}</button>
+  </div>
+  ${ptFoodTab==='valio'?`
+    ${ptMealsStale()?`<div class="pt-hero" style="border-left-color:var(--gold)">
+      <div class="pt-tag" style="color:var(--gold)">RUOKAVALIO VANHENTUNUT</div>
+      <div class="pt-sub">Tämä ruokavalio on mitoitettu ${pt.meals.forKcal||'?'} kaloriin, mutta tavoitteesi on nyt <b>${t.kcal} kcal</b>. Annokset johtavat harhaan kunnes se kootaan uusiksi.</div>
+      <div class="learn-btns" style="margin-top:12px"><button class="btn" onclick="ptMealPlan()">⟳ KOKOA UUSIKSI</button></div></div>`:''}
+    ${ptMealsHtml()}
+    ${ptPrefsOpen?ptPrefsFormHtml():''}
+    <div class="learn-btns">
+      <button class="btn ghost" onclick="ptMealPlan()">${pt.meals?'⟳ UUSI RUOKAVALIO':'⊕ RUOKAVALIO VAIHTOEHTOINEEN'}</button>
+      <button class="btn ghost" onclick="ptPrefsOpen=!ptPrefsOpen;renderPt()">${ptPrefsOpen?'SULJE':'🍽 MIELTYMYKSET'}</button>
+      <button class="btn ghost" onclick="pt.targets=null;renderPt()">MUOKKAA TIETOJA</button></div>
+  `:`
+    <div class="pt-hero"><div class="pt-tag">KIRJAA SYÖMISET</div>
+      <textarea class="pt-input" id="ptFoodIn" rows="2" placeholder="esim. kaurapuuro 1 dl, 3 kananmunaa, banaani"></textarea>
+      <div class="learn-btns" style="margin-top:9px"><button class="btn" id="ptFoodBtn" onclick="ptLogFood()">⊕ LISÄÄ</button></div>
+      <div class="pt-sub" style="margin-top:9px">Kirjoita arkikielellä ja niin tarkasti kuin muistat — määrät grammoina tai desilitroina tarkentavat arviota selvästi.</div></div>
+    ${ptFavHtml()}
+    ${items.length?`<div class="pt-hero"><div class="pt-tag">TÄNÄÄN SYÖTY</div>
+      ${items.map((it,i)=>`<div class="pt-row"><span>${esc(it.name||'ateria')}${
+        ptItemsText(it)?`<br><span style="font-size:12px;color:var(--txt-dim)">${esc(ptItemsText(it))}</span>`:''}</span>
+        <span class="val">${Math.round(it.kcal||0)} kcal · ${Math.round(it.protein||0)} g
+        <button class="btn ghost" style="font-size:9px;height:22px;padding:0 7px;margin-left:6px" onclick="ptDelFood(${pt.food.indexOf(it)})">✕</button></span></div>`).join('')}
+      </div>`:''}
+  `}`;
 }
 /* Painotavoite: mistä vaje tulee ja mihin se johtaa.
    Näytetään laskenta auki, koska pelkkä kaloriluku ei kerro miksi. */
@@ -4184,6 +4225,10 @@ async function ptSaveMove(){
    näillä se on ruokaa jota Lassi oikeasti syö. Vapaat tekstikentät, koska
    valmis lista ei osaa arvata mitä yksi ihminen inhoaa. */
 let ptPrefsOpen=false;
+/* RUOKA-sivun näkymä. Kirjaus on oletus: se on se mitä tehdään monta kertaa
+   päivässä, kun taas ruokavaliota katsotaan harvoin. Aiemmin ruokavalio oli
+   ensin ja kirjaus sen alla, joten se piti skrollata joka kerta ohi. */
+let ptFoodTab='kirjaa';
 function ptPrefsFormHtml(){
   const p=pt.profile||{};
   const sel='background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--txt);'
@@ -4556,11 +4601,32 @@ async function ptLogFood(){
   const txt=(el&&el.value||'').trim();
   if(!txt)return;
   if(btn){btn.disabled=true;btn.textContent='ARVIOIDAAN…'}
-  const sys=`Olet ravitsemusasiantuntija. Arvioi annetun suomalaisen ruokakuvauksen energia ja makrot.
-Palauta VAIN JSON, ei selityksiä, ei koodiaitoja:
-{"items":[{"name":"kaurapuuro 80 g","kcal":300,"protein":11,"carbs":52,"fat":6}]}
-Yksi rivi per ruoka-aine. Käytä realistisia suomalaisia annoskokoja jos määrää ei
-kerrota ("pari teelusikkaa" ≈ 10 g, "pieni löräys" ≈ 15 g). Älä jätä mitään pois.`;
+  const sys=`Olet ravitsemusasiantuntija joka arvioi suomalaisia arkiaterioita.
+
+TYÖJÄRJESTYS:
+1. Tunnista jokainen raaka-aine erikseen.
+2. Arvioi kunkin PAINO grammoina. Tämä ratkaisee tarkkuuden — makrot lasketaan
+   painosta, joten väärä annoskoko tekee kaikesta muusta turhaa.
+3. Laske makrot painoista.
+
+SUOMALAISIA VIITEARVOJA (tavallinen annos, kypsä paino):
+- Riisi/pasta 150-250 g · peruna 200-300 g · leipäviipale 30 g
+- Kananrinta 120-180 g · jauheliha 100-150 g · lohi 150 g · kananmuna 55 g
+- Kaurapuuro 300-400 g (35-50 g hiutaleita) · rahka 200 g · jogurtti 200 g
+- Salaatti 100-150 g · kasvislisäke 100-200 g · juustoviipale 20-30 g
+- Öljy tai voi ruoanlaitossa 10-20 g, levite leivällä 5-10 g
+
+TARKKUUS:
+- Jos määrä kerrotaan, käytä sitä äläkä arvaa. "Pari teelusikkaa" ≈ 10 g,
+  "pieni löräys" ≈ 15 g, "1 dl" hiutaleita ≈ 35 g.
+- Kastikkeet, öljy ja levite unohtuvat helposti mutta ovat usein 100-200 kcal.
+- Älä pyöristä ylöspäin varmuuden vuoksi: liian suuri arvio vääristää päivän
+  vajetta yhtä pahasti kuin liian pieni.
+- Älä jätä mitään pois, myös juomat lasketaan.
+
+Palauta VAIN JSON, ei selityksiä, ei koodiaitoja. Yksi rivi per raaka-aine ja
+paino mukaan nimeen:
+{"items":[{"name":"kaurapuuro 350 g (40 g hiutaleita)","kcal":300,"protein":11,"carbs":52,"fat":6}]}`;
   // Kaksi yritystä: ensimmäinen normaalisti, toinen tiukennetulla ohjeella.
   // Malli lipsahtaa toisinaan selittämään JSONin ympärille, jolloin jäsennys
   // kaatuu — silloin kannattaa pyytää uudestaan eikä hylätä käyttäjän syötettä.

@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v7.4). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v7.5). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -47,7 +47,33 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v7.4)
+## Toiminnot (v7.5)
+- **HUOM botti kirjoitti väärällä kenttänimellä**: sovellus lukee `f.name`,
+  botti kirjoitti `nimi`. Botin kirjaamat ateriat näkyivät sovelluksessa
+  nimettöminä eivätkä kelvanneet "usein syödyt" -listalle. Korjattu kaikkiin
+  kolmeen kirjauspaikkaan; lukupaikat sietävät molemmat vanhan datan vuoksi.
+- **HUOM päivä laskettiin kahdella tavalla**: `tgKonteksti` ja `tgStatus`
+  käyttivät `toISOString()`-UTC-päivää kun kirjaus käyttää `fiNyt().pvm`
+  Suomen päivää. Aamuyöllä klo 00–03 UTC on vielä edellinen päivä, joten botti
+  näytti eilisen ruoat ja väitti päivää vääräksi. Kaikki `fiNyt().pvm`:ään.
+- **Ruoka-arvion tarkkuus** (`TG_RUOKA_OHJE`, sovelluksen `sys`): sama ohje
+  molemmissa, jotta tarkkuus ei riipu siitä kumpaa reittiä ateria kirjataan.
+  **Painoarvio grammoina ensin** — makrot lasketaan siitä, joten väärä
+  annoskoko tekee kaikesta muusta turhaa. Mukana suomalaiset viitearvot
+  (riisi, kananrinta, kaurapuuro, juustoviipale) ja muistutus siitä että
+  öljy ja kastikkeet unohtuvat helposti mutta ovat 100–200 kcal.
+  Kielto pyöristää ylöspäin varmuuden vuoksi: liian suuri arvio vääristää
+  vajetta yhtä pahasti kuin liian pieni.
+- **RUOKA-sivu: kirjaus ensin** (`ptFoodTab`): sivu jakautuu kahteen
+  näkymään, ⊕ KIRJAA (oletus) ja 🍽 RUOKAVALIO. Aiemmin ruokavalio oli ensin
+  ja kirjaus sen alla, joten se piti skrollata ohi joka kerta — kirjaus
+  tehdään monta kertaa päivässä, ruokavaliota katsotaan harvoin.
+- **Oma liike ohjelmaan** (`ptOwnExercise`): ⇄ EHDOTA kysyy Claudelta
+  korvaajan, ✎ OMA antaa kirjoittaa sen itse. Usein Lassi tietää paremmin:
+  laite tuntuu omalta tai salilla on sellainen jota ohjelma ei tunne.
+  Ei mallikutsua, joten toimii myös offline. Aiemmin tehdyt liikkeet
+  tarjotaan vinkkeinä, koska nimen pitää täsmätä progression takia ja
+  kirjoitusvirhe katkaisisi painohistorian.
 - **HUOM `let` ja template literal -persoonat**: v7.2:n sijaintimuutos lisäsi
   `${GEO.paikka}` persoonateksteihin, mutta `let GEO` oli määritelty vasta
   `MODES`in **jälkeen**. Template literal evaluoituu objektin luonnissa, joten
