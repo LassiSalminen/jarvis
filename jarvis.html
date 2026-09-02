@@ -1170,7 +1170,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="7.7";
+const VERSION="7.8";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -1348,7 +1348,7 @@ function telegramRaportti(d){
    se näkynyt mistään: PIN-portti vastaa tuntemattomaan reittiin 401:llä, joka
    näyttää samalta kuin väärä PIN. Versioreitti on portin ulkopuolella, joten
    tämä toimii silloinkin kun mikään muu ei. */
-const WORKER_MIN='7.5';
+const WORKER_MIN='7.7';
 async function workerVersio(){
   try{
     const r=await fetch(WORKER_URL+'/api/version');
@@ -2351,7 +2351,18 @@ async function askClaude(system,messages,max=1000,model){
     throw new Error(e&&e.message?((e.type||'virhe')+': '+String(e.message).slice(0,140))
                                 :'ei vastausta ('+JSON.stringify(data).slice(0,140)+')');
   }
-  return data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+  const teksti=data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+  /* Tyhjä paluuarvo piilotti syyn: kutsuja näki vain "malli ei palauttanut
+     mitään" eikä tiennyt katkesiko vastaus token-kattoon, kieltäytyikö malli
+     vai tuliko pelkkiä muita lohkotyyppejä. stop_reason kertoo sen suoraan. */
+  if(!teksti.trim()){
+    const syy=data.stop_reason==='max_tokens'
+      ? 'vastaus katkesi token-kattoon ennen kuin tekstiä ehti syntyä'
+      : 'malli ei tuottanut tekstiä (stop_reason: '+(data.stop_reason||'tuntematon')+
+        ', lohkot: '+(data.content.map(b=>b.type).join(',')||'ei yhtään')+')';
+    throw new Error(syy);
+  }
+  return teksti;
 }
 /* PERSONA tulee aktiivisesta moodista — AI.persona */
 

@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v7.7). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v7.8). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -47,7 +47,20 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v7.7)
+## Toiminnot (v7.8)
+- **Botti näkee wiki-sivujen SISÄLLÖN** (`tgKonteksti(env, viesti)`): aiemmin
+  promptissa oli vain otsikkolista, joten kysymykseen "miten Korpin kanssa
+  menee" botti näki sanan `Korpi.co` eikä tiennyt mitään sen tilasta — vaikka
+  tieto oli tietopankissa. Nyt viestistä tehdään avainsanahaku ja 3 osuvinta
+  sivua tulevat mukaan sisältöineen. Otsikko-osuma painaa 3, sisältö 1, ja
+  vertailu tehdään sanan **alkuosalla** ("korpin" → "korpi") koska suomi
+  taivuttaa. Konteksti kasvoi mittauksessa vain 129 merkkiä: haku on
+  kohdennettu eikä liitä kaikkea.
+- **HUOM `askClaude` palautti tyhjän merkkijonon**: jos vastauksessa ei ollut
+  tekstilohkoja, kutsuja sai tyhjän eikä tiennyt miksi — ohjelman kokoaminen
+  näytti vain "malli ei palauttanut mitään". Nyt se heittää ja kertoo
+  `stop_reason`in sekä lohkotyypit, jolloin token-katto, kieltäytyminen ja
+  tyhjä vastaus erottuvat toisistaan.
 - **HUOM ohjelman kokoaminen jäi jumiin pysyvästi**: `ptBuildSave` tallensi
   koko `ptBuild`-objektin **mukaan lukien `busy: true`**. Jos sivu ladattiin
   kesken Claude-kutsun, luonnos palautui `busy`-tilassa, `ptBuildHtml` näytti
