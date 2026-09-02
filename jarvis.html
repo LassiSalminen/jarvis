@@ -419,7 +419,10 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 .wiki-del:hover{color:var(--red);border-color:rgba(255,61,61,.4);opacity:1}
 .wiki-card{position:relative;background:rgba(0,5,12,.95);border:1px solid var(--line);border-left:2px solid var(--cyan);
   border-radius:2px;padding:10px 12px;cursor:pointer;transition:.15s;position:relative;overflow:hidden;
-  animation:min .25s ease forwards}
+  animation:min .25s ease forwards;
+  /* Pystysuora flex puristaa lapsia vaikka overflow on auto: ilman tätä
+     kortit litistyvät päällekkäin ja teksti leikkautuu kun sivuja on paljon */
+  flex:0 0 auto;min-height:0}
 .wiki-card::after{content:"";position:absolute;top:0;left:0;width:100%;height:1px;
   background:linear-gradient(90deg,var(--cyan),transparent);opacity:.3}
 .wiki-card:hover{background:rgba(var(--accent-rgb),.05);border-left-color:var(--cyan)}
@@ -1167,7 +1170,7 @@ main{flex:1;display:grid;grid-template-columns:220px 1fr 220px;gap:12px;padding:
 
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
-const VERSION="7.5";
+const VERSION="7.7";
 const BUILD=new Date().toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',year:'numeric'});
 
 /* ===== PERSOONAMOODIT ===== */
@@ -3447,9 +3450,16 @@ function renderPt(){
    kesken jäänyt kokoaminen ei katoa sivun latauksessa. */
 let ptBuild=null;
 try{const v=localStorage.getItem('jarvis:ptBuild');if(v)ptBuild=JSON.parse(v)}catch(e){}
+// Kesken jaanyt kutsu ei saa jattaa luonnosta jumiin: busy kuvaa vain
+// meneillaan olevaa pyyntoa, eika sellaista ole sivun latauksen jalkeen.
+if(ptBuild)ptBuild.busy=false;
 function ptBuildSave(){
-  try{ptBuild?localStorage.setItem('jarvis:ptBuild',JSON.stringify(ptBuild))
-             :localStorage.removeItem('jarvis:ptBuild')}catch(e){}
+  try{
+    if(!ptBuild){localStorage.removeItem('jarvis:ptBuild');return}
+    // busy jatetaan tallentamatta — ks. lataus yllä
+    const {busy,...pysyva}=ptBuild;
+    localStorage.setItem('jarvis:ptBuild',JSON.stringify(pysyva));
+  }catch(e){}
 }
 const PT_SPLITS=[
   ['kokovartalo','Kokovartalo','Koko keho joka kerta. Vähällä käyntimäärällä tehokkain.'],
@@ -3464,7 +3474,7 @@ const PT_GEAR=[
 ];
 function ptBuildStart(){
   const p=pt.profile||{};
-  ptBuild={vaihe:'esitiedot',
+  ptBuild={vaihe:'esitiedot',paivat:(pt.profile&&pt.profile.gymDayNames)||[],
     split:p.split||'',gear:p.gear||'sekaisin',
     avoid:p.avoid||'',focus:p.focus||'',splitOma:p.splitOma||'',
     kommentit:[],draft:null,reply:'',busy:false,virhe:''};
@@ -3473,6 +3483,13 @@ function ptBuildStart(){
 function ptBuildCancel(){
   if(ptBuild&&ptBuild.draft&&!confirm('Hylätäänkö kesken oleva ohjelma? Luonnos menetetään.'))return;
   ptBuild=null;ptBuildSave();renderPt();
+}
+function ptBuildPaiva(d){
+  if(!ptBuild)return;
+  const p=ptBuild.paivat||[];
+  ptBuild.paivat=p.includes(d)?p.filter(x=>x!==d):[...p,d]
+    .sort((a,b)=>['ma','ti','ke','to','pe','la','su'].indexOf(a)-['ma','ti','ke','to','pe','la','su'].indexOf(b));
+  ptBuildSave();renderPt();
 }
 function ptBuildSet(k,v){if(!ptBuild)return;ptBuild[k]=v;ptBuildSave();renderPt()}
 function ptBuildField(k,id){
@@ -3497,7 +3514,13 @@ Aseta lenkit niin etteivät ne syö salitreenien palautumista: kova juoksu ei ku
 }
 function ptBuildSys(){
   const b=ptBuild||{},p=pt.profile||{};
-  const days=p.gymDays||p.days||3;
+  const PVNIMI={ma:'maanantai',ti:'tiistai',ke:'keskiviikko',to:'torstai',pe:'perjantai',la:'lauantai',su:'sunnuntai'};
+  const valitut=(b.paivat||[]);
+  const days=valitut.length||p.gymDays||p.days||3;
+  const paivaTeksti=valitut.length
+    ? 'Lassi käy salilla näinä päivinä: '+valitut.map(d=>PVNIMI[d]).join(', ')+
+      '. Jaksota ohjelma niiden mukaan: peräkkäisinä päivinä ei saa kuormittaa samoja lihasryhmiä, ja jos päivien välissä on pitkä tauko, sijoita raskain treeni sen jälkeen.'
+    : '';
   const car=ptCardioPrompt();
   const JAKO={
     kokovartalo:'Kokovartalotreeni joka kerta.',
@@ -3516,7 +3539,7 @@ function ptBuildSys(){
     b.kommentit&&b.kommentit.length&&('Lassin aiempi palaute tästä ohjelmasta, ota kaikki huomioon:\n- '+b.kommentit.join('\n- '))
   ].filter(Boolean).join('\n');
   return `Olet kokenut suomalainen voimavalmentaja. Kokoat kuntosaliohjelmaa YHDESSÄ Lassin kanssa: ehdotat, hän kommentoi, sinä korjaat.
-Lähtötiedot: ${days} salitreeniä viikossa. Taso: aloittelija, joka aloitti käytännössä nollasta.${p.weight?' Paino '+p.weight+' kg.':''}
+Lähtötiedot: ${days} salitreeniä viikossa. ${paivaTeksti} Taso: aloittelija, joka aloitti käytännössä nollasta.${p.weight?' Paino '+p.weight+' kg.':''}
 ${JAKO[b.split]||JAKO.oma}
 ${KALUSTO[b.gear]||KALUSTO.sekaisin}
 ${rajoitteet}${car.teksti}
@@ -3545,7 +3568,12 @@ async function ptBuildRun(kommentti){
     // 3600 tokenia: kolmen päivän ohjelma vinkkeineen plus saateteksti on
     // iso vastaus, ja token-kattoon katkennut JSON näyttää samalta kuin
     // täysi epäonnistuminen.
-    const raw=await askClaudeRetry(ptBuildSys(),[{role:'user',content:viesti}],3600);
+    // 90 s katto: roikkuva kutsu jattaisi nakyman lataustilaan eika mikaan
+    // kertoisi etta mitaan ei ole tulossa.
+    const raw=await Promise.race([
+      askClaudeRetry(ptBuildSys(),[{role:'user',content:viesti}],3600),
+      new Promise((_,hylkaa)=>setTimeout(()=>hylkaa(new Error('vastaus kesti yli 90 sekuntia')),90000))
+    ]);
     const r=ptParseJson(raw);
     const ohjelma=r&&(r.program||(Array.isArray(r.days)?r:null));
     if(!ohjelma||!Array.isArray(ohjelma.days)||!ohjelma.days.length){
@@ -3574,7 +3602,8 @@ async function ptBuildAccept(){
   // kertoa uudestaan ettei kyykky maistu ja että laitteet ovat mieluisampia
   pt.profile={...(pt.profile||{}),level:'aloittelija',place:'sali',
     split:ptBuild.split,splitOma:ptBuild.splitOma,gear:ptBuild.gear,
-    avoid:ptBuild.avoid,focus:ptBuild.focus};
+    avoid:ptBuild.avoid,focus:ptBuild.focus,
+    ...(ptBuild.paivat&&ptBuild.paivat.length?{gymDayNames:ptBuild.paivat,gymDays:ptBuild.paivat.length}:{})};
   ptBuild=null;ptBuildSave();
   await ptSave();sSave();
   toast('Ohjelma otettu käyttöön');
@@ -3602,6 +3631,14 @@ function ptBuildHtml(){
     <div class="pt-hero"><div class="pt-tag">RAJOITTEET JA PAINOPISTEET</div>
       <div class="pt-field"><label>LIIKKEET JOITA ET HALUA TEHDÄ</label>
         <textarea class="pt-input" id="ptbAvoid" rows="2" onchange="ptBuildField('avoid','ptbAvoid')" placeholder="esim. kyykky ja maastaveto — en osaa tekniikkaa vielä">${esc(b.avoid||'')}</textarea></div>
+      <div class="pt-field" style="margin-top:11px"><label>MINÄ PÄIVINÄ KÄYT SALILLA</label>
+        <div class="pt-chips" style="margin-top:6px">${
+          ['ma','ti','ke','to','pe','la','su'].map(d=>
+            `<button class="${(b.paivat||[]).includes(d)?'on':''}" onclick='ptBuildPaiva(${ptAttr(d)})'>${d.toUpperCase()}</button>`
+          ).join('')}</div>
+        <div class="pt-sub" style="margin-top:6px;font-size:12px">${
+          (b.paivat||[]).length?'Ohjelma mitoitetaan '+b.paivat.length+' treeniin viikossa.'
+                              :'Valitse päivät, niin ohjelma osaa jaksottaa palautumisen oikein.'}</div></div>
       <div class="pt-field" style="margin-top:11px"><label>MITÄ HALUAT ERITYISESTI KEHITTÄÄ</label>
         <textarea class="pt-input" id="ptbFocus" rows="2" onchange="ptBuildField('focus','ptbFocus')" placeholder="esim. alaselkä, se on heikko ja jumittaa istumatyössä">${esc(b.focus||'')}</textarea></div>
       <div class="learn-btns" style="margin-top:14px">
@@ -4224,6 +4261,7 @@ async function ptSaveMove(){
 /* Mieltymykset. Ilman näitä ruokavalio on geneeristä "broileria ja riisiä" —
    näillä se on ruokaa jota Lassi oikeasti syö. Vapaat tekstikentät, koska
    valmis lista ei osaa arvata mitä yksi ihminen inhoaa. */
+let wikiShowOld=false;
 let ptPrefsOpen=false;
 /* RUOKA-sivun näkymä. Kirjaus on oletus: se on se mitä tehdään monta kertaa
    päivässä, kun taas ruokavaliota katsotaan harvoin. Aiemmin ruokavalio oli
@@ -6207,13 +6245,31 @@ function renderWiki(){
   if(!dump.length){list.innerHTML='<div class="empty">Tietopankki on tyhjä.\n\nSyötä tietoa alle — esim.\n"Tänään opin että transformerit käyttävät self-attention-mekanismia"\n\n'+AI.display+' organisoi sen wikiksi automaattisesti.</div>';return}
   // Hakusuodatus: otsikko, tiivistelmä, tagit ja sisältö
   const q=($('#wikiSearch')?.value||'').trim().toLowerCase();
+  // Päiväkirjasivuja kertyy yksi joka päivä. Ne ovat koonnin raaka-ainetta
+  // eikä niitä selata jälkikäteen, joten yli 14 vrk vanhat piilotetaan
+  // listalta. Mitään ei poisteta: haku löytää ne yhä, ja nappi näyttää kaikki.
+  const raja=Date.now()-14*86400000;
+  const vanhaPaiva=w=>{
+    const m=/^paiva-(\d{4}-\d{2}-\d{2})$/.exec(w.id||'');
+    return m&&new Date(m[1]+'T12:00:00').getTime()<raja;
+  };
+  const piilossa=q||wikiShowOld?[]:dump.filter(vanhaPaiva);
+  const nakyva=piilossa.length?dump.filter(w=>!vanhaPaiva(w)):dump;
   const shown=q?dump.filter(w=>
     (w.title||'').toLowerCase().includes(q)||
     (w.summary||'').toLowerCase().includes(q)||
     (w.tags||[]).some(t=>(t||'').toLowerCase().includes(q))||
     (w.body||'').toLowerCase().includes(q)
-  ):dump;
+  ):nakyva;
   if(!shown.length){list.innerHTML='<div class="empty">Ei osumia haulle "'+esc(q)+'".</div>';return}
+  if(piilossa.length){
+    const b=document.createElement('div');b.className='wiki-card';
+    b.style.cssText='border-left-color:var(--txt-dim);text-align:center;opacity:.75';
+    b.innerHTML='<div class="s" style="-webkit-line-clamp:1">'+piilossa.length+
+      ' vanhaa päiväkirjasivua piilotettu — napauta näyttääksesi</div>';
+    b.onclick=()=>{wikiShowOld=true;renderWiki()};
+    list.appendChild(b);
+  }
   shown.forEach(w=>{
     const c=document.createElement('div');c.className='wiki-card';
     c.innerHTML='<button class="wiki-del" title="Poista sivu">✕</button><div class="t">'+esc(w.title)+'</div><div class="s">'+esc(w.summary||'')+'</div><div class="tags">'+(w.tags||[]).map(t=>'<span class="tag">'+esc(t)+'</span>').join('')+'</div>';

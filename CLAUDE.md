@@ -3,7 +3,7 @@
 Puhu minulle suomeksi.
 
 ## Mikä tämä on
-Henkilökohtainen tekoälyassistentti Lassille (v7.5). Yksi yhtenäinen
+Henkilökohtainen tekoälyassistentti Lassille (v7.7). Yksi yhtenäinen
 käyttöliittymä: chat + HUD + henkilökohtainen tietopankki (PKB) + oppiminen
 + PT (treeni & ravinto).
 Tabletille (vanha Honor Android) ja muille laitteille, asennetaan PWA:na.
@@ -47,7 +47,36 @@ valitsee mallin, ja varamalliketju toimii kummallakin polulla.
 PIN kysytään laitteella ja elää vain localStoragessa — EI koskaan koodiin.
 `WORKER_URL` on koodissa (ei salaisuus).
 
-## Toiminnot (v7.5)
+## Toiminnot (v7.7)
+- **HUOM ohjelman kokoaminen jäi jumiin pysyvästi**: `ptBuildSave` tallensi
+  koko `ptBuild`-objektin **mukaan lukien `busy: true`**. Jos sivu ladattiin
+  kesken Claude-kutsun, luonnos palautui `busy`-tilassa, `ptBuildHtml` näytti
+  ikuisesti "Valmentaja kokoaa ehdotusta…" ja `ptBuildRun` kieltäytyi ajamasta
+  (`if(ptBuild.busy)return`). Jumi ei purkautunut millään.
+  Korjaus: `busy` jätetään tallentamatta (`const {busy,...pysyva}=ptBuild`) ja
+  nollataan latauksessa. Lisäksi kutsulla on nyt **90 s aikakatkaisu** —
+  roikkuva pyyntö jättäisi näkymän lataustilaan eikä mikään kertoisi siitä.
+- **Salipäivät ohjelman kokoamiseen** (`ptBuildPaiva`, `gymDayNames`): "3×
+  viikossa" ei kerro MITKÄ päivät, ja se ratkaisee jaksotuksen. Viikonpäivät
+  valitaan chipeistä, ja prompt saa ohjeen ettei peräkkäisinä päivinä
+  kuormiteta samoja lihasryhmiä.
+- **Botin konteksti on päivätty** (`tgKonteksti`, `nimeaPvm`): jokainen tieto
+  kantaa päivämäärän, viikonpäivän ja suhteen tähän päivään ("2026-09-01
+  (tiistai, eilen)"). Aiemmin promptissa oli vain "tänään syöty" ja sivujen
+  otsikot, joten malli **arvasi päivät ja liitti asioita väärään vuorokauteen**.
+  Mukana nyt: 4 viimeisintä päiväkirjaa sisältöineen, ravinto 7 päivältä
+  aterioineen, 6 viimeisintä treeniä ja punnitukset — kaikki päivättyinä ja
+  **aikajärjestykseen lajiteltuina** (loki ei ole välttämättä järjestyksessä,
+  koska botin ja sovelluksen kirjaukset menevät listaan tulojärjestyksessä).
+  PÄIVÄSÄÄNTÖ-osio kieltää arvaamasta päiviä joita datassa ei ole.
+- **HUOM wiki-kortit kasaantuivat päällekkäin**: pystysuora flex-container
+  puristaa lapsia vaikka `overflow-y:auto` on päällä. Ilman `flex:0 0 auto`
+  kortit litistyivät ja teksti leikkautui kun sivuja oli paljon. Todennettu
+  37 kortilla: kaikki pysyvät 61 px korkeina.
+- **Vanhat päiväkirjasivut pois listalta** (`wikiShowOld`): niitä syntyy yksi
+  joka päivä ja ne täyttivät tietopankin. Yli 14 vrk vanhat piilotetaan, ja
+  rivi kertoo montako — **mitään ei poisteta**, haku löytää ne yhä ja napautus
+  näyttää kaikki. Poistaminen olisi MUISTI-ARKKITEHTUURI.md:n vastaista.
 - **HUOM botti kirjoitti väärällä kenttänimellä**: sovellus lukee `f.name`,
   botti kirjoitti `nimi`. Botin kirjaamat ateriat näkyivät sovelluksessa
   nimettöminä eivätkä kelvanneet "usein syödyt" -listalle. Korjattu kaikkiin
